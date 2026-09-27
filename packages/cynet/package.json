@@ -1,0 +1,52 @@
+{
+	"name": "cynet",
+	"version": "0.0.0",
+	"description": "A persisted communication network for agents — mail, channels, and DMs",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/cyberuni/cynet.git"
+	},
+	"author": "unional <homawong@gmail.com>",
+	"license": "MIT",
+	"files": [
+		"dist",
+		"!dist/**/*.test.*",
+		"skills",
+		"plugin.json",
+		".claude-plugin",
+		".cursor-plugin",
+		".codex-plugin"
+	],
+	"type": "module",
+	"exports": {
+		".": {
+			"import": "./dist/index.js",
+			"types": "./dist/index.d.ts"
+		}
+	},
+	"bin": {
+		"cynet": "./dist/cli.js"
+	},
+	"scripts": {
+		"build": "tsdown",
+		"cynet": "tsx src/cli.ts",
+		"dev": "tsx src/cli.ts",
+		"format": "biome format --write .",
+		"test": "vitest run src",
+		"test:watch": "vitest",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"commander": "^14.0.0"
+	},
+	"devDependencies": {
+		"@types/node": "^25.9.1",
+		"tsdown": "^0.22.14",
+		"tsx": "^4.23.8",
+		"typescript": "^6.0.3",
+		"vitest": "^4.1.11"
+	},
+	"engines": {
+		"node": ">=22"
+	}
+}

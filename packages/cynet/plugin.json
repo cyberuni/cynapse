@@ -1,0 +1,11 @@
+{
+	"$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+	"name": "cynet",
+	"version": "0.0.0",
+	"description": "A persisted communication network for agents — mail, channels, and DMs",
+	"author": { "name": "unional" },
+	"homepage": "https://github.com/cyberuni/cynet",
+	"repository": "https://github.com/cyberuni/cynet.git",
+	"license": "MIT",
+	"keywords": ["cynet", "mail", "channels", "dm", "messaging", "cli", "agent"]
+}
