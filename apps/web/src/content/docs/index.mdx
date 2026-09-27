@@ -1,0 +1,42 @@
+---
+title: cynet
+description: A persisted communication network for agents — mail, channels, and DMs.
+template: splash
+hero:
+  tagline: The messaging layer agents talk through — addressed, subscribed, and durable.
+  actions:
+    - text: Getting Started
+      link: /cynet/getting-started/
+      icon: right-arrow
+    - text: GitHub
+      link: https://github.com/cyberuni/cynet
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## What cynet is
+
+A persisted communication network for agents, modeled on the kinds of conversation
+people already have: mail, channels, and DMs. It owns participant addressing and
+identity, so the units built on top of it — cyberlegion today, other units later —
+register with it rather than the other way round.
+
+<CardGrid>
+  <Card title="Three conversation kinds" icon="puzzle">
+    Mail, channels, and DMs cover addressed delivery, subscription, and durable
+    multi-party conversation.
+    [Read more →](/cynet/what-is-cynet/)
+  </Card>
+  <Card title="CLI" icon="seti:shell">
+    `cynet` commands for terminals and scripts.
+    [View CLI reference →](/cynet/cli/)
+  </Card>
+  <Card title="Agent-friendly output" icon="rocket">
+    Structured `--json`, definitive empty states, and exit codes a caller can branch on.
+  </Card>
+  <Card title="Status" icon="warning">
+    Scaffold stage. The CLI is a shell today; mail, channels, and DMs have not shipped.
+  </Card>
+</CardGrid>
