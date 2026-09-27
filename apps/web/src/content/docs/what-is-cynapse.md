@@ -1,20 +1,20 @@
 ---
-title: What is cynet
+title: What is cynapse
 description: The messaging layer under cyberlegion — mail, channels, and DMs.
 ---
 
 :::caution[Design, not implementation]
-cynet is at scaffold stage. Nothing described here has shipped yet.
+cynapse is at scaffold stage. Nothing described here has shipped yet.
 :::
 
-cynet is a persisted communication network for agents. It is the messaging layer
-("cyber-net") extracted out of [cyberlegion](https://github.com/cyberuni/cyberlegion),
+cynapse is a persisted communication network for agents. It is the messaging layer
+(the synapse between agents) extracted out of [cyberlegion](https://github.com/cyberuni/cyberlegion),
 so it can be depended on by cyberlegion and by other units in the future, rather than
 living inside just one of them.
 
 ## Three conversation kinds
 
-Like Slack or Discord, cynet supports three kinds of conversation:
+Like Slack or Discord, cynapse supports three kinds of conversation:
 
 - **Mail** — addressed, point-to-point, and durable. A message is consumed by
   acknowledging it, the way an inbox item is read and cleared.
@@ -25,7 +25,7 @@ Like Slack or Discord, cynet supports three kinds of conversation:
 
 ## Who owns what
 
-cynet owns participant addressing and identity: addresses, standing or owner identity,
+cynapse owns participant addressing and identity: addresses, standing or owner identity,
 and presence. Units built on top of it — cyberlegion, and any future cyber-hive — register
-their participants with cynet; cynet does not register with them. [cyber-mux](https://github.com/cyberuni/cyberlegion)
-stays beneath cynet, handling pane mechanics rather than messaging.
+their participants with cynapse; cynapse does not register with them. [cyber-mux](https://github.com/cyberuni/cyberlegion)
+stays beneath cynapse, handling pane mechanics rather than messaging.

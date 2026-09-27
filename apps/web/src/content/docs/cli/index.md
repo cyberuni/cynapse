@@ -1,9 +1,9 @@
 ---
 title: CLI
-description: The cynet command
+description: The cynapse command
 ---
 
-The binary is `cynet`. It follows the
+The binary is `cynapse`. It follows the
 [10 agent-CLI principles](https://github.com/kunchenguid/axi#the-10-principles):
 structured output on demand, definitive empty states, and exit codes a caller can
 branch on.

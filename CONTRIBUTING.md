@@ -1,6 +1,6 @@
 # Contributing
 
-Guide for developing `cynet` locally. AI coding assistants should also read [AGENTS.md](AGENTS.md).
+Guide for developing `cynapse` locally. AI coding assistants should also read [AGENTS.md](AGENTS.md).
 
 ## Setup
 
@@ -15,11 +15,11 @@ Node 22+ and pnpm 11 — both pinned in `mise.toml` and `.node-version`.
 ```sh
 pnpm verify                 # lint + build + typecheck + test + knip — what CI runs
 pnpm test                   # tests only
-pnpm cynet dev --help       # run the CLI from source, no build (tsx)
-pnpm cynet test:watch       # watch mode
+pnpm cynapse dev --help       # run the CLI from source, no build (tsx)
+pnpm cynapse test:watch       # watch mode
 ```
 
-`pnpm cynet <script>` is the root shortcut for `pnpm run --filter=./packages/cynet <script>`;
+`pnpm cynapse <script>` is the root shortcut for `pnpm run --filter=./packages/cynapse <script>`;
 `dev` and `test:watch` live on the package, not the workspace root.
 
 ## Docs site

@@ -1,32 +1,32 @@
 ---
 title: Getting Started
-description: Install cynet and run the CLI
+description: Install cynapse and run the CLI
 ---
 
 :::caution
-`cynet` is at scaffold stage. The CLI shell, plugin manifests, and release pipeline
+`cynapse` is at scaffold stage. The CLI shell, plugin manifests, and release pipeline
 are in place; mail, channels, and DMs have not shipped yet.
 :::
 
 ## Installation
 
 ```bash
-npm install -g cynet
+npm install -g cynapse
 ```
 
 Or run it without installing:
 
 ```bash
-npx cynet --version
+npx cynapse --version
 ```
 
 ## The CLI
 
-The binary is `cynet`.
+The binary is `cynapse`.
 
 ```bash
-cynet --help
-cynet --version
+cynapse --help
+cynapse --version
 ```
 
 Every command accepts `--json` for structured output. See the
@@ -41,5 +41,5 @@ Copilot CLI.
 ```bash
 # Claude Code
 /plugin marketplace add cyberuni/cynet
-/plugin install cynet
+/plugin install cynapse
 ```

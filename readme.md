@@ -1,42 +1,42 @@
-# cynet
+# cynapse
 
 A persisted communication network for agents.
 
-> **Scaffold stage.** This is the messaging layer ("cyber-net") extracted out of
-> [cyberlegion](https://github.com/cyberuni/cyberlegion), per
+> **Scaffold stage.** This is the messaging layer (the synapse between agents)
+> extracted out of [cyberlegion](https://github.com/cyberuni/cyberlegion), per
 > [cyberuni/cyberlegion#20](https://github.com/cyberuni/cyberlegion/issues/20). The CLI
 > is a shell today: global options, usage errors, and exit codes. No domain commands
 > have shipped yet.
 
 ## What it is
 
-cynet supports three conversation kinds, the way Slack or Discord does:
+cynapse supports three conversation kinds, the way Slack or Discord does:
 
 - **Mail** — addressed, point-to-point, durable; consumed by acknowledging.
 - **Channels** — named, many members, subscribed to; reading never consumes.
 - **DMs** — a persistent conversation between two or more participants.
 
-cynet owns participant addressing and identity. Units — cyberlegion, and any future
-cyber-hive — register with cynet, not the other way round.
+cynapse owns participant addressing and identity. Units — cyberlegion, and any future
+cyber-hive — register with cynapse, not the other way round.
 
 ## Installation
 
 ```sh
-npm install -g cynet
+npm install -g cynapse
 ```
 
 Or without installing:
 
 ```sh
-npx cynet --version
+npx cynapse --version
 ```
 
 ## CLI
 
 ```sh
-cynet --help
-cynet --version
-cynet --json <command>   # structured output
+cynapse --help
+cynapse --version
+cynapse --json <command>   # structured output
 ```
 
 | Exit code | Meaning |
@@ -53,7 +53,7 @@ Copilot CLI.
 ```sh
 # Claude Code
 /plugin marketplace add cyberuni/cynet
-/plugin install cynet
+/plugin install cynapse
 ```
 
 ## Documentation

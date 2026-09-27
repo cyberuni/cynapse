@@ -6,7 +6,7 @@ export default defineConfig({
 	base: '/cynet',
 	integrations: [
 		starlight({
-			title: 'cynet',
+			title: 'cynapse',
 			social: [
 				{
 					icon: 'github',
@@ -15,7 +15,7 @@ export default defineConfig({
 				},
 			],
 			sidebar: [
-				{ label: 'What is cynet', link: '/what-is-cynet/' },
+				{ label: 'What is cynapse', link: '/what-is-cynapse/' },
 				{ label: 'Getting Started', link: '/getting-started/' },
 				{
 					label: 'CLI',

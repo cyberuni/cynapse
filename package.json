@@ -1,12 +1,12 @@
 {
-	"name": "cynet-monorepo",
+	"name": "cynapse-monorepo",
 	"private": true,
 	"type": "module",
 	"scripts": {
 		"build": "turbo run build",
 		"check": "biome check",
 		"check:fix": "biome check --write",
-		"cynet": "pnpm run --filter=./packages/cynet",
+		"cynapse": "pnpm run --filter=./packages/cynapse",
 		"knip": "knip",
 		"prepare": "husky",
 		"release": "changeset publish",

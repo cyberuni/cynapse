@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { CynetError, EXIT_FAILURE, EXIT_USAGE, exitCodeFor, renderCliError } from './cli-error.js'
+import { CynapseError, EXIT_FAILURE, EXIT_USAGE, exitCodeFor, renderCliError } from './cli-error.js'
 
 describe(exitCodeFor.name, () => {
-	it('returns the code a CynetError carries', () => {
-		expect(exitCodeFor(new CynetError('bad flag', { exitCode: EXIT_USAGE }))).toBe(EXIT_USAGE)
+	it('returns the code a CynapseError carries', () => {
+		expect(exitCodeFor(new CynapseError('bad flag', { exitCode: EXIT_USAGE }))).toBe(EXIT_USAGE)
 	})
 
-	it('defaults a CynetError without a code to a plain failure', () => {
-		expect(exitCodeFor(new CynetError('boom'))).toBe(EXIT_FAILURE)
+	it('defaults a CynapseError without a code to a plain failure', () => {
+		expect(exitCodeFor(new CynapseError('boom'))).toBe(EXIT_FAILURE)
 	})
 
 	it('treats an unknown throw as a plain failure, not a usage error', () => {
@@ -22,12 +22,12 @@ describe(renderCliError.name, () => {
 	})
 
 	it('appends a cause that adds information', () => {
-		const error = new CynetError('cannot read mailbox', { cause: new Error('ENOENT') })
+		const error = new CynapseError('cannot read mailbox', { cause: new Error('ENOENT') })
 		expect(renderCliError(error)).toBe('cannot read mailbox: ENOENT')
 	})
 
 	it('does not repeat a cause identical to the message', () => {
-		const error = new CynetError('ENOENT', { cause: 'ENOENT' })
+		const error = new CynapseError('ENOENT', { cause: 'ENOENT' })
 		expect(renderCliError(error)).toBe('ENOENT')
 	})
 

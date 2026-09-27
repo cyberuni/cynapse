@@ -1,12 +1,12 @@
 {
 	"$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
-	"name": "cynet",
-	"displayName": "Cynet",
+	"name": "cynapse",
+	"displayName": "Cynapse",
 	"version": "0.0.0",
 	"description": "A persisted communication network for agents — mail, channels, and DMs",
 	"author": { "name": "unional" },
 	"homepage": "https://github.com/cyberuni/cynet",
 	"repository": "https://github.com/cyberuni/cynet",
 	"license": "MIT",
-	"keywords": ["cynet", "mail", "channels", "dm", "messaging", "cli", "agent"]
+	"keywords": ["cynapse", "mail", "channels", "dm", "messaging", "cli", "agent"]
 }

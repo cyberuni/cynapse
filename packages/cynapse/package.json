@@ -1,5 +1,5 @@
 {
-	"name": "cynet",
+	"name": "cynapse",
 	"version": "0.0.0",
 	"description": "A persisted communication network for agents — mail, channels, and DMs",
 	"repository": {
@@ -25,11 +25,11 @@
 		}
 	},
 	"bin": {
-		"cynet": "./dist/cli.js"
+		"cynapse": "./dist/cli.js"
 	},
 	"scripts": {
 		"build": "tsdown",
-		"cynet": "tsx src/cli.ts",
+		"cynapse": "tsx src/cli.ts",
 		"dev": "tsx src/cli.ts",
 		"format": "biome format --write .",
 		"test": "vitest run src",

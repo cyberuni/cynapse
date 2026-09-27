@@ -14,7 +14,7 @@
 	},
 	"overrides": [
 		{
-			"includes": ["packages/cynet/src/**/*.ts"],
+			"includes": ["packages/cynapse/src/**/*.ts"],
 			"linter": {
 				"rules": {
 					"suspicious": {

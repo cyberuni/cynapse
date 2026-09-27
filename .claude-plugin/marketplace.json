@@ -4,19 +4,19 @@
 	"description": "Agent plugins from cyberuni",
 	"plugins": [
 		{
-			"name": "cynet",
-			"displayName": "Cynet",
+			"name": "cynapse",
+			"displayName": "Cynapse",
 			"description": "A persisted communication network for agents — mail, channels, and DMs",
 			"source": {
 				"source": "npm",
-				"package": "cynet"
+				"package": "cynapse"
 			},
 			"author": { "name": "unional" },
 			"homepage": "https://github.com/cyberuni/cynet",
 			"repository": "https://github.com/cyberuni/cynet",
 			"license": "MIT",
 			"category": "development",
-			"keywords": ["cynet", "mail", "channels", "dm", "messaging", "cli", "agent"]
+			"keywords": ["cynapse", "mail", "channels", "dm", "messaging", "cli", "agent"]
 		}
 	]
 }

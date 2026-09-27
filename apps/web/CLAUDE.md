@@ -109,7 +109,7 @@ deliberate inset.
 Add Starlight's own escape hatch to the component's root element:
 
 ```html
-<figure class="cynet-component not-content">
+<figure class="cynapse-component not-content">
 ```
 
 The selector excludes `:where(.not-content *)`, so this clears the whole subtree. Do it for

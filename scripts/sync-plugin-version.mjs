@@ -6,7 +6,7 @@
 // formatting (tabs, inlined short arrays) survives untouched.
 import { readFileSync, writeFileSync } from 'node:fs'
 
-const SOURCE = 'packages/cynet/package.json'
+const SOURCE = 'packages/cynapse/package.json'
 // The plugin root is the npm package itself, so every manifest lives beside the
 // package.json that carries the version.
 const MANIFESTS = [
@@ -15,7 +15,7 @@ const MANIFESTS = [
 	'.cursor-plugin/plugin.json',
 	'.codex-plugin/plugin.json',
 	'plugin.json',
-].map((file) => `packages/cynet/${file}`)
+].map((file) => `packages/cynapse/${file}`)
 
 const { version } = JSON.parse(readFileSync(SOURCE, 'utf8'))
 if (!version) throw new Error(`no version field in ${SOURCE}`)

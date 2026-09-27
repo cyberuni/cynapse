@@ -55,8 +55,8 @@ challenged on specifics, and that is the process working.
 
 ## What This Repo Is
 
-`cynet` — a persisted communication network for agents. It is the messaging layer
-("cyber-net") extracted out of [cyberlegion](https://github.com/cyberuni/cyberlegion),
+`cynapse` — a persisted communication network for agents. It is the messaging layer —
+the synapse between agents — extracted out of [cyberlegion](https://github.com/cyberuni/cyberlegion),
 per [cyberuni/cyberlegion#20](https://github.com/cyberuni/cyberlegion/issues/20), so it
 can be depended on as a peer rather than living inside just one unit.
 
@@ -68,22 +68,23 @@ It supports three conversation kinds, the way Slack or Discord does:
 
 Ships as an npm package:
 
-- A CLI (`cynet`) powered by Commander
+- A CLI (`cynapse`) powered by Commander
 - An agent plugin — the package root *is* the plugin root, so the tarball ships `plugin.json`, `skills/`, and the per-vendor manifests
 
 ### Settled decisions
 
-- **cynet owns participant addressing and identity** — addresses, standing/owner
+- **cynapse owns participant addressing and identity** — addresses, standing/owner
   identity, and presence. Units — cyberlegion, and any future cyber-hive — register
-  their participants with cynet; cynet does not register with them.
-- **cyber-mux stays below cynet.** It is pane mechanics, not messaging.
+  their participants with cynapse; cynapse does not register with them.
+- **cyber-mux stays below cynapse.** It is pane mechanics, not messaging.
 
 ### Naming
 
 | Surface | Name |
 | --- | --- |
-| Repo, npm package, plugin, skill prefix | `cynet` |
-| CLI bin | `cynet` |
+| npm package, plugin, skill prefix | `cynapse` |
+| CLI bin | `cynapse` |
+| GitHub repo, Pages base path | `cynet` (not yet renamed) |
 
 ### Status
 
@@ -93,7 +94,7 @@ any skill.
 
 ### Plugin layout
 
-Everything the plugin needs lives in `packages/cynet/` and must stay listed in that
+Everything the plugin needs lives in `packages/cynapse/` and must stay listed in that
 package's `files`, or it will not reach consumers.
 
 | Path | Read by |
@@ -105,12 +106,12 @@ package's `files`, or it will not reach consumers.
 | `.plugin/plugin.json` | Canonical universal-plugin source; not published |
 | `skills/<name>/SKILL.md` | All of them (fixed location) |
 
-When the first skill lands, create `packages/cynet/skills/<name>/SKILL.md` and add
+When the first skill lands, create `packages/cynapse/skills/<name>/SKILL.md` and add
 `"skills": "./skills/"` to `.plugin/plugin.json`, `.cursor-plugin/plugin.json`, and
 `.codex-plugin/plugin.json`. `skills` is already in the package's `files` list.
 
 `.claude-plugin/marketplace.json` at the **repo root** lists the plugin with an `npm`
-source. Version bumps flow from `packages/cynet/package.json` through
+source. Version bumps flow from `packages/cynapse/package.json` through
 `scripts/sync-plugin-version.mjs` on `pnpm version` — add any new manifest to that
 script's list.
 
@@ -118,19 +119,19 @@ script's list.
 
 ```
 pnpm test                       # all package tests
-pnpm cynet test src/output.test.ts  # run one test file
+pnpm cynapse test src/output.test.ts  # run one test file
 pnpm verify                     # lint + build + typecheck + test + knip
 pnpm build                      # compile to dist/
-pnpm cynet dev --help           # run the CLI from source (tsx)
+pnpm cynapse dev --help         # run the CLI from source (tsx)
 pnpm web dev                    # run the docs site locally
 ```
 
-`pnpm cynet <script>` is the root shortcut for `pnpm run --filter=./packages/cynet <script>`.
+`pnpm cynapse <script>` is the root shortcut for `pnpm run --filter=./packages/cynapse <script>`.
 
 ## Layout
 
 ```
-packages/cynet/   the npm package and the plugin root
+packages/cynapse/ the npm package and the plugin root
 apps/web/         Astro + Starlight docs site, deployed to GitHub Pages
 scripts/          repo maintenance scripts
 ```
@@ -143,7 +144,7 @@ The CLI follows the [10 agent-CLI principles](https://github.com/kunchenguid/axi
 
 - **Structured output** goes through `src/output.ts` (`output(data, readable)`); `--json` is handled there — never branch on `process.argv` for format inside a command.
 - **Empty states**: use `printEmpty(entity)` so an empty result names what was empty (`0 members found`), never a blank line.
-- **Errors & exit codes**: throw `CynetError` with an exit code; the top-level catch in `src/cli.ts` renders it via `renderCliError` / `exitCodeFor`. Never call `process.exit` inside a command. Commander usage errors (unknown flag or subcommand) exit `2`.
+- **Errors & exit codes**: throw `CynapseError` with an exit code; the top-level catch in `src/cli.ts` renders it via `renderCliError` / `exitCodeFor`. Never call `process.exit` inside a command. Commander usage errors (unknown flag or subcommand) exit `2`.
 - **The program is a function**: `createProgram()` in `src/program.ts` builds a fresh command tree so tests drive it without touching `process.argv`.
 
 ### Version

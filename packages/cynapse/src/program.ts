@@ -1,5 +1,5 @@
 import { Command, type CommanderError } from 'commander'
-import { CynetError, EXIT_USAGE } from './cli-error.js'
+import { CynapseError, EXIT_USAGE } from './cli-error.js'
 import { setOutputFormat } from './output.js'
 import { readPackageVersion } from './version.js'
 
@@ -13,7 +13,7 @@ export function createProgram(version: string = readPackageVersion()): Command {
 	const program = new Command()
 
 	program
-		.name('cynet')
+		.name('cynapse')
 		.description('A persisted communication network for agents — mail, channels, and DMs')
 		.version(version, '-v, --version')
 		.option('--json', 'emit JSON instead of human-readable text')
@@ -32,7 +32,7 @@ export function createProgram(version: string = readPackageVersion()): Command {
 		) {
 			throw error
 		}
-		throw new CynetError(error.message, { exitCode: EXIT_USAGE, cause: error })
+		throw new CynapseError(error.message, { exitCode: EXIT_USAGE, cause: error })
 	})
 	program.configureOutput({ writeErr: () => {} })
 

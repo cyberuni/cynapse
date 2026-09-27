@@ -7,19 +7,19 @@ export const EXIT_FAILURE = 1
 export const EXIT_USAGE = 2
 
 /** A failure the CLI raised deliberately, with an exit code a caller can branch on. */
-export class CynetError extends Error {
+export class CynapseError extends Error {
 	readonly exitCode: number
 
 	constructor(message: string, options: { exitCode?: number; cause?: unknown } = {}) {
 		super(message, { cause: options.cause })
-		this.name = 'CynetError'
+		this.name = 'CynapseError'
 		this.exitCode = options.exitCode ?? EXIT_FAILURE
 	}
 }
 
 /** Exit code for any thrown value. Unknown throws are ordinary failures, never usage. */
 export function exitCodeFor(error: unknown): number {
-	return error instanceof CynetError ? error.exitCode : EXIT_FAILURE
+	return error instanceof CynapseError ? error.exitCode : EXIT_FAILURE
 }
 
 /**
