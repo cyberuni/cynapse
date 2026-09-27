@@ -3,7 +3,7 @@ import { defineConfig } from 'astro/config'
 
 export default defineConfig({
 	site: 'https://cyberuni.github.io',
-	base: '/cynet',
+	base: '/cynapse',
 	integrations: [
 		starlight({
 			title: 'cynapse',
@@ -11,7 +11,7 @@ export default defineConfig({
 				{
 					icon: 'github',
 					label: 'GitHub',
-					href: 'https://github.com/cyberuni/cynet',
+					href: 'https://github.com/cyberuni/cynapse',
 				},
 			],
 			sidebar: [
@@ -23,7 +23,7 @@ export default defineConfig({
 				},
 			],
 			editLink: {
-				baseUrl: 'https://github.com/cyberuni/cynet/edit/main/apps/web/',
+				baseUrl: 'https://github.com/cyberuni/cynapse/edit/main/apps/web/',
 			},
 		}),
 	],

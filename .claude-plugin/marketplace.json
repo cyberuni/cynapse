@@ -12,8 +12,8 @@
 				"package": "cynapse"
 			},
 			"author": { "name": "unional" },
-			"homepage": "https://github.com/cyberuni/cynet",
-			"repository": "https://github.com/cyberuni/cynet",
+			"homepage": "https://github.com/cyberuni/cynapse",
+			"repository": "https://github.com/cyberuni/cynapse",
 			"license": "MIT",
 			"category": "development",
 			"keywords": ["cynapse", "mail", "channels", "dm", "messaging", "cli", "agent"]

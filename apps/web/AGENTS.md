@@ -5,8 +5,8 @@ Guidance for the docs site. The repo-wide rules in the root `AGENTS.md` still ap
 ## What This Is
 
 `@cyberuni/web` — the Astro + Starlight documentation site, deployed to GitHub Pages.
-`base` is `/cynet`, so the dev server serves pages under that prefix too
-(`http://localhost:4321/cynet/...`), not at the root.
+`base` is `/cynapse`, so the dev server serves pages under that prefix too
+(`http://localhost:4321/cynapse/...`), not at the root.
 
 ## Commands
 
@@ -46,8 +46,8 @@ Then `pnpm web build` and crawl the output, since Starlight does not fail a buil
 dead internal link:
 
 ```sh
-cd dist && for f in $(find . -name '*.html'); do grep -o 'href="/cynet/[a-z0-9/-]*"' $f; done \
-  | sort -u | sed 's|href="/cynet/||;s|"||' \
+cd dist && for f in $(find . -name '*.html'); do grep -o 'href="/cynapse/[a-z0-9/-]*"' $f; done \
+  | sort -u | sed 's|href="/cynapse/||;s|"||' \
   | while read p; do [ -f "./$p/index.html" ] || [ -z "$p" ] || echo "BROKEN: /$p"; done
 ```
 
@@ -55,8 +55,8 @@ That loop checks pages only, and a link to a renamed heading still resolves to i
 Check `#fragment` targets too, after any heading rename or section move:
 
 ```sh
-cd dist && for f in $(find . -name '*.html'); do grep -o 'href="/cynet/[a-z0-9/-]*#[a-z0-9-]*"' $f; done \
-  | sort -u | sed 's|href="/cynet/||;s|"||' \
+cd dist && for f in $(find . -name '*.html'); do grep -o 'href="/cynapse/[a-z0-9/-]*#[a-z0-9-]*"' $f; done \
+  | sort -u | sed 's|href="/cynapse/||;s|"||' \
   | while read l; do p="${l%%#*}"; a="${l##*#}"; \
       grep -q "id=\"$a\"" "./$p/index.html" 2>/dev/null || echo "BROKEN ANCHOR: /$l"; done
 ```

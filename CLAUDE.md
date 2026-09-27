@@ -82,9 +82,8 @@ Ships as an npm package:
 
 | Surface | Name |
 | --- | --- |
-| npm package, plugin, skill prefix | `cynapse` |
+| Repo, npm package, plugin, skill prefix | `cynapse` |
 | CLI bin | `cynapse` |
-| GitHub repo, Pages base path | `cynet` (not yet renamed) |
 
 ### Status
 

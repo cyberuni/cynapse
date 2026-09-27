@@ -5,8 +5,8 @@
 	"version": "0.0.0",
 	"description": "A persisted communication network for agents — mail, channels, and DMs",
 	"author": { "name": "unional" },
-	"homepage": "https://github.com/cyberuni/cynet",
-	"repository": "https://github.com/cyberuni/cynet",
+	"homepage": "https://github.com/cyberuni/cynapse",
+	"repository": "https://github.com/cyberuni/cynapse",
 	"license": "MIT",
 	"keywords": ["cynapse", "mail", "channels", "dm", "messaging", "cli", "agent"]
 }

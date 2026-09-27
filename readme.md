@@ -52,13 +52,13 @@ Copilot CLI.
 
 ```sh
 # Claude Code
-/plugin marketplace add cyberuni/cynet
+/plugin marketplace add cyberuni/cynapse
 /plugin install cynapse
 ```
 
 ## Documentation
 
-<https://cyberuni.github.io/cynet>
+<https://cyberuni.github.io/cynapse>
 
 ## Contributing
 

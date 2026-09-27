@@ -30,7 +30,7 @@ cynapse --version
 ```
 
 Every command accepts `--json` for structured output. See the
-[CLI reference](/cynet/cli/).
+[CLI reference](/cynapse/cli/).
 
 ## The plugin
 
@@ -40,6 +40,6 @@ Copilot CLI.
 
 ```bash
 # Claude Code
-/plugin marketplace add cyberuni/cynet
+/plugin marketplace add cyberuni/cynapse
 /plugin install cynapse
 ```
