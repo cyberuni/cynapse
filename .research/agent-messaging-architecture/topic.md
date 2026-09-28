@@ -23,8 +23,9 @@ chats, and business models.
 
 ## Findings
 
-See conclusion.md for the synthesis. Claims are in evidence.md: SD (Slack, Discord), TR
-(Telegram, Reddit), AG (agent systems, scoping), BK (backends).
+See conclusion.md for the synthesis. Per-platform detail is in slack-discord.md and
+telegram-reddit.md (the agent working notes). Claims are in evidence.md: SD01–SD14 for
+Slack and Discord, TR01–TR16 for Telegram and Reddit.
 
 ## Contradictions
 
@@ -35,6 +36,11 @@ See conclusion.md for the synthesis. Claims are in evidence.md: SD (Slack, Disco
   into three peer types (TR01).
 
 ## Open questions
+
+- Does cyber-truss's run ledger settle on addressed contributions? If so, it is the first
+  external entry-type namespace.
+- Do NATS leaf nodes buffer offline writes durably?
+- What is the federation story if collaboration across organizations enters scope?
 
 - Should a cynapse DM be able to gain members, or does a new participant set mean a new
   DM?

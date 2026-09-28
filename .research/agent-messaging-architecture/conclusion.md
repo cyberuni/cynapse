@@ -2,7 +2,7 @@
 
 ## Last updated
 
-September 2026
+September 2026 (round 3)
 
 ## Question
 
@@ -10,160 +10,230 @@ September 2026
    difference between a channel and a DM its name and the way you find it?
 2. How well do these human chat models fit communication between agents?
 3. Should cynapse group conversations by workspace or project?
-4. Should cynapse build its own store, or support existing systems as backends the way
-   cyber-mux does? The candidates are Slack, Discord, Telegram, Linear, Asana, GitHub, a
-   git orphan branch, and a database.
+4. Should cynapse own its store, or adapt to existing backends the way cyber-mux does?
+5. Which underlying structure should cynapse start with: per-recipient copies (mail with
+   a thread ID), or one log per conversation? The structure has to support humans
+   inspecting conversations and decisions, mission ledgers, and change detection
+   (cyber-truss). It also has to scale from a solo developer to an enterprise with
+   thousands of projects and tens of thousands of employees.
+6. How should sync work across multiple machines?
+7. Which other agent collaboration use cases should shape the design?
 
 ## Verdict
 
-**1. A channel and a DM differ in more than name and discovery.** Production platforms
-share the *message plane*: storage keyed by conversation ID (Discord, SD11), the same
-transport (Slack, SD06), and one conversation object (Slack, SD01, SD03). They split the
-*conversation plane* by kind:
+### The core primitive: one append-only log per conversation
 
-- **Identity:** a channel has a name, while a DM is keyed by its set of participants (SD02).
-- **Membership:** channels are open and join-based; DMs are fixed and small, capped at
-  9–10 people (SD07, SD13).
-- **Authority:** channels have roles and permission overrides; in a DM the only rule is
-  whether you are a participant (SD09, SD10).
-- **Sequencing:** Telegram gives each channel its own sequence and keeps one shared
-  sequence per account for DMs (TR03, TR04).
-- **Lifecycle:** Slack closes a DM but archives a channel (SD04).
+Everything in cynapse is an **entry** in a **conversation log**. Mail, channels, DMs, and
+mission ledgers are conversations. They differ in their membership rules, in how
+addressed entries are delivered, and in how reading counts as consuming. Their storage
+is the same.
 
-Reddit's separate systems are the counterexample, and its 2023 chat migration cut off
-the pre-2023 history (TR12–TR16).
+Per-recipient copies are the structure to avoid. Email shows the failure. Its threading
+reconstructs a conversation from copies and has to invent placeholder messages for
+missing parents. Threads break when headers are missing or wrong (LG01, RFC 5256), and
+even Gmail mis-groups messages (LG03). Copies have no single order, a participant added
+later cannot see the earlier history, and anyone inspecting a thread has to rebuild it.
+Every system that scaled past this converged on one log per conversation with a cursor
+per reader: Slack (LG04), Discord across two storage migrations (LG05), Telegram's
+per-box `pts` (LG07), Matrix rooms (LG11), and Kafka partitions (LG08). cyberlegion's
+current mail is per-recipient copies (LC03). cyber-truss's run ledger is already a log
+with entries addressed to recipients (LC01).
 
-**2. For agents, mail fits well, channels fit only in a narrower role, and DMs are barely
-needed.**
+### Mail and channels differ in delivery, not storage
 
-- **Mail.** Every agent system surveyed converges on addressed, durable messages that are
-  pulled and acknowledged: A2A, mcp_agent_mail, and Claude Code's SendMessage (AG01–AG04).
-  Mail is cynapse's core.
-- **Channels.** As a place where agents *converse*, channels are the documented failure
-  mode. Group chat needs arbitration over whose turn it is (AutoGen, AG06). Unbounded
-  multi-agent chat accounts for most of the infinite-loop failures studied (AG12), and
-  coordination failures make up 79% of multi-agent failures (AG11). Telegram blocks
-  bot-to-bot visibility for exactly this reason (BK09). Channels still work as
-  **broadcast streams** (status, events, announcements), where reading creates no
-  obligation to reply and each reader keeps a cursor to control its token budget.
-- **DMs.** No agent system has DMs as a separate concept. The need is covered by a
-  **task or context reference** on messages, such as A2A's `contextId` (AG01) or Agent
-  Teams' shared task list (AG05). A thread ID on mail is enough.
+- **Channel or ledger:** each reader has a cursor, which is the last `seq` it read.
+  Reading consumes nothing.
+- **Mail:** an entry carries `to:` addressees. Writing it also appends a pointer to each
+  addressee's **inbox**, a per-participant index that has its own sequence. This is
+  Telegram's per-account "common message box" (TR03). Acks are recorded per inbox item
+  and can happen out of order, which a single Kafka-style offset cannot express.
+- **Fan-out** is paid on write only for the entries addressed to someone, and only for
+  those addressees. Posting to a large channel writes one row, and a mention writes one
+  inbox pointer. This is the hybrid model Twitter uses for accounts with huge
+  followings (LG06, LG20). It is what keeps the model workable at enterprise scale.
+- **DMs** need no separate structure. A two-party mail thread *is* a DM. This revises
+  round 2's "defer DMs": the only deferrable part is the identity rule that deduplicates
+  a DM by its participant set.
 
-**3. Scope only channels by project. Identity, mail, and DMs stay global.** Discord keeps
-DMs outside guilds (AG15), and Slack Enterprise Grid scopes DMs to the whole organization
-(AG13). GitHub keeps identity global and adds membership on top (AG19). mcp_agent_mail
-keys a project by its repo path (AG20). Multi-homing (Asana tasks, Linear projects:
-AG17, AG18) is not needed at first.
+### Messages and structured events share one log
 
-**4. Build a cynapse-owned store behind an internal storage interface. Do not follow
-cyber-mux's pluggable-backend model. Treat external platforms as optional mirrors, not
-backends.** Every external platform lacks something cynapse needs at its core:
+A mission ledger mixes conversation with typed events: decisions, gate verdicts,
+contributions, and state transitions. Matrix (state events versus message events, LG11),
+GitHub's issue timeline (LG13), and Zulip topics (LG15) all interleave the two in one
+ordered stream. GitHub only *infers* decisions from state changes. A first-class
+`decision` entry type, shaped like an ADR (LG14), is where cynapse can do better, and it
+is what makes decisions inspectable. Entry types are namespaced and open-ended
+(`truss.contribution`, `sdd.gate`), so other tools can extend them without a cynapse
+release.
 
-- None of them natively supports ack/consume, per-reader cursors, or DMs keyed by
-  participant set.
-- Telegram cannot deliver messages between bots at all (BK09).
-- Discord needs a persistent Gateway socket and a privileged intent (BK07, BK08).
-- Rate ceilings are lower than an agent burst: Linear allows 2,500 requests per hour
-  (BK12) and GitHub 80 content-creating requests per minute (BK16).
-- Bridges built on the lowest common denominator, such as Matterbridge and Apprise,
-  lose threading and structure (BK27, BK28).
+### Nested work links; it does not nest
+
+Initiative, epic, and story are metadata. The structure is a parent link on the child
+conversation plus a `child-opened` event in the parent's log. A rollup is computed on
+read, not inlined into the parent (Linear, LG16). cynapse does not need to know what an
+"epic" is. SDD missions are flat change requests anyway.
+
+### Some needs are state, not log
+
+Leases (file and worktree reservations), presence, pending approvals, and the live
+status of a task depend on what is true *now*. They need expiry (TTL) and mutual
+exclusion, which a log cannot enforce. mcp_agent_mail (LG18) and A2A (LG17)
+independently chose a **state record with enforced transitions** and log only the
+*history* of those transitions. cynapse should do the same: logs are the source of
+truth, and state records are companions whose every transition is also written to the
+log.
+
+### Ordering: a per-conversation owner assigns `seq`; the writer mints `id`
+
+Each entry has two identities:
+
+- `id`: a ULID or UUIDv7 minted by the writer, even while offline. It serves as the
+  idempotency key and as the entry's stable global identity.
+- `seq`: assigned by the conversation's **home**, its single ordering owner. It gives
+  the canonical order that cursors and inspection rely on.
+
+An offline writer appends entries marked pending. The home sequences them when it next
+syncs. This is the single-owner family (LiteFS, JetStream, Telegram `pts`: SY02, SY08),
+not leaderless merge (git-bug, CRDTs, Matrix state resolution: SY03, SY07, SY17), which
+gives only causal order.
+
+SDD's sharded ledger shows the cost of going leaderless. Sharding by writer removed the
+merge conflicts, and in exchange "neither `seq` nor `ts` is load-bearing" (LC02). That is
+acceptable for existence checks and wrong for a decision ledger people read in order.
+
+### Partition, sync, and access control all work per conversation
+
+The conversation is the unit of partitioning, sync, and permissions. Discord partitions
+by channel and time bucket (SY22). Slack paid for a costly re-shard away from
+per-workspace sharding (SY21). Access that is granted per conversation is also why a
+git-backed store does not work at enterprise scale, because git access control is per
+repo (SY07).
+
+### Topology by tier: one data model, a store that swaps
+
+| Tier | Store / transport | Where each conversation's home lives |
+| --- | --- | --- |
+| Solo | SQLite (WAL), embedded, zero setup | this machine |
+| Multi-machine (laptop, VM, CI) | local SQLite replica plus a hub; outbound-only connections | the hub, or a laptop while offline |
+| Team | hub server (cynapse's own, or NATS JetStream underneath) | the hub |
+| Enterprise | a hub cluster with tenancy (NATS accounts, SY10), placing conversations by ID | sharded by conversation |
+| Across organizations | federation (Matrix-style) or bridges | per organization; defer |
+
+The data model maps directly onto NATS JetStream: a stream is a conversation, the stream
+sequence is `seq`, a durable consumer is a cursor, and an inbox is a per-participant
+stream of pointers (SY08–SY10). Keep that mapping available. Don't adopt NATS yet.
+Embedding a Go server in an npm CLI is heavy, and how a leaf node buffers messages
+offline is unverified.
 
 ## Reference material
 
-### Why cyber-mux's pattern does not transfer
+### Entry shape (proposed)
 
-cyber-mux adapts to 7 multiplexers (tmux, wezterm, zellij, and others). The user has
-already chosen one, the panes live inside it, and cyber-mux must drive whatever is there.
-Capability flags make it refuse operations a backend cannot do. An unsupported floating
-pane throws an error; it does not degrade quietly. For cynapse, no messaging substrate is
-chosen in advance, and the operations missing on the candidate platforms are the core
-ones (ack, cursor, bot-to-bot delivery). Under cyber-mux's refuse-on-missing rule,
-Telegram would refuse mail outright, and Slack or Linear would refuse ack and cursors.
-The pattern that does transfer is cyberlegion's own `Store` interface, whose code already
-names `SqliteStore` as the sanctioned replacement.
+```
+entry {
+  id            ULID or UUIDv7, minted by the writer (idempotency key, global identity)
+  conversation  conversation ID (the partition and sync unit)
+  seq           per-conversation, assigned by the home (null while pending)
+  author        participant address (global identity)
+  type          namespaced: msg | decision | event.* | truss.* | sdd.* ...
+  to?           addressees (participants, roles, or sets) -> inbox pointers
+  refs?         reply-to, supersedes, context/mission, parent conversation
+  body          text and/or a structured payload
+  at            writer's hybrid logical clock timestamp (display only; not the order)
+}
+```
 
-### Backend fit
+Entries are immutable. An edit or retraction is a new entry with `supersedes`.
 
-| Backend | Rate ceiling | Bot-to-bot | Ack/cursor | Local/offline | Role for cynapse |
-| --- | --- | --- | --- | --- | --- |
-| SQLite (WAL) | local I/O | yes | native in the schema | yes, single host only (BK24) | **v1 store** |
-| Files (cyberlegion today) | local I/O | yes | rename to ack; no cursors | yes | mail only; outgrown by channels |
-| Git orphan branch / notes | CAS contention (BK22) | yes | buildable (git-bug op-log, BK19) | yes, and syncs across machines | **candidate for a later sync layer** |
-| Slack | ~1 msg/s per channel (BK01) | undocumented (BK03) | none | no | outbound mirror for humans |
-| Linear / Asana | 2,500/hr; 150–1,500/min (BK12, BK14) | n/a | none | no | link messages to issues, not a store |
-| GitHub | 80 creates/min, 500/hr (BK16) | yes | none | no | mirror or link |
-| Discord | Gateway socket required (BK07) | intent-gated (BK08) | none | no | skip |
-| Telegram | 20/min per group (BK10) | **blocked** (BK09) | offset only | no | skip |
+### Cost to change later
 
-### Proposed shape for cynapse
+| Decision | Cost to change later |
+| --- | --- |
+| Entry `id` is a writer-minted ULID or UUIDv7, never an autoincrement | **high**: every reference and cursor depends on it |
+| `seq` is per conversation and assigned by one home | **high**: cursors and ack semantics depend on it |
+| The conversation is the unit of partition, sync, and access control | **high**: Slack's re-shard (SY21) |
+| Entries are immutable; edits supersede | **high**: audit and sync rely on it |
+| Addressed entries plus inbox pointers, rather than per-recipient copies | **high**: this is the core structure |
+| Namespaced, open entry types | medium |
+| Conversations namespaced by tenant and project | medium: a namespace is easy to add at the start |
+| Parent links for hierarchy | low |
+| DM deduplication by participant set | low |
+| Storage engine (SQLite first) and sync transport (hub, NATS) | low, behind the `Store` interface |
 
-| Concern | Recommendation | Cost to change later |
+### Agent collaboration use cases
+
+| Use case | Primitive | Notes |
 | --- | --- | --- |
-| Participant identity | global to the install; project membership added on top | **high**, because addresses get handed out |
-| Mail | per-recipient delivery rows, consumed by ack; thread and context reference on each message | **high**, as the core contract |
-| Channels | broadcast only, per-reader cursor, no reply obligation; a mention sends mail or rings the doorbell | medium |
-| Channel scope | namespaced by project, plus global channels | medium, if names are namespaced from the start |
-| Project key | the git common directory or remote, **not** the worktree path | low to medium |
-| DMs | deferred; mail threads cover the need | low; can be added later as a kind |
-| Store | SQLite behind a `Store` interface | low, if the interface holds |
-| Human visibility | outbound mirror adapters (Slack, GitHub) | low |
-| Multi-machine | git-backed sync layer, evaluated when needed | low for now |
-
-On the project key: mcp_agent_mail keys a project by its absolute path (AG20). Under
-cyberfleet worktrees, that would split one repo into many projects. Keying by the git
-common directory keeps all worktrees in one project.
+| Mission ledger (initiative, epic, story) | log, `decision` entries | the case you proposed; the parent links to children |
+| cyber-truss run ledger | log, entries addressed to sets | a controller reads "addressed to me", and cyber-truss decides when to act (LC01) |
+| Change feeds (main moved, spec changed, CI failed) | log plus cursors | how a change entering anywhere reaches the connected sets |
+| Work claiming (addressed to a role such as "a reviewer") | log plus a **shared** cursor | competing consumers, as in cyberlegion role dispatch |
+| Request, response, and handoff | log with `refs` correlation | a timeout needs a watcher; see state records |
+| Human approval and needs-input | log plus a pending-state record | "currently pending" is state (A2A, LG17) |
+| Leases on files and worktrees | **state record** with TTL and compare-and-swap; transitions logged | mcp_agent_mail (LG18); matters for cyberfleet worktrees |
+| Presence and liveness | **state record** (last heartbeat plus staleness) | no primary prior art found |
+| Decision memory ("what did we decide about X") | log plus a derived query index | event sourcing and CQRS (LG09, LG10) |
+| Audit and provenance | the log itself | immutability plus a total order |
+| **Checkpoint and summary entries** | log entry of type `summary` covering `seq ≤ n` | agent-specific: a late joiner or a restarted session starts from a checkpoint instead of `seq` 0, which protects its token budget. This is our proposal; no prior art was fetched. |
+| Session resume after restart | cursor plus a checkpoint | durable cursors outlive sessions |
 
 ## Confidence
 
-- **High** that channels and DMs differ structurally (primary API docs for three
-  platforms).
-- **High** that external platforms cannot be the system of record. The hard blockers
-  (Telegram bot-to-bot, the rate ceilings) were each re-fetched and confirmed.
-- **Medium** that channels should be broadcast-only for agents. The failure research
-  supports it, but most frameworks were checked through their docs rather than run.
-- **Medium** that DMs should be deferred. This is a design judgment, not a finding.
+- **High:** a log per conversation beats per-recipient copies for ordering, inspection,
+  late joiners, and scale. This is convergent evidence across Slack, Discord, Telegram,
+  Matrix, and Kafka, and email is the documented failure case.
+- **High:** globally unique IDs and the conversation as the partition unit are the
+  decisions to make now. Discord and Slack are direct precedents.
+- **Medium-high:** single-owner ordering, as opposed to leaderless merge. The precedents
+  are strong. The offline pending-entry handoff is our design and has not been proven in
+  a system of this shape.
+- **Medium:** NATS JetStream as a later transport. The model fits, but offline buffering
+  and scale at enterprise tenancy are unverified.
+- **Medium:** checkpoint and summary entries. This is reasoning, not a sourced finding.
 
 ## Strongest supporting evidence
 
-- Slack's type-gated methods over one object; Discord's type-exclusive fields and its
-  single message table (SD01–SD04, SD09–SD11).
-- Agent systems converging on addressed mail plus task objects (AG01–AG05).
-- Telegram's documented bot-to-bot block, given to avoid loops; the loop and coordination
-  failure statistics (BK09, AG11, AG12).
-- The rate limits and missing ack/cursor support across the external platforms
-  (BK12, BK14, BK16).
+- Email threading's documented fragility (LG01–LG03) against the channel-log storage of
+  Slack, Discord, Telegram, and Matrix (LG04, LG05, LG07, LG11).
+- Kafka consumer groups: one log serves both competing consumers and independent readers
+  (LG08).
+- cyber-truss's run ledger already has the shape of an addressed log (LC01).
+- Discord's Snowflake IDs and its channel partitioning; Slack's re-shard away from
+  per-workspace (SY21, SY22).
 
 ## Strongest weakening or contradictory evidence
 
-- Letta and AutoGen do run shared-thread conversation among agents (AG06, AG08). They
-  work, but they need arbitration, so channel-style conversation is not impossible.
-- Linear has a first-class agent actor model (BK13). Human-facing work tracking is
-  moving toward agents, so Linear as a *participant surface* may matter more later.
-- Git-backed stores give multi-machine sync for free (BK19–BK22), and SQLite
-  specifically does not (BK24). If multi-machine use comes early, the store choice
-  changes.
+- SDD found that a per-writer, order-free ledger was *enough* for its readers (LC02).
+  Canonical order is not free, and some consumers do not need it.
+- Leaderless merge (git-bug, Matrix) handles true peer-to-peer offline work, which the
+  single-owner model cannot while the home is unreachable (SY07, SY17).
+- Per-recipient ack sets add a second index on top of the log. That write cost is real
+  and grows with the number of addressees.
+- Matrix is the only surveyed system that federates across organizations, and it does so
+  *without* a total order (SY17). If federation across organizations matters, the
+  single-owner model needs a federation story.
 
 ## What is not supported
 
-- The claim that Reddit chat runs on Matrix.
-- That any external platform supports ack/consume semantics natively.
-- A named "blackboard pattern" citation in the agent frameworks. That framing is ours.
+- That any existing platform or sync engine gives cynapse's full model (log, cursors,
+  per-recipient ack, a typed ledger) off the shelf.
+- That NATS leaf nodes buffer writes durably while disconnected (unverified, SY09).
+- That Reddit chat runs on Matrix.
 
 ## Where evidence is thin
 
-- All Reddit evidence is secondary.
-- Notification defaults on every platform (memory only, SD14).
-- Claude Code Agent Teams (AG05), CrewAI, and LangGraph were checked through search
-  snippets only.
-- Whether Slack bots can see each other's messages (BK03, low confidence).
-- The maildir mechanics (BK26, from memory).
-- The Magentic-One failure statistics (AG09, AG10, aggregated sources).
+- The Twitter fan-out, Kreps's *The Log*, jwz threading, and Kafka ordering came through
+  secondary sources or snippets (LG02, LG06, LG19, SY12).
+- NATS at enterprise tenancy scale; Turso's offline conflict model; the maturity of
+  Dendrite and Conduit (SY04, SY19).
+- Presence prior art.
+- How Slack and Discord store read state for each user.
+- Round-2 thin spots still stand: Reddit, notification defaults, Agent Teams.
 
 ## What should be checked again later
 
-- The Agent Teams mailbox and task-list docs, fetched directly.
-- Whether cynapse should carry an A2A-compatible `contextId` or task reference, for
-  interop.
-- Slack bot-to-bot visibility, by direct test, if a Slack mirror becomes two-way.
-- The git-backed sync design, once multi-machine use is on the roadmap.
+- NATS JetStream domains for leaf nodes: whether offline writes survive and replay.
+- Whether cyber-truss's run ledger design settles on addressed contributions. If it
+  does, it becomes cynapse's first external entry-type namespace.
+- Whether SDD's ledger should move onto cynapse conversations once they exist.
+- The federation story, if collaboration across organizations enters scope.

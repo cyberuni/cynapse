@@ -1667,3 +1667,814 @@ re-fetched directly by the lead researcher. All three matched: "bots will not be
 messages from other bots regardless of mode"; Linear 2,500 req/hr (API key), 5,000 (OAuth),
 3M/2M complexity points; GitHub 80 content-creating requests/min and 500/hr, 5,000 req/hr
 primary. Other BK entries remain as the agent reported them.
+## Claim LG01
+
+Date: 2026-09-27
+Status: contradicts
+Confidence: medium
+
+Source:
+- Label: RFC 5256 — IMAP SORT and THREAD Extensions (REFERENCES algorithm, formalization of the JWZ algorithm)
+- URL: https://www.rfc-editor.org/rfc/rfc5256.html
+- Type: spec
+- Fetched: yes
+
+Notes:
+- The REFERENCES algorithm reconstructs a thread tree purely from headers (References, falling back to In-Reply-To) attached to each independently-stored message copy — there is no canonical server-side order or shared log to consult.
+- When a parent Message-ID cannot be found, the algorithm fabricates a "dummy" placeholder message to hold the tree together, then prunes/promotes it — an explicit patch for the fact that per-copy reconstruction can't guarantee completeness.
+- RFC itself warns: "sorting by REFERENCES can lead to misleading threading trees... a message with false References: header data will cause a thread to be incorporated into another thread" — reconstruction is only as trustworthy as unverified client-supplied headers.
+- This is the load-bearing case for "reconstructing a conversation from per-recipient copies has no canonical order and is fragile" — directly supports treating per-recipient mail copies as a poor substrate for an inspectable, ordered ledger.
+
+## Claim LG02
+
+Date: 2026-09-27
+Status: contradicts
+Confidence: medium
+
+Source:
+- Label: jwz.org — Message Threading (Jamie Zawinski, original threading algorithm writeup)
+- URL: https://www.jwz.org/doc/threading.html
+- Type: engineering blog
+- Fetched: snippet-only (WebFetch returned only "PRIVATE" for this URL in this session; content below is from WebSearch snippets, not a full fetch)
+
+Notes:
+- Widely cited as the origin of email-thread reconstruction from Message-ID / In-Reply-To / References headers on independently stored, per-recipient/per-mailbox message copies.
+- Formalized into the 2002 imapext-thread Internet Draft, which became RFC 5256 (see LG01) — i.e., the fragility documented in RFC 5256 traces directly back to this algorithm.
+- Low confidence on specifics beyond what RFC 5256 already confirms, since the page itself could not be fetched in this session (returned a stub "PRIVATE" body, possibly a bot-block).
+
+## Claim LG03
+
+Date: 2026-09-27
+Status: mixed
+Confidence: medium
+
+Source:
+- Label: Google Mail Help — Turn conversation view on or off
+- URL: https://support.google.com/mail/answer/5900
+- Type: official docs
+- Fetched: yes
+
+Notes:
+- Gmail's own conversation-view help page documents that a conversation breaks apart when the subject line changes or exceeds 100 emails, and that for some messages Gmail groups by matching recipients/senders/subject plus matching reference headers sent within one week — i.e., heuristic grouping over independently delivered messages, not a canonical log.
+- Users can turn conversation view off entirely, which the page frames as the fix when grouping goes wrong (unrelated messages bundled by coincidental subject match).
+- This shows even a sophisticated, resourced reconstruction (Gmail assigns its own threadId at receive time server-side, reducing reliance on client headers) still has visible seams and an escape hatch — reconstruction-from-copies is not free even when done well.
+
+## Claim LG04
+
+Date: 2026-09-27
+Status: supports
+Confidence: high
+
+Source:
+- Label: Slack Engineering — Real-time Messaging
+- URL: https://slack.engineering/real-time-messaging/
+- Type: engineering blog
+- Fetched: yes
+
+Notes:
+- Slack's "unit of delivery is the channel, not the follower graph": a message is stored once on a Channel Server (a stateful, in-memory server owning a shard of channels via consistent hashing) and fanned out at delivery time to subscribed Gateway Servers, not copied per recipient.
+- Gateway Servers hold user connections but no message state; they subscribe asynchronously to the Channel Servers for the channels their users are in.
+- This is a single-log-per-channel design (fan-out on read/delivery, not fan-out on write to per-user storage) serving real production scale ("tens of millions of channels per host", sub-500ms global delivery) — direct precedent for "one log per conversation, inboxes derived."
+
+## Claim LG05
+
+Date: 2026-09-27
+Status: supports
+Confidence: high
+
+Source:
+- Label: Discord — How Discord Stores Trillions of Messages
+- URL: https://discord.com/blog/how-discord-stores-trillions-of-messages
+- Type: engineering blog
+- Fetched: yes
+
+Notes:
+- Discord stores messages once per channel, not duplicated per member: "We partition our messages by the channel they're sent in, along with a bucket, which is a static time window," using Snowflake IDs for chronological sortability.
+- The blog does not cover per-user read-state tracking (explicitly not discussed in the fetched content) — meaning the "inbox" side (last-read cursor, unread counts) is evidently a separate concern layered on top of the shared per-channel log, though this specific article doesn't confirm the mechanism.
+- Confirms the single-log-per-channel pattern at extreme scale (trillions of messages), independently of Slack — two large chat systems converge on the same structural choice.
+
+## Claim LG06
+
+Date: 2026-09-27
+Status: mixed
+Confidence: medium
+
+Source:
+- Label: WebSearch synthesis — Twitter/X timeline fan-out architecture (hybrid)
+- URL: https://www.techinterview.org/post/3233474168/system-design-twitter-news-feed-timeline-fanout-on-write-fanout-on-read-celebrity-problem-ranking-caching/
+- Type: engineering blog (secondary/system-design writeup, not Twitter's own primary source)
+- Fetched: snippet-only
+
+Notes:
+- Widely-repeated characterization: Twitter uses fan-out-on-write (push each tweet into precomputed per-follower feed caches) for ordinary accounts, but fan-out-on-read (pull at request time and merge) for "celebrity" accounts with huge follower counts, to avoid millions of writes per post.
+- This is the standard counter-example to "always fan out on read": pure fan-out-on-read has a latency cost at read time that is unacceptable for very hot timelines, and pure fan-out-on-write has a write-amplification cost that is unacceptable for very high-fan-out producers — the two failure modes are symmetric.
+- Relevance to cynapse: a channel with an enormous member count reading at high frequency (e.g., an org-wide broadcast channel) could need the same hybrid if per-reader cursor lookups ever become the bottleneck — but this is a scaling refinement of the log-as-source-of-truth design, not evidence against it (Twitter's log/timeline is still not per-recipient *storage* of the tweet itself; only the derived feed index is pushed).
+- Confidence lowered because no Twitter-authored primary source was fetched in this session (secondary tech-interview-prep write-up only).
+
+## Claim LG07
+
+Date: 2026-09-27
+Status: supports
+Confidence: medium
+
+Source:
+- Label: Telegram API docs — Working with Updates
+- URL: https://core.telegram.org/api/updates
+- Type: official docs
+- Fetched: yes
+
+Notes:
+- Telegram models per-account state as sequences of cursors: a common "message box" pts sequence for private chats/basic groups, a separate qts sequence for secret chats, and each channel/supergroup has its own independent pts sequence — clients validate `local_pts + pts_count === pts` to detect gaps.
+- On a gap, clients must call `updates.getDifference` (common/secret state) or `updates.getChannelDifference` (channel state) to catch up — i.e., the update stream is explicitly a change-feed with resumable cursors per box, and clients reconcile by replaying the box's diff, not by reconstructing from other users' copies.
+- This is strong precedent for "cursor per reader against a shared, independently-sequenced per-conversation log," including the operational cost: multiple independent sequence spaces to track, and explicit gap-filling/reconciliation logic — i.e., fan-out-on-read is not free, it requires this reconciliation machinery.
+- Confirms channels (Telegram channels/supergroups) get their own independent event sequence, separate from the "common" one for one-to-one/basic-group chats — a precedent for per-conversation logs rather than one global log.
+
+## Claim LG08
+
+Date: 2026-09-27
+Status: supports
+Confidence: high
+
+Source:
+- Label: Confluent Docs — Kafka Consumer Design
+- URL: https://docs.confluent.io/kafka/design/consumer-design.html
+- Type: official docs
+- Fetched: yes
+
+Notes:
+- Each partition is consumed by exactly one consumer within a given consumer group at a time — this gives competing-consumer/queue semantics within a group (work-claiming), while consumer offsets are tracked per group (checkpointed to `__consumer_offsets`), independently of other groups.
+- Multiple independent consumer groups can each read the same partition/log from their own offset, i.e., broadcast/pub-sub semantics are just "another group with its own cursor" — the same log serves both queue-like and broadcast-like consumption depending only on how cursors are grouped.
+- Direct structural precedent for "inboxes are derived indexes / cursors into a shared log": mail-like consume-and-ack (one consumer per message) and channel-like read-without-consuming (independent per-reader cursors) are the same underlying mechanism, differing only in whether cursors are grouped (shared → competing/ack) or per-participant (independent → non-consuming read).
+
+## Claim LG09
+
+Date: 2026-09-27
+Status: supports
+Confidence: medium
+
+Source:
+- Label: Martin Fowler — Event Sourcing (eaaDev)
+- URL: https://martinfowler.com/eaaDev/EventSourcing.html
+- Type: engineering blog (pattern catalog, primary author)
+- Fetched: yes
+
+Notes:
+- Event Sourcing: capture all state changes as an immutable, ordered sequence of events; current/derived state is rebuilt by replaying the event log, and "application state can be stored anywhere you like" since it's purely derivable from events — i.e., derived views (including "inboxes") are legitimately disposable/rebuildable projections, not the source of truth.
+- Notes the pattern is well suited where audit trail and replay both matter (Fowler cites accounting systems) — directly analogous to cynapse's proposed use of a channel-as-ledger for mission decisions needing both human inspection and machine (change-detection) consumption.
+- Also flags a real cost: added complexity around external system side effects and evolving event schemas over time — relevant caveat for cynapse's decision-log design (event/schema versioning discipline needed).
+
+## Claim LG10
+
+Date: 2026-09-27
+Status: supports
+Confidence: high
+
+Source:
+- Label: Martin Fowler — CQRS (bliki)
+- URL: https://martinfowler.com/bliki/CQRS.html
+- Type: engineering blog (pattern catalog, primary author)
+- Fetched: yes
+
+Notes:
+- CQRS: use a different model to update information than the model used to read it; the query/read side can be a "ReportingDatabase" — a derived view optimized for reading, kept in sync with the write/command model via an event-based mechanism.
+- Fowler explicitly cautions CQRS adds "risky complexity" and should be scoped to specific bounded contexts with a real need (complex domain logic split, or genuinely disparate read/write load) — not applied wholesale.
+- Relevant caveat for cynapse: fan-out-on-read (log + derived inbox indexes) is essentially CQRS applied to messaging; Fowler's warning argues for validating that inbox-index maintenance is worth the complexity for cynapse's actual read/write pattern rather than adopting it reflexively everywhere (e.g., DMs between two agents may not need it).
+
+## Claim LG11
+
+Date: 2026-09-27
+Status: supports
+Confidence: medium
+
+Source:
+- Label: Matrix Spec — Room Version 11 (event DAG, prev_events, state resolution)
+- URL: https://spec.matrix.org/latest/rooms/v11/
+- Type: spec
+- Fetched: yes
+
+Notes:
+- Matrix rooms are a DAG of immutable, content-hash-identified events; each event lists up to 20 `prev_events` it causally follows, producing an append-only partial order without any per-recipient copies — all participating servers converge on the same event graph.
+- State events (those with a `state_key`) replace prior events of the same type+state_key to form current room state (membership, power levels, room config); message/timeline events carry no state_key and don't affect state resolution — i.e., the log natively distinguishes "structured state-change events" from "plain messages" within one ordered stream.
+- State resolution (for concurrent/forked branches) is a deterministic algorithm (power-ordering of "power events" then mainline ordering) so independently-arriving events converge to one canonical state regardless of network delivery order — this is the answer to "what enforces canonical order across distributed writers" for a log-of-events design.
+- Directly supports mixing structured events (state changes / decisions) and free-text messages in a single ordered per-conversation log — precedent for cynapse's channel-as-ledger mixing conversation and decisions.
+
+## Claim LG12
+
+Date: 2026-09-27
+Status: supports
+Confidence: medium
+
+Source:
+- Label: Matrix Spec — Client-Server API, Receipts
+- URL: https://spec.matrix.org/latest/client-server-api/#receipts
+- Type: spec
+- Fetched: yes
+
+Notes:
+- Matrix separates two per-user tracking primitives on top of the shared event DAG: read receipts (ephemeral "I've seen event X" signals, including private/threaded variants) and the "fully read marker" (a persistent per-user cursor position in the timeline).
+- The fully-read marker is explicitly the personal reading-position cursor into the shared timeline — receipts are a social/ephemeral signal layered separately — showing that "cursor into a shared log" and "social seen-by signal" are usefully different primitives even though both ride on the same underlying per-conversation event stream.
+- Supports cynapse's design that per-reader cursors (for non-consuming channel reads) can be a thin, independent structure sitting on top of one shared log, distinct from any ack/consume semantics used for mail.
+
+## Claim LG13
+
+Date: 2026-09-27
+Status: supports
+Confidence: medium
+
+Source:
+- Label: GitHub REST API docs — Issue/PR Timeline
+- URL: https://docs.github.com/en/rest/issues/timeline?apiVersion=2022-11-28
+- Type: official docs
+- Fetched: yes
+
+Notes:
+- The timeline endpoint returns one ordered array mixing comment events with structured state-change events: label/unlabel, assign/unassign, milestone, review-requested/reviewed, cross-referenced, committed, added-to-project/moved-column, blocking/blocked-by, open/close/reopen — all interleaved chronologically in a single stream.
+- This is a concrete, mature precedent for "messages and structured events (state changes, decisions) mixed in one ordered stream," directly matching what cynapse's channel-as-mission-ledger proposes: humans read the same timeline that a change-detection system consumes for structured events.
+- No separate "decision" event type exists per se in GitHub's model — decisions are inferred from state-change events (e.g., closed, labeled) plus surrounding comments, not marked as a first-class decision record; relevant gap for cynapse if it wants an explicit "decision" event type rather than inferring decisions from other event types.
+
+## Claim LG14
+
+Date: 2026-09-27
+Status: supports
+Confidence: high
+
+Source:
+- Label: Cognitect Blog — Documenting Architecture Decisions (Michael Nygard, ADR proposal)
+- URL: https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions
+- Type: engineering blog (originating source of the ADR pattern)
+- Fetched: yes
+
+Notes:
+- ADRs are short, numbered, immutable-once-written documents (context, decision, status, consequences) stored in version control as a sequential archive; numbers are never reused, and superseded ADRs remain visible with pointers to what replaced them — an explicit append-only decision log design, independent of any chat/messaging system.
+- This is a strong precedent for "decisions need a durable, ordered, human-and-machine-inspectable record," but it's a document repository pattern (files in git), not a conversational log — relevant as an alternate/adjacent primitive: cynapse could model channel "decision" events as ADR-like structured records embedded in the log rather than as prose messages.
+- Nygard's stated goal — new contributors understanding "the motivation behind previous decisions" — matches exactly the human-inspectability goal the user described for a mission's channel ledger.
+
+## Claim LG15
+
+Date: 2026-09-27
+Status: supports
+Confidence: medium
+
+Source:
+- Label: Zulip Help Center — Introduction to topics
+- URL: https://zulip.com/help/introduction-to-topics
+- Type: official docs
+- Fetched: yes
+
+Notes:
+- Zulip channels host multiple simultaneous topics, each a "shared ordered conversation" (a lightweight named thread) so many discussions proceed in the same channel without interleaving into one another; there is "nothing special about the first message" in a topic (unlike thread-from-a-message UIs).
+- Topics are surfaced for inspectability via left sidebar, inbox, and "recent conversations" views — precedent for a per-work-item conversation as a first-class, named, independently-orderable stream nested under a broader channel, matching cynapse's initiative→epic→story nesting idea (channel = initiative/epic, topic = story-level ledger).
+- The redirect from `/help/about-streams-and-topics` to this page (observed while fetching) suggests Zulip itself consolidated/renamed this documentation, so treat "streams vs topics" terminology as current-state (channel = Zulip's current term replacing "stream" in places).
+
+## Claim LG16
+
+Date: 2026-09-27
+Status: mixed
+Confidence: medium
+
+Source:
+- Label: Linear Docs — Sub-initiatives
+- URL: https://linear.app/docs/sub-initiatives
+- Type: official docs
+- Fetched: yes
+
+Notes:
+- Linear nests Initiatives up to 5 levels deep; a parent Initiative automatically includes all projects owned directly and all projects from its sub-initiatives, and progress/status rolls up automatically from Issue → Project → Initiative without a separate manual update step.
+- The fetched page does not explicitly state whether roll-up is computed live on read or maintained as a periodically-updated separate record — this is a genuine gap in the fetched primary source, not just a summarization limitation.
+- Supports the general precedent that hierarchical work (initiative/epic/story) is usually modeled as parent-links-to-children with computed roll-up, rather than the parent's ledger literally containing a copy of every child event — relevant to cynapse's question of whether parent conversations "see" child events by inclusion or by reference/link. Linear's evidence favors reference+computed-rollup over inclusion, but this claim is medium confidence since the live-vs-cached mechanism itself wasn't confirmed.
+
+## Claim LG17
+
+Date: 2026-09-27
+Status: mixed
+Confidence: medium
+
+Source:
+- Label: A2A Protocol — Life of a Task
+- URL: https://a2a-protocol.org/latest/topics/life-of-a-task/
+- Type: spec
+- Fetched: yes
+
+Notes:
+- A2A models agent work as Tasks with a state machine: interrupted states (input-required, auth-required) and terminal states (completed, canceled, rejected, failed); once terminal, "it cannot restart." Tasks are correlated via `contextId` (groups related tasks/messages across a session) and `taskId` (individual task identity), with `referenceTaskIds` linking follow-up tasks to prior ones.
+- Explicitly favors "stateful state machines over append-only logs" for the task's current status — a task's live state (submitted/working/input-required/etc.) is not naturally an append-only log fact, it's a current-state field that transitions, even though the *history* of transitions could be logged.
+- Directly relevant to use case #5 (agent collaboration beyond chat): a "task" or "work claim" needs a mutable current-state primitive (with legal-transition rules and terminality) layered on top of, or alongside, any append-only event log — logging every transition is fine, but something must also expose "what is the current state now" without replaying the whole log, and must enforce which transitions are legal from which state (a log alone doesn't enforce that).
+
+## Claim LG18
+
+Date: 2026-09-27
+Status: mixed
+Confidence: medium
+
+Source:
+- Label: GitHub — Dicklesworthstone/mcp_agent_mail (README)
+- URL: https://github.com/Dicklesworthstone/mcp_agent_mail
+- Type: source code / README
+- Fetched: yes
+
+Notes:
+- The project's messaging layer (identities, inbox/outbox, threads) is Git-backed markdown with JSON frontmatter (sender, recipients, thread_id, importance, ack) — a mail-like, per-agent-copy design (each agent gets copies in personal inbox/outbox directories), not a single shared log with derived indexes.
+- File reservations (advisory leases for coordinating concurrent edits) are explicitly built as a *separate* stateful primitive: a SQLite `file_reservations` table with `path_pattern`, `exclusive` flag, `created_ts`, `expires_ts`, `released_ts` — TTL-based, supporting mutual exclusion (exclusive) or coexistence (shared), independent of the message log.
+- Directly supports the claim in the research brief that "a lease needs TTL and mutual exclusion — a state machine, not a log": this real multi-agent-coordination project independently arrived at building leases as a distinct stateful table rather than encoding them as mail messages or log entries, even though it logs a Git-audit-trail of lease actions for inspectability.
+- Caveat: this project chose per-recipient mail copies for messaging itself (contrary to the log-with-derived-inbox recommendation), so it's mixed evidence — supports the lease-needs-a-state-machine sub-claim strongly, but is not itself an example of log-as-primitive messaging.
+
+## Claim LG19
+
+Date: 2026-09-27
+Status: supports
+Confidence: low
+
+Source:
+- Label: WebSearch synthesis — Jay Kreps, "The Log: What every software engineer should know about real-time data's unifying abstraction" (LinkedIn Engineering, Dec 2013)
+- URL: https://engineering.linkedin.com/distributed-systems/log-what-every-software-engineer-should-know-about-real-time-datas-unifying
+- Type: engineering blog
+- Fetched: snippet-only (WebFetch returned HTTP 404 for this URL in this session on multiple attempts, despite it being the canonical/commonly-cited URL; likely a dynamic-rendering or availability issue at fetch time, not evidence the article doesn't exist)
+
+Notes:
+- Widely and consistently cited (including by a GitHub-hosted PDF mirror and multiple secondary write-ups) as: "a log is... the simplest possible storage abstraction — an append-only, totally-ordered sequence of records," and that logs solve two core distributed-systems problems — ordering changes and distributing data.
+- Central thesis (per secondary sources, not independently verified against the primary text in this session): the log should be the system of record, and derived views/indexes/caches are rebuilt by consuming the log rather than being written to directly — the foundational argument for fan-out-on-read/log-as-source-of-truth architectures (Kafka itself is Kreps's implementation of this idea).
+- Confidence kept low per instructions since the primary source could not be fetched in this session; treat as background/context rather than a verified citation.
+
+## Claim LG20
+
+Date: 2026-09-27
+Status: contradicts
+Confidence: medium
+
+Source:
+- Label: WebSearch synthesis — Twitter/X "celebrity problem" and hybrid fan-out
+- URL: https://dev.to/gabrielanhaia/twitters-fanout-strategy-at-scale-the-trade-off-most-designs-miss-55oa
+- Type: engineering blog (secondary write-up)
+- Fetched: snippet-only
+
+Notes:
+- Pure fan-out-on-write breaks down when a single producer has an extremely large audience: a post from a 50-million-follower account would require ~50 million writes if pushed synchronously to every follower's derived feed index — this is presented as the reason no major system does pure fan-out-on-write universally.
+- Symmetric point (see LG06): pure fan-out-on-read has a read-time latency/compute cost that's unacceptable when a single hot consumer refreshes very frequently against a huge merged log set.
+- For cynapse this is a scaling caveat rather than a refutation of log-as-primitive: it argues that very high-fan-out broadcast channels (e.g., "all-agents" or "all-employees" channels) may eventually need a precomputed/cached read-side index (a materialized inbox) even under a log-primary design — i.e., "inboxes as derived indexes" may need to be *eagerly* materialized for a subset of hot channels, not always computed lazily on read. This nuances but doesn't overturn the core recommendation.
+
+## Claim LG21
+
+Date: 2026-09-27
+Status: supports
+Confidence: medium
+
+Source:
+- Label: WebSearch synthesis — Discord message-storage architecture history (Cassandra → ScyllaDB migrations)
+- URL: https://blog.bytebytego.com/p/how-discord-stores-trillions-of-messages
+- Type: engineering blog (secondary write-up, ByteByteGo digest of Discord's own posts)
+- Fetched: snippet-only
+
+Notes:
+- Reinforces LG05 with additional detail: Discord's per-channel log model persisted across two major storage-engine migrations (MongoDB → Cassandra → ScyllaDB) driven by operational/performance concerns, not by any need to change the fundamental one-log-per-channel data model — the structural choice (log per channel, not per recipient) proved durable even as the underlying engine changed twice.
+- Secondary source, so treated as corroborating context rather than a primary citation; the primary Discord blog post (LG05) is the load-bearing source.
+
+## Claim LG22
+
+Date: 2026-09-27
+Status: supports
+Confidence: medium
+
+Source:
+- Label: A2A Protocol — Life of a Task (contextId as cross-task correlation)
+- URL: https://a2a-protocol.org/latest/topics/life-of-a-task/
+- Type: spec
+- Fetched: yes
+
+Notes:
+- `contextId` groups related tasks and independent messages across a session/interaction ("continuity across a series of interactions"), separate from any individual task's own identity/state — this is effectively a thread/conversation-id spanning multiple discrete task state-machines, i.e., a correlation-id pattern for request/response-with-correlation-id and handoff use cases (research brief item 5).
+- Supports modeling "request-response with correlation IDs" and "handoffs" as log entries carrying a shared contextId/threadId, while the actual task execution state (in-progress/blocked/done) still needs the separate state-machine primitive noted in LG17 — i.e., correlation/threading fits the log naturally, but live task status does not.
+
+## Claim SY01
+
+Date: 2026-09-27
+Status: contradicts
+Confidence: high
+
+Source:
+- Label: Litestream — How it works
+- URL: https://litestream.io/how-it-works/
+- Type: official docs
+- Fetched: yes
+
+Notes:
+- Litestream is strictly single-writer, single-replica: "Each database replicates to a single replica destination," and it works by taking over SQLite's WAL checkpoint with one long-running read transaction — incompatible with concurrent multi-node writers.
+- It streams WAL pages as LTX files with monotonically increasing transaction IDs (TXIDs) applied in order on restore — good for durability/DR and read replicas, not multi-writer sync.
+- Fits the "solo laptop → cloud backup" tier only; does not on its own extend to multi-machine multi-writer.
+
+## Claim SY02
+
+Date: 2026-09-27
+Status: mixed
+Confidence: high
+
+Source:
+- Label: Fly.io — How LiteFS works
+- URL: https://docs.fly.io/litefs/how-it-works/
+- Type: official docs
+- Fetched: yes
+
+Notes:
+- LiteFS keeps SQLite's single-writer constraint but externalizes leader election: a Consul-based lease names one node "primary"; all writes are routed there (via a `.primary` file convention) and replicated as ordered LTX transaction files to followers.
+- Ordering authority is explicit and centralized per database: a monotonically incrementing TXID plus a rolling content checksum detect split-brain and trigger automatic re-snapshot of desynced followers.
+- Replication is asynchronous; on primary crash, un-replicated writes can be lost. This is the "single owner assigns per-conversation sequence" pattern cynapse could adopt per conversation rather than per whole database.
+
+## Claim SY03
+
+Date: 2026-09-27
+Status: contradicts
+Confidence: medium
+
+Source:
+- Label: vlcn-io/cr-sqlite — CRDT model
+- URL: https://github.com/vlcn-io/cr-sqlite
+- Type: source code / project docs
+- Fetched: yes
+
+Notes:
+- cr-sqlite adds true multi-writer, multi-master merge to SQLite via per-row CRDTs (LWW, counters, fractional-index, OR-sets) plus a causally-ordered change log (`crsql_changes` with `col_version`/`db_version`/`site_id`).
+- Explicitly designed for offline-first: "you can write to your SQLite database while offline... we can both come online and merge... without conflict" — leaderless merge, not a single ordering authority.
+- Cost: inserts into CRR (conflict-free replicated relation) tables are ~2.5x slower than plain SQLite tables; this is a schema/extension-level change (loadable extension + virtual tables), not "no change to core data model" — adopting it later means retrofitting CRDT columns/metadata onto tables that started as plain SQLite.
+
+## Claim SY04
+
+Date: 2026-09-27
+Status: mixed
+Confidence: high
+
+Source:
+- Label: Turso Docs — Embedded Replicas
+- URL: https://docs.turso.tech/features/embedded-replicas/introduction
+- Type: official docs
+- Fetched: yes
+
+Notes:
+- libSQL/Turso embedded replicas are single-writer/multi-reader: writes always go to the cloud primary; local SQLite file is a read replica synced via manual `.sync()` or periodic `syncInterval`.
+- Read-your-writes is guaranteed for the writer that issued the write, even before an explicit sync.
+- An `offline: true` mode allows local writes when disconnected, but the docs do not specify the offline-write conflict-resolution model — a documented gap.
+- Explicit warning: opening the local DB file while syncing can corrupt it — an operational hazard for the solo-dev tier if cynapse relied on this.
+
+## Claim SY05
+
+Date: 2026-09-27
+Status: contradicts
+Confidence: high
+
+Source:
+- Label: rqlite Design docs
+- URL: https://rqlite.io/docs/design/
+- Type: official docs
+- Fetched: yes
+
+Notes:
+- rqlite replicates SQLite via Raft: all writes go through the Raft log on the leader; "every node ... applies the log entries in exactly the same way" giving total order and strong consistency, but explicitly single-leader, not multi-writer.
+- Write throughput is reduced vs standalone SQLite due to round-trips and log writes — rqlite optimizes for availability/fault-tolerance, not write performance.
+- Confirms the "single owner assigns global sequence" ordering pattern at the whole-database granularity, which is coarser than a per-conversation partition cynapse would want.
+
+## Claim SY06
+
+Date: 2026-09-27
+Status: contradicts
+Confidence: high
+
+Source:
+- Label: Canonical — dqlite architecture/replication
+- URL: https://canonical.com/dqlite/docs/explanation/architecture
+- Type: official docs
+- Fetched: snippet-only (via search summary, not directly fetched page body)
+
+Notes:
+- dqlite = SQLite + C-Raft: single leader replicates write transactions to followers; quorum commit required before ack to client.
+- Same shape as rqlite: single-writer-per-cluster with Raft-elected leader, strong total order, no native multi-writer or offline partition tolerance (followers can serve reads, not writes, without a leader).
+- Good fit for a small HA cluster (e.g., one org's server tier) but not for laptop-side offline operation.
+
+## Claim SY07
+
+Date: 2026-09-27
+Status: mixed
+Confidence: medium
+
+Source:
+- Label: git-bug — Lamport clock / bug data model (via source search of util/lamport, bug package docs, and community write-ups)
+- URL: https://pkg.go.dev/github.com/MichaelMure/git-bug/util/lamport
+- Type: source code
+- Fetched: snippet-only (pkg.go.dev summary + community explainer; direct doc/model.md fetch returned 503)
+
+Notes:
+- git-bug stores each entity as a chain of git commits under `refs/bugs/<id>`; each commit's tree holds a JSON "ops" blob plus files encoding a Lamport clock value; a separate `refs/identities/<id>` chain holds identity/signing state.
+- Ordering is leaderless: each operation carries a Lamport timestamp; on merge, divergent branches are replayed and reordered by logical clock, with ties broken deterministically — no single ordering authority, "nearly always succeeds" because the log is append-only (no in-place edit/delete).
+- This is a genuine CRDT-like leaderless merge model, but it piggybacks on git's object store and ref update semantics (a `PersistedClock` per repo) — porting it to cynapse would mean adopting git plumbing as the storage substrate, not layering sync onto an existing SQLite schema.
+- PR #1625 title ("make [lamport] safe for multi-process writing") signals the clock implementation has had real correctness bugs under concurrent local writers — a caution about assuming this is a solved, drop-in primitive.
+
+## Claim SY08
+
+Date: 2026-09-27
+Status: supports
+Confidence: high
+
+Source:
+- Label: NATS Docs — JetStream streams
+- URL: https://docs.nats.io/nats-concepts/jetstream/streams
+- Type: official docs
+- Fetched: yes
+
+Notes:
+- JetStream streams are append-only, server-side persisted logs; every message gets a stream sequence number starting at 1, and "only one stream can keep a given subject" (deterministic routing) — maps directly onto "one append-only log per conversation."
+- Consumers (durable or ephemeral) track position independently with ack semantics and configurable retention (Limits/Interest/WorkQueue) — this is exactly the "per-reader cursor + ack" shape cynapse needs for mail (consume-once) vs channels (durable, non-consuming read cursor).
+- This is the strongest structural match among all log/stream servers evaluated for the target data model.
+
+## Claim SY09
+
+Date: 2026-09-27
+Status: supports
+Confidence: medium
+
+Source:
+- Label: NATS Docs — Leaf nodes
+- URL: https://docs.nats.io/running-a-nats-service/configuration/leafnodes
+- Type: official docs
+- Fetched: yes
+
+Notes:
+- Leaf nodes make outbound-only connections from a constrained/edge system (explicitly analogized to a firewalled facility, i.e. a laptop behind NAT) to a central hub, bridging subject interest without requiring inbound connectivity to the edge node — directly relevant to "laptop syncs to a cloud/server hub."
+- Multiple hub URLs can be configured on the leaf side so it has "somewhere to reconnect if one hub server is down," implying reconnect support, but the fetched docs page does NOT document offline message buffering/replay behavior during disconnection — flagged as a gap requiring a follow-up check of JetStream-specific leaf-node persistence behavior before relying on it for offline mail delivery.
+
+## Claim SY10
+
+Date: 2026-09-27
+Status: supports
+Confidence: high
+
+Source:
+- Label: NATS Docs — Accounts (multi-tenancy)
+- URL: https://docs.nats.io/running-a-nats-service/configuration/securing_nats/accounts
+- Type: official docs
+- Fetched: yes
+
+Notes:
+- A NATS "account" is a fully isolated tenant subject space: identically named subjects in two accounts never cross — structural isolation, not ACL-based filtering.
+- This maps well onto "org id in keys": one account per org/tenant gives hard multi-tenancy at the transport layer, which is the same protocol used for a single laptop's local NATS instance — i.e., the identical primitive spans solo and enterprise tiers (topology answer for (b)).
+
+## Claim SY11
+
+Date: 2026-09-27
+Status: supports
+Confidence: medium
+
+Source:
+- Label: Redis Streams docs
+- URL: https://redis.io/docs/latest/develop/data-types/streams/
+- Type: official docs
+- Fetched: yes
+
+Notes:
+- Redis Streams (XADD/XREADGROUP/XACK) give an append-only log with monotonically increasing `<ms>-<seq>` IDs, consumer groups with a Pending Entries List (PEL) tracking delivered-but-unacked entries, and XCLAIM/XAUTOCLAIM for failure recovery — this is a close structural match for mail's "ack = consume once" requirement.
+- However Redis Streams are primarily an in-memory/single-node structure; multi-machine durability/replication needs Redis Cluster or Enterprise on top, which is a materially different operational story than JetStream's built-in clustering. Treat as viable for local/solo tier, weaker default story for the enterprise tier.
+
+## Claim SY12
+
+Date: 2026-09-27
+Status: mixed
+Confidence: low
+
+Source:
+- Label: Apache Kafka docs (topic/partition, ordering, consumer offsets) — general knowledge, page fetches returned only navigation shells
+- URL: https://kafka.apache.org/documentation/#intro_topics
+- Type: official docs
+- Fetched: snippet-only (WebFetch repeatedly returned nav-only content; substantive claim not independently verified this session)
+
+Notes:
+- Well-established (but NOT freshly fetched this session) Kafka model: total order is guaranteed only within a partition, not across partitions of a topic; consumers track a per-partition offset (cursor) which is exactly the "per-reader cursor" shape.
+- Partitioning by a key (e.g., conversation id) would give each conversation a total order if one conversation always maps to one partition — but partition count is fixed at topic-creation time and repartitioning existing data is disruptive, a real migration-cost risk for decision (a).
+- Confidence marked low because I could not fetch primary-source confirmation in this session; treat as needing re-verification before being load-bearing for a design decision.
+
+## Claim SY13
+
+Date: 2026-09-27
+Status: mixed
+Confidence: medium
+
+Source:
+- Label: PowerSync Service architecture
+- URL: https://docs.powersync.com/architecture/powersync-service
+- Type: official docs
+- Fetched: yes
+
+Notes:
+- PowerSync buckets are explicitly append-only operation histories (not "latest row" snapshots), and clients sync via cursor-based tracking of "operations accumulated since their last connection" — a strong structural fit for the append-only-log + cursor model, and buckets double as both a sync-efficiency partition and a security/tenancy boundary (e.g. `org_todo_lists["1"]`).
+- Source of truth is a single upstream database (Postgres/MongoDB/MySQL/SQL Server/Convex) that PowerSync replicates from — this is a single-writer-at-the-source model; the docs fetched did not address multi-writer conflict resolution, so PowerSync looks better suited as a "server DB → many read-mostly edge replicas" fan-out than as a leaderless multi-writer mesh.
+
+## Claim SY14
+
+Date: 2026-09-27
+Status: contradicts
+Confidence: medium
+
+Source:
+- Label: Zero (Rocicorp) — When to use Zero
+- URL: https://zero.rocicorp.dev/docs/when-to-use
+- Type: official docs
+- Fetched: yes
+
+Notes:
+- Zero is explicitly "a client-server system with an authoritative server" backed by Postgres, storing a SQLite replica client-side for fast local reads, but the docs state plainly it "doesn't support offline writes" and is "not local-first."
+- Not a fit for cynapse's core offline-agent requirement (cron/headless agents on a laptop with no connectivity); doc explicitly points to CRDT-based alternatives (Automerge, Ditto) for that use case.
+
+## Claim SY15
+
+Date: 2026-09-27
+Status: contradicts
+Confidence: high
+
+Source:
+- Label: Automerge — Hello / how Automerge works
+- URL: https://automerge.org/docs/hello/
+- Type: official docs
+- Fetched: yes
+
+Notes:
+- Automerge is a document CRDT (immutable, structural merge of nested JSON-like documents), not a log/stream abstraction — good for collaboratively-edited documents, not naturally for "one append-only log per conversation with acks and cursors."
+- Automerge is transport-agnostic (WebSocket, WebRTC, Bluetooth, even email) and merges automatically with no central server — genuinely leaderless — but adopting it would mean modeling mail/channels as CRDT documents rather than as logs, a different core data model than the SQLite-log baseline, contradicting "same model at both tiers" if the log model is kept elsewhere.
+
+## Claim SY16
+
+Date: 2026-09-27
+Status: mixed
+Confidence: medium
+
+Source:
+- Label: ElectricSQL docs — Intro
+- URL: https://electric.ax/docs/intro
+- Type: official docs
+- Fetched: yes
+
+Notes:
+- ElectricSQL is fundamentally a read-path sync engine: Postgres is the source of truth, "Shapes" define partial-replication subsets synced to local Postgres/SQLite clients over HTTP; writes flow back through an application-defined API layer ("Writes" guide), not natively through Electric itself.
+- Fetched content did not show native append-only-log/cursor semantics or CRDT conflict resolution baked in — it's oriented at reactive client state for typical CRUD apps, a looser fit for cynapse's ack/cursor requirements than PowerSync's or JetStream's.
+
+## Claim SY17
+
+Date: 2026-09-27
+Status: mixed
+Confidence: high
+
+Source:
+- Label: Matrix spec — Room version 11 (event DAG, state resolution)
+- URL: https://spec.matrix.org/latest/rooms/v11/
+- Type: spec
+- Fetched: yes
+
+Notes:
+- Matrix rooms are event DAGs (`prev_events` back-references, content-addressed event IDs via reference hash) with only partial/causal ordering guaranteed; concurrent branches are reconciled via a deterministic state-resolution algorithm (power-event prioritization → iterative auth-check application → mainline ordering → merge with unconflicted state) so independent homeservers converge without a central authority.
+- This is a leaderless federation model exactly of the kind envisioned for enterprise cross-org federation, and it is content-addressable/immutable-event based — directly relevant to decision (a) ("entries immutable and content-addressable").
+- Caveat: no single total order per room — cynapse's stated requirement of "total order per conversation, per-reader cursors" is a stronger guarantee than Matrix natively provides; adopting Matrix's DAG model for conversations would require an additional layer (e.g., an assigned stream position) to get per-reader cursor semantics on top.
+
+## Claim SY18
+
+Date: 2026-09-27
+Status: contradicts
+Confidence: medium
+
+Source:
+- Label: HN discussion + Element blog — Synapse operational cost at nation-scale
+- URL: https://element.io/blog/synapse-pro-slashes-costs-for-running-nation-scale-matrix-deployments/
+- Type: engineering blog
+- Fetched: yes
+
+Notes:
+- Vendor's own framing implicitly concedes stock Synapse is expensive/operationally heavy at "nation-scale" (tens of thousands of users, e.g. Germany's TI-Messenger healthcare rollout) — Synapse Pro exists specifically to consolidate redundant microservices/components and add elastic scaling and zero-downtime multi-datacenter failover that community Synapse lacks.
+- Concrete number: switching to Synapse Pro would save "millions of euros" across all TI-Messenger deployments if adopted — no baseline/percentage given, so treat as directional not quantitative.
+- Cross-checked (search-snippet only, not independently fetched) against community sources: a 100-user active homeserver needs ~4GB RAM, 500-user federation-active needs ~8GB, and workers/Postgres become mandatory above ~200 users — these specific figures are snippet-only and not verified against a fetched primary source in this session.
+
+## Claim SY19
+
+Date: 2026-09-27
+Status: contradicts
+Confidence: medium
+
+Source:
+- Label: HN / Dendrite FAQ / community write-ups on Dendrite and Conduit maturity
+- URL: https://matrix-org.github.io/dendrite/faq
+- Type: official docs
+- Fetched: snippet-only (via search aggregation; FAQ page itself not independently re-fetched)
+
+Notes:
+- Dendrite (the intended lighter-weight Go homeserver) is described in aggregated sources as still not production-ready for large deployments; Conduit, despite government funding to stabilize the Matrix.org foundation, is described as largely dormant.
+- Implication for cynapse: federation-style architectures (Matrix-like) carry a heavy, multi-implementation operational maturity risk — the "reference" implementation (Synapse) is resource-hungry and the lighter alternatives are not yet trustworthy for scale, undermining "federation just works at enterprise scale" as an assumption.
+
+## Claim SY20
+
+Date: 2026-09-27
+Status: supports
+Confidence: high
+
+Source:
+- Label: Nostr vs ActivityPub protocol comparison (aggregated, D-Central / Soapbox summaries)
+- URL: https://soapbox.pub/blog/comparing-protocols
+- Type: engineering blog
+- Fetched: snippet-only (search-aggregated summary, not independently fetched with WebFetch)
+
+Notes:
+- Nostr: relays are simple, dumb message routers; clients, not relays, hold identity (self-sovereign secp256k1 keypair) and publish signed, content-addressable events (SHA-256 id) to many relays redundantly — relays do not talk to each other. This is a genuinely leaderless, no-federation-protocol design, contrasting with Matrix's server-to-server federation and state resolution.
+- ActivityPub: server-centric federation, one account belongs to exactly one server whose admin sets the rules — closer to "hub/relay per org" than to peer-to-peer.
+- Relevance to cynapse: Nostr's model (dumb multi-homed relays + self-sovereign signed events) is a useful contrast to Matrix's stateful DAG homeservers — it shows a cheaper-to-operate alternative but pushes all ordering/dedup work to clients, which is a poor fit for cynapse's per-reader cursor and ack requirements, since there is no server-side authority to assign a durable cursor position against.
+
+## Claim SY21
+
+Date: 2026-09-27
+Status: supports
+Confidence: high
+
+Source:
+- Label: Slack Engineering — Scaling Datastores at Slack with Vitess
+- URL: https://slack.engineering/scaling-datastores-at-slack-with-vitess/
+- Type: engineering blog
+- Fetched: yes
+
+Notes:
+- Slack started with per-workspace sharding (one MySQL shard held all of a workspace's data) and hit hard ceilings once large enterprise customers' single shards saturated the biggest available hardware, while other shards sat underutilized — a direct illustration of picking too coarse a partition/sync unit early.
+- Migrated (2017 start, 99% of MySQL traffic on Vitess by Dec 2020) to resharding by a different key — e.g., channel id for message data instead of workspace id — reaching 2.3M QPS at peak (2M reads / 300K writes), 2ms median / 11ms p99 latency.
+- Direct precedent for decision (a): choosing "conversation" (channel-equivalent) rather than "workspace/org" as the fundamental partition/sync unit avoids the exact re-sharding migration Slack was forced into.
+
+## Claim SY22
+
+Date: 2026-09-27
+Status: supports
+Confidence: high
+
+Source:
+- Label: Discord — How Discord Stores Trillions of Messages
+- URL: https://discord.com/blog/how-discord-stores-trillions-of-messages
+- Type: engineering blog
+- Fetched: yes
+
+Notes:
+- Discord partitions messages by (channel, time bucket); "all messages for a given channel and bucket are stored together and replicated across three nodes," using Snowflake IDs (globally unique, time-sortable, coordination-free) for chronological ordering — the same partition-by-conversation and sortable-id pattern recommended for cynapse.
+- Migrated from Cassandra to ScyllaDB in 2022 (177 nodes → 72 nodes) specifically to eliminate hot-partition problems, GC pauses, and heavy compaction maintenance, while scaling from billions (2017) to trillions (2022) of messages; p99 historical-fetch latency dropped from 40-125ms to 15ms.
+- Reinforces: (1) partition by conversation id, (2) use a globally unique sortable id minted at write time (Snowflake ≈ ULID/UUIDv7 role) rather than a local autoincrement, so re-partitioning later doesn't require renumbering.
+
+## Claim SY23
+
+Date: 2026-09-27
+Status: supports
+Confidence: high
+
+Source:
+- Label: Time-sortable identifiers (UUIDv7, ULID) explainer aggregation
+- URL: https://www.authgear.com/post/time-sortable-identifiers-uuidv7-ulid-snowflake/
+- Type: engineering blog
+- Fetched: snippet-only (search-aggregated; not independently fetched with WebFetch)
+
+Notes:
+- ULID (48-bit ms timestamp + 80 bits randomness, Crockford Base32) and UUIDv7 (IETF-standardized, timestamp in high bits) are "functionally twins": both make inserts sequential-append rather than random, both are generated with no central coordinator, and both preserve rough chronological sort order.
+- Directly supports decision (a): minting conversation/entry ids as UUIDv7/ULID at creation time (rather than SQLite `INTEGER PRIMARY KEY AUTOINCREMENT`, which is per-database-file and not globally unique) means the same id survives a later move from one local SQLite file to a multi-machine or sharded store with no renumbering/migration.
+
+
+## Claim LC01
+
+Date: 2026-09-27
+Status: supports
+Confidence: high
+
+Source:
+- Label: cyber-truss model docs — glossary "Run ledger", canonical-execution "The run ledger schedules, it does not decide"
+- URL: file:///home/unional/code/cyberuni/cyber-truss/apps/web/src/content/docs/model/glossary.md (line 187), canonical-execution.md (line 399)
+- Type: design docs (local, sibling project)
+- Fetched: yes (read locally)
+
+Notes:
+- The run ledger is "the append-only record of a run: pending jobs, what each waits on, criteria versions, resolutions, and decisions. It collects the contributions addressed to each set, with their provenance, and never merges them."
+- This is one log whose entries are addressed to recipients (sets), with each recipient's controller reading the entries addressed to it. That is a log with a derived per-addressee index, not per-recipient copies. Decisions are recorded in the same log ("a choice between states is recorded rather than prevented", layers.md:77).
+- Design only; nothing in cyber-truss is built yet.
+
+## Claim LC02
+
+Date: 2026-09-27
+Status: mixed
+Confidence: high
+
+Source:
+- Label: cyber-sdd ADR-0020 — Sharded ledger
+- URL: file:///home/unional/code/cyberuni/cyber-sdd/docs/adr/0020-sharded-ledger.md
+- Type: ADR (local, sibling project)
+- Fetched: yes (read locally)
+
+Notes:
+- A single shared `ledger.jsonl` caused "every concurrent mission [to raise] a git merge conflict". Resolved by one file per CR per writer (`<cr-ref>.<hash>.jsonl`), which makes conflicts structurally impossible.
+- Cost: "Neither `seq` nor a wall-clock `ts` is load-bearing ... ordering, where it matters, is git history." It works because the readers only check existence or count lines.
+- For cynapse: sharding per writer is the leaderless answer to concurrent writes, and it gives up canonical order. A ledger meant for humans to follow decisions needs the order that an owner-assigned per-conversation `seq` provides.
+
+## Claim LC03
+
+Date: 2026-09-27
+Status: supports
+Confidence: high
+
+Source:
+- Label: cyberlegion FileStore and cyber-mux MuxAdapter (local survey)
+- URL: file:///home/unional/code/cyberuni/cyberlegion/packages/cyberlegion/src/store/store.ts ; file:///home/unional/code/cyber-mux/packages/cyber-mux/src/mux.ts (line 784)
+- Type: source code (local)
+- Fetched: yes (read by a local agent)
+
+Notes:
+- cyberlegion mail stores one JSON file per message per recipient (`inbox/<agent-id>/<msg-id>.json`), acked by an atomic rename into `read/`. That is per-recipient copies. The store comment names `SqliteStore` as the sanctioned replacement.
+- cyber-mux abstracts 7 multiplexers behind `MuxAdapter`, with capability flags; a missing capability throws instead of degrading.
