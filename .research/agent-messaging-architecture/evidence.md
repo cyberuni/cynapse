@@ -2478,3 +2478,442 @@ Source:
 Notes:
 - cyberlegion mail stores one JSON file per message per recipient (`inbox/<agent-id>/<msg-id>.json`), acked by an atomic rename into `read/`. That is per-recipient copies. The store comment names `SqliteStore` as the sanctioned replacement.
 - cyber-mux abstracts 7 multiplexers behind `MuxAdapter`, with capability flags; a missing capability throws instead of degrading.
+
+## Claim PR01
+
+Date: 2026-09-29
+Status: mixed
+Confidence: medium
+
+Source:
+- Label: beads architecture (via WebFetch synthesis of README)
+- URL: https://raw.githubusercontent.com/steveyegge/beads/main/README.md
+- Type: official docs
+- Fetched: yes
+
+Notes:
+- Beads issues carry `priority` (`-p`), `type` (`-t`), `assignee`, `status`. Dependency relationship types: `blocks`, `relates-to`, `duplicates`, `supersedes`, `replies-to` (README summary; core-concepts/dependencies.md gives a more complete, partly different list — see PR07).
+- Hash-based IDs `bd-a1b2` are explicitly framed as preventing merge collisions in multi-agent/multi-branch workflows — same problem cynapse's UUIDv7/UUIDv5 scheme targets.
+- Hierarchical IDs for epics/subtasks: `bd-a3f8` → `bd-a3f8.1` → `bd-a3f8.1.1`. cynapse has no analogous built-in hierarchy encoded in the ID itself (parent linkage is via anchor entry / parent entry instead) — a structural divergence worth noting, not necessarily a defect.
+- README claims storage backend is Dolt (a "version-controlled SQL database with cell-level merge, native branching, built-in sync") with `.beads/issues.jsonl` as export/interchange, not source of truth. This differs materially from cynapse's plain SQLite (WAL) design — see PR08/PR09 for confirmation from primary docs.
+
+## Claim PR02
+
+Date: 2026-09-29
+Status: supports
+Confidence: high
+
+Source:
+- Label: beads core-concepts/hash-ids.md
+- URL: https://raw.githubusercontent.com/gastownhall/beads/main/docs/core-concepts/hash-ids.md
+- Type: official docs
+- Fetched: yes
+
+Notes:
+- IDs are derived from "Issue title, creation timestamp, random salt" — a content/randomness hash, not a pure content hash — producing a short hex string, default length 4 chars (`bd-a1b2`), configurable.
+- Explicit rationale: sequential numbering fails distributed creation ("Multiple agents create issues simultaneously", "Different branches have independent numbering"); hash IDs need "No coordination needed between creators" and "work seamlessly during merges where both versions coexist."
+- Collision handling is NOT purely probabilistic-avoidance: "On import, if hash collision detected, Beads appends disambiguator, Both issues preserved" — i.e., collisions are expected to occur rarely and are handled post-hoc, not architected to be impossible. `bd info --schema --json | jq '.collision_count'` exposes a live collision counter.
+- This validates cynapse's choice of UUIDv7 (time-ordered, globally unique, no coordination) over any short-hash scheme — beads' 4-hex-char ID space is deliberately small (human-typeable) and trades collision risk for a decision cynapse doesn't need to make since stream/entry ids aren't meant to be typed by humans. Cynapse's UUIDv5-from-natural-key for convergent concurrent creation is a stronger guarantee than beads' "detect and disambiguate" approach.
+
+## Claim PR03
+
+Date: 2026-09-29
+Status: contradicts
+Confidence: high
+
+Source:
+- Label: beads core-concepts/sync-concepts.md
+- URL: https://raw.githubusercontent.com/gastownhall/beads/main/docs/core-concepts/sync-concepts.md
+- Type: official docs
+- Fetched: yes
+
+Notes:
+- Beads' actual (current) source of truth is a local embedded Dolt database, NOT SQLite and NOT the JSONL file: "The local Dolt database is the source of truth for `bd list`, `bd show`, `bd ready`, and every write command."
+- Cross-machine sync is `bd dolt push` / `bd dolt pull` against `refs/dolt/data`, a ref kept separate from the git source branches — this is a git-native but non-file-diff sync mechanism (opaque Dolt chunks, not JSONL text diffs).
+- `.beads/issues.jsonl` is explicitly "an export... for viewers, interchange, migration, and backup," and JSONL import is "upsert-only; it cannot infer that records absent from an export were deleted" — i.e., JSONL is a lossy, non-authoritative shadow of the real store.
+- This contradicts the popularized "beads = JSONL committed to git" description (widespread in blog summaries, e.g. Better Stack) — the project moved away from JSONL-as-mechanism after finding it insufficient. Cynapse should not assume "commit JSONL to git" is a validated pattern; it was tried and superseded.
+
+## Claim PR04
+
+Date: 2026-09-29
+Status: contradicts
+Confidence: high
+
+Source:
+- Label: beads bd 1.0 migration gist (community, references PR #2096) + WebSearch snippet
+- URL: https://gist.github.com/leonletto/606e8afbb3603870d14b4123707416a2
+- Type: issue thread / community doc
+- Fetched: snippet-only
+
+Notes (snippet-only, low structural confidence but corroborated by PR03/PR08):
+- Beads went through at least two storage-engine generations: "SQLite-era" → "server-mode Dolt" → "bd 1.0 embedded [Dolt] mode," with a documented migration guide covering "two recovery paths, schema drift repair, auto-commit/auto-push setup, and sync re-establishment."
+- The existence of a dedicated migration/recovery guide for storage-engine changes is itself evidence that changing the durable storage engine after users have data is a big, disruptive event — a caution for cynapse if it later needs to move off SQLite for a "hub" (multi-machine) mode, per the project's own stated roadmap. Design the sync layer as a bolt-on from day one rather than a storage swap.
+
+## Claim PR05
+
+Date: 2026-09-29
+Status: mixed
+Confidence: high
+
+Source:
+- Label: WebSearch aggregation of beads CHANGELOG.md
+- URL: https://raw.githubusercontent.com/steveyegge/beads/main/CHANGELOG.md
+- Type: official docs
+- Fetched: yes (fetched but tool found no explicit migration-rationale text in the excerpt served)
+
+Notes:
+- Confirms "The JSONL-based sync system (`bd sync`, git-portable mode, belt-and-suspenders mode) has been removed. Dolt-native push/pull via git remotes is the only sync mechanism, and `bd sync` is now a deprecated no-op."
+- Schema migrated v53 → v66 (13 main-series migrations) — indicates substantial, ongoing schema churn even post-1.0, suggesting the data model is still not settled. cynapse should expect its own stream/entry schema to churn similarly and should version the schema explicitly from the start (the design doc doesn't yet mention a schema-version field).
+- Recovery command exists: `bd export --all -o .beads/backup/pre-1.3.0-$(date +%Y%m%d).jsonl` used before risky migrations — i.e., JSONL survives only as a pre-migration safety export, reinforcing PR03.
+
+## Claim PR06
+
+Date: 2026-09-29
+Status: contradicts
+Confidence: high
+
+Source:
+- Label: GitHub issue #1084, steveyegge/beads (mirrored gastownhall/beads)
+- URL: https://github.com/steveyegge/beads/issues/1084
+- Type: issue thread
+- Fetched: yes
+
+Notes:
+- Opened 2026-01-14. Reports beads' "town-level" database corrupting within seconds of startup inside a Docker devcontainer (macOS host, `golang:1.25.0-trixie` image): `"sqlite3: database disk image is malformed"` during pre-migration orphan cleanup.
+- A second, compounding failure in the same environment: the daemon's RPC server can't start because `"failed to set socket permissions: chmod /workspace/.../.beads/bd.sock: invalid argument"` — a Unix-socket permission quirk specific to bind-mounted/overlay filesystems in containers.
+- Notably beads' architecture now includes a background daemon holding a socket and a SQLite connection concurrently with CLI-driven writes to the same file — this is an internal component (used for the RPC layer, distinct from the Dolt engine used for the main store), and it is a second source of file-locking hazard beyond the main storage engine.
+- Status: unresolved as of research date. Direct evidence that background daemons + shared local DB files + containerized/networked filesystems is a real, currently-unfixed failure class. Cynapse's local-first SQLite (WAL) design should treat "agent runs inside a devcontainer with a bind-mounted volume" as a tested scenario, and should not assume a background daemon is safe to add without first validating socket/file behavior under bind mounts.
+
+## Claim PR07
+
+Date: 2026-09-29
+Status: supports
+Confidence: high
+
+Source:
+- Label: beads core-concepts/dependencies.md
+- URL: https://raw.githubusercontent.com/gastownhall/beads/main/docs/core-concepts/dependencies.md
+- Type: official docs
+- Fetched: yes
+
+Notes:
+- Dependency types split into blocking (`blocks` default, `parent-child`, `conditional-blocks`, `waits-for`) and non-blocking/annotation-only (`related`, `tracks`, `discovered-from`, `caused-by`, `validates`, `supersedes`). This is a materially richer, more precise taxonomy than the README's casual list (PR01) — always prefer the core-concepts doc over the README summary for beads' actual semantics.
+- `bd ready` algorithm, confirmed precisely: "An issue is ready when ALL of its blocking dependencies are closed" — a pure AND-closure over the blocking-type edges only; non-blocking edges are excluded from readiness computation entirely.
+- This is directly analogous to a query cynapse doesn't yet have: a "what needs my attention now" view over pending-answer state records / leases, filtered by dependency/blocking links. cynapse's design has `state` (leases, pending answers) but no described equivalent of a typed, filterable dependency graph across entries/streams for computing "ready work." Worth considering whether `refs` (gh:org/repo#12-style shorthands) should be typed enough to support a similar block/non-block distinction, since cynapse explicitly keeps issue tracking itself out of scope (owned by GitHub/Asana) — this may be a deliberate non-goal rather than a gap.
+
+## Claim PR08
+
+Date: 2026-09-29
+Status: mixed
+Confidence: medium
+
+Source:
+- Label: WebSearch aggregation ("beads compaction memory decay")
+- URL: https://betterstack.com/community/guides/ai/beads-issue-tracker-ai-agents/ (secondary) + general search snippets
+- Type: blog / secondary source
+- Fetched: snippet-only
+
+Notes (snippet-only, treat as low-confidence pending primary doc):
+- `bd compact` implements "agentic memory decay" — identifies closed issues older than a threshold (example cited: 30 days), uses an LLM to read full issue content and write a concise summary, replacing the full record to save context-window tokens on later `bd ready`/`bd list --json` calls.
+- This is a genuinely new idea relative to cynapse's design: cynapse's `views` (saved filters) and per-reader `cursor` narrow *which* entries a reader sees, but nothing in the described design shrinks the token cost of an individual old entry/stream itself. An LLM-summarization compaction pass over long-closed/reconciled streams is a concrete borrowable idea — gate it behind the stream's `lifecycle state` (e.g., only summarize streams already marked "reconciled").
+- Low confidence because not confirmed against beads' own primary docs/CHANGELOG in this session (WebFetch of the doc file wasn't attempted for `bd compact` specifically) — flag for follow-up if this becomes load-bearing for a cynapse decision.
+
+## Claim PR09
+
+Date: 2026-09-29
+Status: mixed
+Confidence: medium
+
+Source:
+- Label: WebSearch aggregation of beads multi-agent/contributor docs
+- URL: https://raw.githubusercontent.com/steveyegge/beads/main/README.md (README) + directory listing of docs/multi-agent/
+- Type: official docs (directory structure confirmed via `gh api`) + README text
+- Fetched: yes (README), directory listing yes, individual multi-agent .md files 404'd on raw fetch (path likely differs from listing due to redirect/case)
+
+Notes:
+- README: contributors on forks run `bd init --contributor` to route planning to a separate local repo (e.g. `~/.beads-planning`), keeping issue-tracking commits out of the PR diff sent upstream; maintainers are auto-detected via SSH/HTTPS credentials to allow shared planning without "PR contamination."
+- The beads repo now ships a whole `docs/multi-agent/` doc set with files named `bucket-federation.md`, `coordination.md`, `federation.md`, `routing.md`, `multi-repo-migration.md` — strong signal that multi-repo/multi-agent federation is a first-class, actively-developed concern for beads, not an afterthought. cynapse's design doc doesn't yet describe a federation/routing model across repos/hubs beyond "later a hub for multi-machine" — beads' need to build out 5 separate docs for this suggests it is a larger design surface than a single line implies.
+- The README also documents a "message issue type" with "threading (`--thread`), ephemeral lifecycle, and mail delegation" — i.e., beads bolted a lightweight messaging feature onto its issue tracker, the mirror image of cynapse's approach (a messaging layer that intentionally keeps issue-tracking out). This is useful validating evidence that the two concerns (structured work items vs. free-form agent messages) are frequently conflated by tool builders, and cynapse's explicit separation (routing issues to GitHub/Asana, owning only communication) is a considered position, not an oversight.
+
+## Claim PR10
+
+Date: 2026-09-29
+Status: supports
+Confidence: high
+
+Source:
+- Label: mcp_agent_mail README (WebFetch synthesis)
+- URL: https://raw.githubusercontent.com/Dicklesworthstone/mcp_agent_mail/main/README.md
+- Type: official docs
+- Fetched: yes
+
+Notes:
+- Data model: `projects` keyed by `id` + `human_key` (absolute path) + `slug`; `agents` keyed by `name` (adjective+noun) with `program`, `model`, `task_description`, `inception_ts`, `last_active_ts`, `registration_token`.
+- `messages` table: shared row per message (`id`, `project_id`, `sender_id`, `thread_id`, `subject`, `body_md` GFM, `created_ts`, `importance`, `ack_required`). Confirms cynapse's assumption that a single shared entry row + per-reader state is the natural design: mcp_agent_mail does NOT duplicate message bodies per recipient in its DB.
+- `message_recipients` is a separate table with `kind` (`to`/`cc`/`bcc`) and per-row `read_ts`/`ack_ts` — this is structurally identical in spirit to cynapse's proposed "entry" (shared, immutable) + "cursor"/"state" (per-reader read/unread, pending-answer) split. Direct validation of cynapse's core structural bet.
+
+## Claim PR11
+
+Date: 2026-09-29
+Status: mixed
+Confidence: high
+
+Source:
+- Label: mcp_agent_mail README (WebFetch synthesis)
+- URL: https://raw.githubusercontent.com/Dicklesworthstone/mcp_agent_mail/main/README.md
+- Type: official docs
+- Fetched: yes
+
+Notes:
+- Storage is dual: canonical Markdown files under `messages/YYYY/MM/{id}.md` with JSON frontmatter (fenced `---json...---`) committed to a per-project git repo, PLUS SQLite (with FTS5) as the query/index layer. Per-recipient human-readable *copies* also get written to `agents/{AgentName}/inbox/YYYY/MM/{msg-id}.md` and `.../outbox/...` — explicitly described as "for human auditability," derived from (not a second source of truth alongside) the canonical row + recipient state.
+- This is a hybrid: shared canonical row in SQLite (matches cynapse's entry model) PLUS git-archived, human-readable, append-only copies (which cynapse's stream/entry design doesn't have an analogue for — cynapse entries live only in SQLite). Git-archived markdown gives free human review, `git blame`/history, and diff-based auditing without touching the DB — a concrete borrowable idea for cynapse, at least optionally, since cynapse is local-first and already git-adjacent (the `cynapse` package itself lives in a git repo, and its agent-plugin skill layer would plausibly want a human-legible trail).
+- Caveat: this duplicates storage (git objects + SQLite rows) and requires keeping the two in sync — a source of the FD/commit-storm problems documented in PR14/PR15. Cynapse should treat "also archive to git" as an optional, batched, best-effort export, never a write-path dependency.
+
+## Claim PR12
+
+Date: 2026-09-29
+Status: supports
+Confidence: high
+
+Source:
+- Label: mcp_agent_mail README (WebFetch synthesis)
+- URL: https://raw.githubusercontent.com/Dicklesworthstone/mcp_agent_mail/main/README.md
+- Type: official docs
+- Fetched: yes
+
+Notes:
+- File reservations (leases): `file_reservation_paths(project_key, agent_name, paths[], ttl_seconds, exclusive, reason)`; stored in SQLite AND written as JSON artifacts under `file_reservations/{sha1-of-path}.json`; matched using "Git wildmatch pathspec semantics"; TTL auto-expiry plus explicit `released_ts`; stale locks recoverable via `doctor repair`.
+- This maps closely onto cynapse's `state` records described as "leases" — mcp_agent_mail's implementation confirms leases need: an explicit TTL, an explicit release timestamp (not just deletion), a documented pathspec-matching rule for what counts as "overlapping," and a repair/recovery tool for when a lease-holder dies without releasing. Cynapse's design doc doesn't yet mention TTL or a repair path for orphaned leases — worth adding explicitly.
+
+## Claim PR13
+
+Date: 2026-09-29
+Status: supports
+Confidence: high
+
+Source:
+- Label: mcp_agent_mail README (WebFetch synthesis)
+- URL: https://raw.githubusercontent.com/Dicklesworthstone/mcp_agent_mail/main/README.md
+- Type: official docs
+- Fetched: yes
+
+Notes:
+- Context-cost features aimed squarely at agent token budgets: `summarize_thread(project_key, thread_id, include_examples?)` extracts key points/actions/participants from a whole thread in one call; `fetch_inbox(..., since_ts?, urgent_only?, unread_only?, include_bodies?, limit?)` lets an agent fetch headers-only, only-unread, or only-urgent messages, explicitly to "cut token-burn for polling agents."
+- Threading: reply inherits sender's `thread_id`, or if absent, sets `thread_id` to the original message's own `id` (root-message-as-thread-id pattern) — a simple, cheap threading rule cynapse could adopt for entry's "parent entry" reply-tree: a reply with no parent could root a new thread whose thread-id is its own entry id. Cynapse's entry already has parent-entry linkage for a reply tree; deriving a `thread_id` as "walk parent chain to root" vs. storing a denormalized `thread_id` on write (mcp_agent_mail's choice) is a concrete tradeoff cynapse should decide explicitly — denormalizing avoids recursive parent-walks on every thread query.
+- Bare `unread_only=true` / `include_bodies=false` flags are the minimal, load-bearing feature for context-cost control — cynapse's `output(data, readable)` / `--json` convention plus per-reader `cursor` should ensure equivalent flags exist on any "list entries" command (fetch metadata-only, unread-only) from day one, not as a later optimization.
+
+## Claim PR14
+
+Date: 2026-09-29
+Status: contradicts
+Confidence: high
+
+Source:
+- Label: mcp_agent_mail_rust issue #317
+- URL: https://github.com/Dicklesworthstone/mcp_agent_mail_rust/issues/317
+- Type: issue thread
+- Fetched: yes
+
+Notes:
+- Reports **two SQLite corruption events in one evening, 2h44m apart**, from an 8-12 agent swarm writing concurrently on a single Linux host, running mcp_agent_mail_rust v0.3.31-0.3.35.
+- Forensic detail: "83 of 93 duplicated pages were simultaneously on the freelist and referenced by live B-trees, across 22 distinct B-trees" — a serious, structural SQLite corruption under concurrent write load, not a one-off disk error.
+- Load-bearing detail: the project's own hourly `.bak` files, produced via `sqlite3_backup` on a separate "canonical" SQLite path, verified clean (`integrity_check` ok) on databases that the actively-serving path had *just* corrupted moments earlier — i.e., the corruption is specifically a concurrency/locking defect in the serving code path (reportedly "FrankenSQLite," a custom variant), not a generic SQLite-under-WAL limitation.
+- Maintainer response: closed "not planned" — declined to add a runtime/compile-time switch to the plain canonical SQLite backend for serving, despite the reporter's evidence it doesn't corrupt.
+- **This is the single most important piece of evidence for cynapse's "SQLite (WAL) first" plan**: concurrent multi-agent write load (8-12 agents) against a shared local SQLite file is a demonstrated corruption risk in a directly comparable tool, and the fix path that worked (plain canonical SQLite + `sqlite3_backup`, avoiding a customized/forked SQLite engine) was rejected upstream for reasons unrelated to correctness. Cynapse should: (a) use stock, unmodified SQLite (not a custom fork/variant), (b) keep a single writer per stream (already true — "single order owner" assigns seq), and (c) test explicitly under >8 concurrent-agent write load before calling WAL-mode SQLite sufficient for the target scale.
+
+## Claim PR15
+
+Date: 2026-09-29
+Status: mixed
+Confidence: medium
+
+Source:
+- Label: mcp_agent_mail_rust release notes (WebSearch snippet)
+- URL: https://newreleases.io/project/github/Dicklesworthstone/mcp_agent_mail/release/v0.2.1
+- Type: issue thread / release notes
+- Fetched: snippet-only
+
+Notes (snippet-only):
+- "SQLite now uses NullPool to prevent FD exhaustion on macOS" and "improving LRU repo cache to prevent EMFILE errors under high concurrency" — both are file-descriptor exhaustion bugs triggered by scaling concurrent agent connections against the SQLite+git-archive combo.
+- A "commit coalescer batches archive updates so bursts of activity do not become commit storms" — i.e., the git-archival side (PR11) needed explicit batching to avoid one-git-commit-per-message under burst load. This directly supports treating git-archival as a batched, asynchronous, best-effort side effect (per PR11's caveat), not a synchronous per-entry write.
+- Confidence held at medium because sourced from a release-notes aggregator snippet rather than the primary changelog; the FD-exhaustion and commit-storm failure modes are plausible/consistent with PR14's broader "concurrency at scale breaks the naive local-file design" pattern, but exact wording/version isn't independently verified against Dicklesworthstone's own changelog file in this session.
+
+## Claim PR16
+
+Date: 2026-09-29
+Status: supports
+Confidence: high
+
+Source:
+- Label: AgentMail docs — Messages
+- URL: https://www.agentmail.to/docs/messages
+- Type: official docs
+- Fetched: yes
+
+Notes:
+- Message fields: `message_id`, `thread_id`, `to`/`cc`/`bcc`/`from`, `text`/`html`, `extracted_text`/`extracted_html` (quoted history and trailing signature/boilerplate stripped automatically), `subject`, `labels`, attachments array.
+- Threading rule, inherited from email semantics: sending an initial message creates a new `Thread`; a reply is "added to the existing `Thread`" — thread is the addressable/queryable unit, message is the leaf. This is structurally identical to what cynapse calls stream (ordered, addressable, has membership/metadata) vs. entry (leaf, immutable) — validates the two-level container/item model in general, independent of the specific field names.
+- AgentMail deliberately has **no explicit read/unread or ack field on the message row**; its own docs recommend simulating state via user-defined labels (`"read"`, `"unread"`) applied per message. This is a materially weaker state model than mcp_agent_mail's or cynapse's own per-reader `cursor`/state records: labels-as-state conflates categorization with read tracking, and (per the docs) doesn't obviously support multiple independent readers per inbox with independent read state. cynapse's explicit per-reader `cursor` is a stronger design than AgentMail's label hack for anything beyond a single-owner inbox.
+
+## Claim PR17
+
+Date: 2026-09-29
+Status: mixed
+Confidence: medium
+
+Source:
+- Label: AgentMail docs — Websockets/API reference
+- URL: https://www.agentmail.to/docs/api-reference/websockets
+- Type: official docs
+- Fetched: yes
+
+Notes:
+- Real-time event model: connect via `wss://ws.agentmail.to/v0?api_key=...`, subscribe to filtered event types (`message.received` + spam/blocked/unauthenticated variants, `message.sent/delivered/bounced/complained/rejected/opened`, `domain.verified`), filterable by up to 10 `inbox_id`s and 10 `pod_id`s; server acks with a `subscribed` confirmation, then streams events each carrying a unique `event_id`.
+- This is a fairly rich event taxonomy for a hosted product — cynapse's design doc doesn't yet specify a push/subscription mechanism at all (its CLI is presumably pull/poll via cursor). If cynapse ever wants live agent-to-agent notification (vs. poll-based cursor advancement), AgentMail's model — typed events, explicit subscription with bounded filter cardinality (max 10 ids), and a per-event unique id for idempotent client-side dedup — is a reasonable reference shape to copy rather than invent from scratch. Flagged mixed/medium because this is an API surface from a hosted SaaS, not something confirmed to run well at agent-swarm scale (no issue-thread evidence located either way for AgentMail specifically).
+
+## Claim PR18
+
+Date: 2026-09-29
+Status: mixed
+Confidence: low
+
+Source:
+- Label: WebSearch general (AgentMail data model, no deep primary doc for inbox/label internals)
+- URL: https://docs.agentmail.to/welcome (attempted, returned generic welcome text only)
+- Type: official docs
+- Fetched: yes (page fetched but contained no structural detail beyond a one-line description: "AgentMail is an API platform for giving AI agents their own inboxes to send, receive, and act upon emails.")
+
+Notes:
+- Could not confirm from primary docs in this session whether AgentMail inboxes store one row per (message, recipient) internally (classic email per-recipient-copy model) or a single canonical row with recipient lists (as PR16 suggests via `to`/`cc`/`bcc` arrays on one Message object). The public API's shape (arrays on a single Message object) is consistent with either internal storage; API shape alone doesn't resolve it. Flagging this as an open gap rather than asserting an answer — do not cite this claim as settling per-recipient-vs-shared for AgentMail specifically.
+
+## Claim PR19
+
+Date: 2026-09-29
+Status: supports
+Confidence: medium
+
+Source:
+- Label: beads core-concepts directory listing (via gh api, confirms doc structure) + CHANGELOG schema-version count (PR05)
+- URL: https://api.github.com/repos/gastownhall/beads/contents/docs/core-concepts
+- Type: source code / repo structure
+- Fetched: yes
+
+Notes:
+- Beads' own doc set separates `hash-ids.md`, `adaptive-ids.md`, `dependencies.md`, `graph-links.md`, `issues.md`, `labels.md`, `metadata.md`, `sync-concepts.md` as distinct top-level concepts — i.e., a mature version of this kind of tool ends up needing dedicated design docs for ID scheme, dependency graph, labels, and sync as separate concerns, not one paragraph each. This is process evidence (how much documentation surface a comparable tool needed once past "scaffold stage") rather than a technical claim, but it's a size/complexity signal cynapse should expect: sync semantics and ID semantics alone are likely to need their own dedicated design docs, not subsections of one page, once cynapse gets past scaffold stage.
+
+## Claim PR20
+
+Date: 2026-09-29
+Status: contradicts
+Confidence: medium
+
+Source:
+- Label: WebSearch snippet on beads issue #376 (title only, not fetched in full)
+- URL: https://github.com/gastownhall/beads/issues/376
+- Type: issue thread
+- Fetched: snippet-only (title captured via search: "I want to love Beads but the AI generated docs make it impossible")
+- Note: not independently fetched/read in full this session; title alone is suggestive, treat as weak signal.
+
+Notes:
+- Even a title-only signal is worth recording: a user-facing complaint that AI-generated documentation made a tool with a genuinely novel, non-obvious data model (Dolt-backed, hash-ID, dependency-graph issue tracker) hard to adopt. This is circumstantial evidence that a structurally sophisticated local-first agent-data-model tool needs unusually clear, hand-checked docs, not auto-generated ones, precisely because the storage/ID/sync model diverges from mainstream intuition (plain SQLite, sequential IDs, git-diffable text). Relevant to cynapse's own docs effort (`apps/web` Starlight site) once the stream/entry/seq model ships — the design is similarly non-obvious (UUIDv7 + per-stream seq assigned by a single order owner + anchor-entry branching) and will need the same care.
+
+
+## Claim LC04
+
+Date: 2026-09-28
+Status: supports
+Confidence: high
+
+Source:
+- Label: GitHub REST API — Notifications (thread object)
+- URL: https://docs.github.com/en/rest/activity/notifications
+- Type: official docs
+- Fetched: yes
+
+Notes:
+- A notification thread holds `subject {title, url, latest_comment_url, type}`, `reason` (15 values, e.g. `mention`, `review_requested`, `state_change`, `ci_activity`), `unread`, and `last_read_at`. Content stays in the issue or PR; the notification only references it.
+- Read state is per thread. "Anything updated since this time will not be marked as read." New activity after `last_read_at` makes a thread unread again.
+- Precedent for passing messages by reference, with read state kept per reader and per subject.
+
+## Claim LC05
+
+Date: 2026-09-28
+Status: supports
+Confidence: high
+
+Source:
+- Label: CloudEvents — dataref extension
+- URL: https://github.com/cloudevents/spec/blob/main/cloudevents/extensions/dataref.md
+- Type: spec
+- Fetched: yes
+
+Notes:
+- `dataref` is "a reference to a location where the event payload is stored", the claim-check pattern. It covers size, integrity, and access-control use cases.
+- Precedent for events that carry references instead of payloads.
+
+## Claim LC06
+
+Date: 2026-09-28
+Status: mixed
+Confidence: high
+
+Source:
+- Label: Asana tasks API (resource_subtype); GitHub organization issue types
+- URL: https://developers.asana.com/reference/tasks ; https://docs.github.com/en/issues/tracking-your-work-with-issues/configuring-issues/managing-issue-types-in-an-organization
+- Type: official docs
+- Fetched: yes
+
+Notes:
+- The Asana task `resource_subtype` is `default_task`, `milestone`, `approval`, or `custom`.
+- GitHub issue types are organization-wide. The defaults are task, bug, and feature, and an organization can create up to 25 custom types.
+- Both platforms let a project model initiatives and epics in more than one way. That is why the hierarchy is a convention a project overrides, not cynapse code.
+
+## Claim LC07
+
+Date: 2026-09-29
+Status: supports
+Confidence: high
+
+Source:
+- Label: buddy-agent-harness reference resolver, tested (PR repobuddy/buddy-agent-harness#193)
+- URL: https://github.com/repobuddy/buddy-agent-harness/pull/193
+- Type: source code plus a direct test
+- Fetched: yes (the CLI was built and run locally)
+
+Notes:
+- The project tier is `<root>/.agents/references/`. Names are flat (`^[a-z0-9]+(?:[-.][a-z0-9]+)*$`). A name shared by two plugins is an `ambiguous` error.
+- A project copy of `<name>` answers for `plug-a/<name>` and `plug-b/<name>` alike, and it hides the ambiguity error. A dotted prefix (`plug-a.<name>`) resolves correctly and can be overridden per plugin.
+- `merge: merge-sections` lets a project overlay individual sections of a plugin's reference.
+
+## Claim LC08
+
+Date: 2026-09-29
+Status: supports
+Confidence: high
+
+Source:
+- Label: cyber-truss model review, 2026-09-13 (intent obligation and arbitration)
+- URL: file:///home/unional/code/cyberuni/cyber-truss/docs/sessions/2026-09-13-model-review.md (lines 128-141)
+- Type: design notes (local)
+- Fetched: yes (read locally)
+
+Notes:
+- The answers are `agree`, `disagree`, `uncontested/yield`, and `request-recess`. The electorate is a lookup, small and local. Mutual objection goes to a person.
+- "An arbitrator has no span and therefore may not adjudicate: convene, carry answers, hold the wait, record, escalate." An arbitrator that can wake a peer can claim completeness; silence taken as consent fails open.
+- "cyber-net is durable, so the transcript is provenance; the decision still lands in the run record." (cyber-net is cynapse's earlier name.)
+
+## Claim LC09
+
+Date: 2026-09-29
+Status: supports
+Confidence: high
+
+Source:
+- Label: Direct verification of PR14 (mcp_agent_mail_rust #317) and PR03-PR05 (beads storage)
+- URL: https://github.com/Dicklesworthstone/mcp_agent_mail_rust/issues/317 ; https://github.com/steveyegge/beads (README)
+- Type: issue thread; official docs
+- Fetched: yes (via gh)
+
+Notes:
+- #317 (opened 2026-09-10, closed "not planned" 2026-09-11) asks to serve on stock SQLite instead of FrankenSQLite. It cites a corruption class across #152, #156, #213, #257, #278, #291, #298 and more. Hourly `sqlite3_backup` copies made through stock SQLite verify clean on databases the serving path had corrupted.
+- The beads README describes a "Distributed graph issue tracker for AI agents, powered by Dolt". It runs embedded Dolt (single writer) by default, or server mode for concurrent writers. It syncs via `bd dolt push/pull` to `refs/dolt/data`; `.beads/issues.jsonl` is an export.

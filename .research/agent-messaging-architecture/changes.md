@@ -35,3 +35,66 @@
   writer-minted IDs, the conversation as the partition unit, and state records for
   leases, presence, and approvals.
 - Triggered by: LG01–LG08, LG17, LG18, SY08, SY21, SY22, LC01, LC02.
+
+## 2026-09-28 (round 4): scope
+
+- What changed: cynapse is the communication layer. It owns only communication with no home
+  elsewhere, such as ledgers, discussions between agents, coordination, change feeds, leases
+  and presence, and read state. Everything else routes to the service of choice (GitHub,
+  Asana, Linear), which agents call directly. "Mail" is dropped as the organizing concept, and
+  so are provider adapters inside cynapse.
+- Why: the user corrected two overcorrections, first cynapse storing everything, then
+  cynapse storing nothing and indexing everything.
+- Conclusion changed materially: yes.
+- Triggered by: user direction; LC04 (GitHub notifications), LC05 (CloudEvents dataref).
+
+## 2026-09-28 (round 5): how the system is used
+
+- What changed: added routes, conventions, and stamps. `init-cynapse` is setup that is safe
+  to re-run, writing `.agents/cynapse.json`, an AGENTS.md block, and convention overlays.
+  Conventions are references fetched once per session, with IDs filled in at setup; the
+  separate runtime binding call is dropped. Each service plugin owns its own conventions.
+  Convention names carry a plugin prefix.
+- Why: the user wants unambiguous, customizable usage conventions pushed into deterministic
+  code, at one call per message type.
+- Conclusion changed materially: yes.
+- Triggered by: LC06, LC07; buddy-agent-harness#193.
+
+## 2026-09-29 (round 6): identity and structure
+
+- What changed: entry IDs are UUIDv7 (the standard, sortable by time), and `seq` is kept for
+  arrival order, gap detection, and `handle#seq` short references. Streams get UUID identity
+  (v5 from an anchor or natural key, otherwise v7) plus handles that can be renamed. Entries
+  form a `parent`/`root` reply tree. Namespaced types and tags; a tag added later arrives as
+  a label entry. Stream types are defined by consumers on top of generic traits. Child
+  streams attach through an anchor entry. Cleanup is a lifecycle state (`reconciled`) over a
+  distilled view, not a deletion.
+- Why: user questions on ULID versus UUIDv7, on dropping `seq`, on threading, on tags, on
+  stream IDs, and on distilled ledgers.
+- Conclusion changed materially: yes.
+- Triggered by: user direction; LG11, LG13.
+
+## 2026-09-29 (round 7): terms and domain neutrality
+
+- What changed: a glossary (participant, stream, entry, type, tag, anchor, view, state,
+  cursor). mission, workflow, and arbitration become examples, not core concepts. Definitions
+  corrected: a mission is one request (a feature or bug fix); a workflow is the propagation
+  of changes through artifact sets; arbitration is how workflow agents reach consensus, as a
+  child stream of one mission. The neural metaphor is kept for the brand only. Stream
+  metadata is an agent's briefing in one call.
+- Why: user clarification and requests.
+- Conclusion changed materially: yes, the terminology.
+- Triggered by: LC08.
+
+## 2026-09-29 (round 8): comparison with beads and agent mail
+
+- What changed: confirmed shared entry rows plus per-reader state (mcp_agent_mail). Added:
+  stock SQLite only, with the write transaction as the local order owner and no daemon; a
+  load test with 10 or more writers; `root` on entries; `handle#seq` short references,
+  because UUIDv7 prefixes collide; read flags for the context budget; mcp_agent_mail's lease
+  design; Dolt as a candidate for sync with no hub. Rejected beads and Dolt as backends
+  today; beads is a routing destination.
+- Why: the user asked for a structural and performance comparison with beads and agent mail,
+  and whether to use Dolt or beads as the backend.
+- Conclusion changed materially: yes, the additions above.
+- Triggered by: PR03-PR05, PR10, PR12-PR14, PR16, LC09.
