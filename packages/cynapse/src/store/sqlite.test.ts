@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { CynapseError } from '../cli-error.js'
 import { uuidv5, uuidv7 } from '../ids.js'
 import { openStore } from './open.js'
-import type { Store } from './types.js'
+import type { AppendInput, Store } from './types.js'
 
 let store: Store
 
@@ -13,6 +13,16 @@ beforeEach(() => {
 afterEach(() => {
 	store.close()
 })
+
+function captureError(fn: () => unknown): CynapseError {
+	try {
+		fn()
+	} catch (error) {
+		if (error instanceof CynapseError) return error
+		throw error
+	}
+	throw new Error('expected a CynapseError')
+}
 
 function mission(handle = 'auth') {
 	return store.createStream({ handle, type: 'sdd.mission', title: 'Add auth', author: 'alice' })
@@ -58,6 +68,18 @@ describe('streams', () => {
 		expect(store.entries('auth-v2').at(-1)?.type).toBe('cynapse.stream.renamed')
 	})
 
+	it('refuses a derived id reused with a different stream, naming the field', () => {
+		const dm = { handle: 'dm-a-b', type: 'cynapse.dm', title: 'DM', author: 'a', key: 'dm:a,b' }
+		store.createStream(dm)
+		store.renameStream('dm-a-b', 'dm-ab', 'a')
+		expect(store.createStream({ ...dm, author: 'b' }).handle).toBe('dm-ab')
+		const error = captureError(() => store.createStream({ ...dm, title: 'Other' }))
+		expect(error).toMatchObject({ code: 'id_conflict' })
+		expect(error.message).toContain('title')
+		expect(captureError(() => store.createStream({ ...dm, traits: { wake: true } })).message).toContain('traits')
+		expect(captureError(() => store.createStream({ ...dm, handle: 'dm-x' })).message).toContain('handle')
+	})
+
 	it('refuses a handle another stream holds', () => {
 		mission()
 		expect(() => mission()).toThrow(CynapseError)
@@ -94,6 +116,34 @@ describe('entries', () => {
 		mission()
 		const seqs = [1, 2, 3].map((n) => store.append('auth', { author: 'alice', type: 'note', body: `n${n}` }).seq)
 		expect(seqs).toEqual([2, 3, 4])
+	})
+
+	it('refuses the same id with a different payload, naming the first differing field', () => {
+		mission()
+		mission('other')
+		const id = uuidv7()
+		const write = { id, author: 'alice', type: 'note', body: 'once', tags: ['a.x', 'a.y'], data: { n: 1, m: 2 } }
+		store.append('auth', write)
+		// A retry with the same payload, keys and tags in another order, is the same write.
+		expect(store.append('auth', { ...write, tags: ['a.y', 'a.x'], data: { m: 2, n: 1 } }).seq).toBe(2)
+		// Labels added later do not make the retry look different.
+		store.addTags(id, ['a.z'], 'bob')
+		expect(store.append('auth', write).seq).toBe(2)
+		for (const [field, change] of [
+			['stream', {}],
+			['type', { type: 'other' }],
+			['body', { body: 'twice' }],
+			['data', { data: { n: 2 } }],
+			['tags', { tags: ['a.x'] }],
+			['refs', { refs: ['gh:o/r#1'] }],
+			['parent', { parent: 'auth#1' }],
+			['author', { author: 'bob' }],
+		] as [string, Partial<AppendInput>][]) {
+			const error = captureError(() => store.append(field === 'stream' ? 'other' : 'auth', { ...write, ...change }))
+			expect(error, field).toMatchObject({ code: 'id_conflict' })
+			expect(error.message, field).toContain(id)
+			expect(error.message, field).toContain(`differs in ${field}`)
+		}
 	})
 
 	it('treats re-appending the same id as a no-op', () => {

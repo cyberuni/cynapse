@@ -16,6 +16,13 @@ describe(exitCodeFor.name, () => {
 	})
 })
 
+describe(CynapseError.name, () => {
+	it('carries a machine-readable code when given one', () => {
+		expect(new CynapseError('clash', { code: 'id_conflict' }).code).toBe('id_conflict')
+		expect(new CynapseError('boom').code).toBeUndefined()
+	})
+})
+
 describe(renderCliError.name, () => {
 	it('renders the message alone', () => {
 		expect(renderCliError(new Error('no address found'))).toBe('no address found')

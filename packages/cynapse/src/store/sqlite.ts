@@ -1,6 +1,7 @@
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { DatabaseSync, type SQLInputValue } from 'node:sqlite'
+import { isDeepStrictEqual } from 'node:util'
 import { CynapseError } from '../cli-error.js'
 import { isUuid, timestampOf, uuidv5, uuidv7 } from '../ids.js'
 import { SCHEMA } from './schema.js'
@@ -63,6 +64,7 @@ interface EntryRow {
 	root: string | null
 	root_seq: number | null
 	refs: string
+	write_tags: string
 	body: string
 	data: string | null
 	recorded_at: string
@@ -82,7 +84,7 @@ interface StateRow {
 
 const ENTRY_SELECT = `
 	SELECT e.id, e.stream, s.handle, e.seq, e.author, e.type, e.parent, p.seq AS parent_seq,
-		e.root, r.seq AS root_seq, e.refs, e.body, e.data, e.recorded_at
+		e.root, r.seq AS root_seq, e.refs, e.tags AS write_tags, e.body, e.data, e.recorded_at
 	FROM entries e
 	JOIN streams s ON s.id = e.stream
 	LEFT JOIN entries p ON p.id = e.parent
@@ -150,7 +152,18 @@ export class SqliteStore implements Store {
 			const id = anchor ? uuidv5(anchor.id) : input.key ? uuidv5(input.key) : uuidv7(this.#clock())
 			// A derived id makes creation idempotent: two agents opening the same stream at
 			// once end up in one stream, not two.
-			if (this.#get('SELECT 1 AS found FROM streams WHERE id = ?', id)) return id
+			if (this.#get('SELECT 1 AS found FROM streams WHERE id = ?', id)) {
+				const field = this.#createConflict(id, input)
+				if (field) {
+					throw new CynapseError(
+						`stream id ${id} (derived from the ${anchor ? 'anchor' : 'key'}) already exists and differs in ${field}`,
+						{
+							code: 'id_conflict',
+						},
+					)
+				}
+				return id
+			}
 			const taken = this.#findStreamId(input.handle)
 			if (taken) throw new CynapseError(`stream handle "${input.handle}" is already taken`)
 			validateHandle(input.handle)
@@ -187,6 +200,19 @@ export class SqliteStore implements Store {
 			return id
 		})
 		return this.#requireStream(id)
+	}
+
+	/**
+	 * The first field in which a repeated create of a derived-id stream differs from the
+	 * stored stream. A handle still matches after a rename, since the old one is an alias.
+	 */
+	#createConflict(id: string, input: CreateStreamInput): string | undefined {
+		const stored = this.#get<StreamRow>('SELECT * FROM streams WHERE id = ?', id) as StreamRow
+		if (this.#findStreamId(input.handle) !== id) return 'handle'
+		if (stored.type !== input.type) return 'type'
+		if (stored.title !== input.title) return 'title'
+		if (!isDeepStrictEqual(JSON.parse(stored.traits), { ...DEFAULT_TRAITS, ...input.traits })) return 'traits'
+		return undefined
 	}
 
 	getStream(ref: string, options: { as?: string } = {}): Stream | undefined {
@@ -557,9 +583,14 @@ export class SqliteStore implements Store {
 			if (!isUuid(input.id)) throw new CynapseError(`entry id "${input.id}" is not a UUID`)
 			const existing = this.#findEntryRow(input.id)
 			if (existing) {
-				// Same id is the same write: a retry, not a new entry.
-				if (existing.stream !== streamId) {
-					throw new CynapseError(`entry ${input.id} already exists in stream ${existing.handle}`)
+				// Same id with the same payload is a retry, not a new entry. Same id with a
+				// different payload is a collision, and returning the stored entry would hide it.
+				const field = this.#appendConflict(existing, streamId, input)
+				if (field) {
+					throw new CynapseError(
+						`entry id ${input.id} is already used by ${existing.handle}#${existing.seq}, which differs in ${field}`,
+						{ code: 'id_conflict' },
+					)
 				}
 				return this.#toEntry(existing)
 			}
@@ -578,8 +609,8 @@ export class SqliteStore implements Store {
 		this.#ensureParticipant(input.author)
 		const seq = this.#lastSeq(streamId) + 1
 		this.#run(
-			`INSERT INTO entries (id, stream, seq, author, type, parent, root, refs, body, data, recorded_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			`INSERT INTO entries (id, stream, seq, author, type, parent, root, refs, tags, body, data, recorded_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			id,
 			streamId,
 			seq,
@@ -588,14 +619,32 @@ export class SqliteStore implements Store {
 			parent,
 			root,
 			JSON.stringify(input.refs ?? []),
+			JSON.stringify(normalizeTags(input.tags)),
 			input.body ?? '',
 			input.data === undefined ? null : JSON.stringify(input.data),
 			this.#now(),
 		)
-		for (const tag of new Set(input.tags ?? [])) {
+		for (const tag of normalizeTags(input.tags)) {
 			this.#run('INSERT INTO entry_tags (entry, tag) VALUES (?, ?)', id, tag)
 		}
 		return this.#toEntry(this.#findEntryRow(id) as EntryRow)
+	}
+
+	/** The first field in which a retried append differs from the stored entry, if any. */
+	#appendConflict(existing: EntryRow, streamId: string, input: AppendInput): string | undefined {
+		const parent = input.parent ? this.#requireEntryRow(input.parent).id : null
+		const checks: [string, unknown, unknown][] = [
+			['stream', existing.stream, streamId],
+			['author', existing.author, input.author],
+			['type', existing.type, input.type],
+			['parent', existing.parent, parent],
+			['body', existing.body, input.body ?? ''],
+			['data', existing.data === null ? undefined : JSON.parse(existing.data), input.data],
+			// Compared with the tags given at write time; labels added since do not count.
+			['tags', JSON.parse(existing.write_tags), normalizeTags(input.tags)],
+			['refs', JSON.parse(existing.refs), input.refs ?? []],
+		]
+		return checks.find(([, stored, given]) => !isDeepStrictEqual(stored, given))?.[0]
 	}
 
 	/**
@@ -823,4 +872,9 @@ function applyFilter(filter: ViewFilter, where: string[], params: SQLInputValue[
 		where.push(`e.author IN (${filter.authors.map(() => '?').join(', ')})`)
 		params.push(...filter.authors)
 	}
+}
+
+/** Tags as a set, in a stable order, so the same tags given in another order compare equal. */
+function normalizeTags(tags: string[] = []): string[] {
+	return [...new Set(tags)].sort()
 }

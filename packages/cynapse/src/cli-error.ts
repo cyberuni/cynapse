@@ -9,11 +9,14 @@ export const EXIT_USAGE = 2
 /** A failure the CLI raised deliberately, with an exit code a caller can branch on. */
 export class CynapseError extends Error {
 	readonly exitCode: number
+	/** A stable, machine-readable reason, such as `id_conflict`, for callers that branch on more than the exit code. */
+	readonly code?: string
 
-	constructor(message: string, options: { exitCode?: number; cause?: unknown } = {}) {
+	constructor(message: string, options: { exitCode?: number; cause?: unknown; code?: string } = {}) {
 		super(message, { cause: options.cause })
 		this.name = 'CynapseError'
 		this.exitCode = options.exitCode ?? EXIT_FAILURE
+		if (options.code) this.code = options.code
 	}
 }
 

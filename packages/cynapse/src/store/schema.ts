@@ -41,6 +41,8 @@ CREATE TABLE IF NOT EXISTS entries (
 	parent TEXT,
 	root TEXT,
 	refs TEXT NOT NULL,
+	-- the tags given at write time, sorted; the current set is in entry_tags
+	tags TEXT NOT NULL,
 	body TEXT NOT NULL,
 	data TEXT,
 	recorded_at TEXT NOT NULL,
