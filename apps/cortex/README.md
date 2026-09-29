@@ -75,7 +75,8 @@ What the Council wants to see and do, and where Cortex answers it.
      the asking entry, with the chosen option in its payload, and resolves the record;
    - ratify or override a decision (`R` / `O`) — appends a ratify or override
      entry in the decision's namespace (`truss.ratify` for a `truss.decision`,
-     `sdd.override` for an `sdd.decision`) as a reply to the decision.
+     `sdd.override` for an `sdd.decision`) as a reply to the decision. A decision is ruled on once; a second ruling gets a 409
+     (`already_ruled`), and the stream shows the ruling in place of the actions.
 10. **Keyboard throughout.** `j`/`k` move, `Enter` opens, `u` goes up to the parent
     stream, `Backspace` goes back, and `?` lists every key.
 

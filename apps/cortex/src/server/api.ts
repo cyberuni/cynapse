@@ -1,7 +1,7 @@
 // Cortex's HTTP API: JSON over a cynapse store. The UI uses it, and so can an agent —
 // every view the Council sees is one `curl` away ("robot mode").
 import { Hono } from 'hono'
-import { ActionError, answer, ruleOnDecision } from '../core/actions.ts'
+import { ActionError, answer, ruleOnDecision, rulings } from '../core/actions.ts'
 import { foldGraph } from '../core/graph.ts'
 import { hierarchy } from '../core/hierarchy.ts'
 import { members, waits } from '../core/members.ts'
@@ -18,6 +18,7 @@ export function createApi(store: Store, options: { participant?: string; port?: 
 	app.use('*', localOnly({ port: options.port }))
 
 	app.onError((err, c) => {
+		if (err instanceof ActionError && err.code) return c.json({ error: err.message, code: err.code }, 409)
 		if (err instanceof ActionError || err instanceof SyntaxError) return c.json({ error: err.message }, 400)
 		throw err
 	})
@@ -47,6 +48,7 @@ export function createApi(store: Store, options: { participant?: string; port?: 
 			pinned: stream.pinned.flatMap((seq) => store.entry(`${stream.handle}#${seq}`) ?? []),
 			views: store.views(stream.id).map((v) => v.name),
 			states: store.states({ stream: stream.id }),
+			rulings: rulings(store, stream.id),
 		})
 	})
 

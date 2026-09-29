@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { answer, ruleOnDecision } from './actions.ts'
+import { ActionError, answer, ruleOnDecision, rulings } from './actions.ts'
 import { createFixtureStore } from './fixture.ts'
 import { triage } from './triage.ts'
 
@@ -52,6 +52,20 @@ describe('ruleOnDecision', () => {
 		)
 	})
 
+	it('rules on a decision only once', () => {
+		const store = createFixtureStore()
+		ruleOnDecision(store, { ref: 'truss-auth#5', ruling: 'ratify' })
+		const second = () => ruleOnDecision(store, { ref: 'truss-auth#5', ruling: 'override', body: 'No.' })
+		expect(second).toThrow(/already ratified/)
+		try {
+			second()
+		} catch (err) {
+			expect(err).toBeInstanceOf(ActionError)
+			expect((err as ActionError).code).toBe('already_ruled')
+		}
+		expect(store.search({ types: ['truss.ratify', 'truss.override'] })).toHaveLength(1)
+	})
+
 	it('rules in the namespace of the decision', () => {
 		const entry = ruleOnDecision(createFixtureStore(), { ref: 'm-login#3', ruling: 'ratify' })
 		expect(entry.type).toBe('sdd.ratify')
@@ -61,5 +75,16 @@ describe('ruleOnDecision', () => {
 		expect(() => ruleOnDecision(createFixtureStore(), { ref: 'truss-auth#1', ruling: 'ratify' })).toThrow(
 			/not a decision/,
 		)
+	})
+})
+
+describe('rulings', () => {
+	it('maps each ruled decision in a stream to its ruling', () => {
+		const store = createFixtureStore()
+		const ruling = ruleOnDecision(store, { ref: 'truss-auth#5', ruling: 'override', body: 'Exempt legacy.' })
+		expect(rulings(store, 'truss-auth')).toEqual({
+			5: { seq: ruling.seq, type: 'truss.override', author: 'council', body: 'Exempt legacy.' },
+		})
+		expect(rulings(store, 'm-login')).toEqual({})
 	})
 })

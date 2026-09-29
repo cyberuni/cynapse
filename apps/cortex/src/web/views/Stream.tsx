@@ -16,6 +16,8 @@ type StreamInfo = {
 	pinned: Entry[]
 	views: string[]
 	states: StateRecord[]
+	/** The ruling on each ruled decision, by the decision's seq. */
+	rulings: Record<string, { seq: number; type: string; author: string; body: string }>
 }
 
 /** Orders entries as a reply tree: each root followed by its replies, depth-first. */
@@ -247,6 +249,12 @@ export function Stream(props: { handle: string; seq?: number; side?: string }) {
 		}
 	}, [current, props.handle])
 
+	/** A decision the Council can still rule on: one ruling per decision. */
+	const rulable = useCallback(
+		(e: Entry) => e.type.endsWith('.decision') && !info?.rulings[String(e.seq)],
+		[info?.rulings],
+	)
+
 	useKeys(
 		useMemo(
 			() => ({
@@ -272,11 +280,11 @@ export function Stream(props: { handle: string; seq?: number; side?: string }) {
 					current?.type.endsWith('.decision') &&
 					navigate({ view: 'provenance', handle: current.stream, seq: current.seq }),
 				a: () => current && openAsk.has(current.seq) && setAction({ seq: current.seq, kind: 'answer' }),
-				R: () => current?.type.endsWith('.decision') && setAction({ seq: current.seq, kind: 'ratify' }),
-				O: () => current?.type.endsWith('.decision') && setAction({ seq: current.seq, kind: 'override' }),
+				R: () => current && rulable(current) && setAction({ seq: current.seq, kind: 'ratify' }),
+				O: () => current && rulable(current) && setAction({ seq: current.seq, kind: 'override' }),
 				Escape: () => setAction(undefined),
 			}),
-			[info?.views, base, current, childAt, props.handle, props.side, openAsk],
+			[info?.views, base, current, childAt, props.handle, props.side, openAsk, rulable],
 		),
 	)
 
@@ -357,6 +365,7 @@ export function Stream(props: { handle: string; seq?: number; side?: string }) {
 					{shown.map(({ entry, depth }, i) => {
 						const child = childAt.get(entry.seq)
 						const isDecision = entry.type.endsWith('.decision')
+						const ruling = info.rulings[String(entry.seq)]
 						const askKey = openAsk.get(entry.seq)
 						return (
 							<div key={entry.id} style={{ marginLeft: `${depth * 1.5}rem` }}>
@@ -396,20 +405,30 @@ export function Stream(props: { handle: string; seq?: number; side?: string }) {
 											<Link className="inline" to={{ view: 'provenance', handle: entry.stream, seq: entry.seq }}>
 												<kbd>p</kbd> provenance
 											</Link>
-											<button
-												type="button"
-												className="inline"
-												onClick={() => setAction({ seq: entry.seq, kind: 'ratify' })}
-											>
-												<kbd>R</kbd> ratify
-											</button>
-											<button
-												type="button"
-												className="inline"
-												onClick={() => setAction({ seq: entry.seq, kind: 'override' })}
-											>
-												<kbd>O</kbd> override
-											</button>
+											{ruling ? (
+												<span className="ruling">
+													<TypeChip type={ruling.type} /> by {ruling.author} in{' '}
+													<RefText text={`${entry.stream}#${ruling.seq}`} />
+													{ruling.body ? <>: {ruling.body}</> : null}
+												</span>
+											) : (
+												<>
+													<button
+														type="button"
+														className="inline"
+														onClick={() => setAction({ seq: entry.seq, kind: 'ratify' })}
+													>
+														<kbd>R</kbd> ratify
+													</button>
+													<button
+														type="button"
+														className="inline"
+														onClick={() => setAction({ seq: entry.seq, kind: 'override' })}
+													>
+														<kbd>O</kbd> override
+													</button>
+												</>
+											)}
 										</div>
 									) : null}
 									{askKey && action?.seq !== entry.seq ? (

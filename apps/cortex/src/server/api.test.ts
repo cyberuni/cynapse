@@ -32,6 +32,22 @@ describe('api', () => {
 		expect(body.map((s: { handle: string }) => s.handle)).toEqual(['graph-identity'])
 	})
 
+	it('refuses a second ruling with 409 and shows the first on the stream', async () => {
+		const app = api()
+		const rule = (ruling: string) =>
+			app.request('/api/rule', {
+				method: 'POST',
+				body: JSON.stringify({ ref: 'truss-auth#5', ruling, body: 'x' }),
+				headers: { 'content-type': 'application/json' },
+			})
+		expect((await rule('ratify')).status).toBe(200)
+		const again = await rule('override')
+		expect(again.status).toBe(409)
+		expect(await again.json()).toMatchObject({ code: 'already_ruled' })
+		const info = await json(app.request('/api/streams/truss-auth'))
+		expect(info.rulings['5']).toMatchObject({ type: 'truss.ratify' })
+	})
+
 	it('404s an unknown stream', async () => {
 		expect((await api().request('/api/streams/nope')).status).toBe(404)
 	})
