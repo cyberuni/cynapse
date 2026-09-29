@@ -41,6 +41,17 @@ describe('ruleOnDecision', () => {
 		expect(entry).toMatchObject({ type: 'truss.override', body: 'Exempt legacy clients.' })
 	})
 
+	it('gives a ratify without a note a default body', () => {
+		const entry = ruleOnDecision(createFixtureStore(), { ref: 'truss-auth#5', ruling: 'ratify', body: ' ' })
+		expect(entry.body).toBe('Ratified.')
+	})
+
+	it('refuses an override without the Council outcome', () => {
+		expect(() => ruleOnDecision(createFixtureStore(), { ref: 'truss-auth#5', ruling: 'override', body: '' })).toThrow(
+			/needs the Council outcome/,
+		)
+	})
+
 	it('rules in the namespace of the decision', () => {
 		const entry = ruleOnDecision(createFixtureStore(), { ref: 'm-login#3', ruling: 'ratify' })
 		expect(entry.type).toBe('sdd.ratify')

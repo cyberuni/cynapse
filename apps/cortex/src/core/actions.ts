@@ -38,10 +38,12 @@ export function ruleOnDecision(
 ): Entry {
 	const decision = store.entry(input.ref)
 	if (!decision?.type.endsWith('.decision')) throw new ActionError(`${input.ref} is not a decision`)
+	const note = input.body?.trim()
+	if (input.ruling === 'override' && !note) throw new ActionError('an override needs the Council outcome')
 	return store.append(decision.streamId, {
 		author: COUNCIL,
 		type: `${decision.type.slice(0, -'.decision'.length)}.${input.ruling}`,
-		body: input.body ?? (input.ruling === 'ratify' ? 'Ratified.' : ''),
+		body: note || 'Ratified.',
 		parent: decision.id,
 	})
 }
