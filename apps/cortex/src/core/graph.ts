@@ -1,7 +1,7 @@
 // Folds an `sdd.mission-graph` stream into a DAG at any point in its history.
 import type { Entry } from './model.ts'
 
-export type NodeStatus = 'blocked' | 'ready' | 'claimed' | 'retired'
+type NodeStatus = 'blocked' | 'ready' | 'claimed' | 'retired'
 
 export type GraphNode = {
 	id: string

@@ -2,7 +2,7 @@
 // from the contract agreed with cynapse-core. Cortex derives every view from these,
 // so the fixture and the real store are interchangeable behind `Store`.
 
-export type Member = {
+type Member = {
 	participant: string
 	role: string
 	/** The last `seq` this member has read; 0 when nothing is read. */

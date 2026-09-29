@@ -27,6 +27,11 @@ describe('api', () => {
 		expect(login.views).toEqual(['distilled'])
 	})
 
+	it('lists streams, optionally by type', async () => {
+		const body = await json(api().request('/api/streams?type=sdd.mission-graph'))
+		expect(body.map((s: { handle: string }) => s.handle)).toEqual(['graph-identity'])
+	})
+
 	it('404s an unknown stream', async () => {
 		expect((await api().request('/api/streams/nope')).status).toBe(404)
 	})

@@ -2,7 +2,7 @@
 // truss mission → its arbitrations. Each node rolls up its subtree.
 import type { Store, Stream } from './model.ts'
 
-export type Rollup = {
+type Rollup = {
 	unread: number
 	needsInput: number
 	pendingAnswers: number

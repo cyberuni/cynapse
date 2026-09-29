@@ -23,6 +23,8 @@ export function createApi(store: Store, participant = COUNCIL) {
 	app.get('/tree', (c) => c.json(hierarchy(store, participant)))
 	app.get('/waits', (c) => c.json(waits(store)))
 
+	app.get('/streams', (c) => c.json(store.listStreams({ type: c.req.query('type') || undefined })))
+
 	app.get('/streams/:handle', (c) => {
 		const stream = store.getStream(c.req.param('handle'))
 		if (!stream) return c.json({ error: `unknown stream: ${c.req.param('handle')}` }, 404)

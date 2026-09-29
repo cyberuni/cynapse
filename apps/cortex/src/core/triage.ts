@@ -1,7 +1,7 @@
 // The landing view: what needs the Council's hands.
 import type { Store } from './model.ts'
 
-export type NeedsInput = {
+type NeedsInput = {
 	handle: string
 	title: string
 	/** State key, used to resolve the record. */
@@ -13,7 +13,7 @@ export type NeedsInput = {
 	createdAt: string
 }
 
-export type PendingArbitration = {
+type PendingArbitration = {
 	handle: string
 	title: string
 	waiting: string[]
@@ -21,7 +21,7 @@ export type PendingArbitration = {
 	anchor?: string
 }
 
-export type UnreadCount = { handle: string; title: string; type: string; count: number }
+type UnreadCount = { handle: string; title: string; type: string; count: number }
 
 export type Triage = { needsInput: NeedsInput[]; arbitrations: PendingArbitration[]; unread: UnreadCount[] }
 
