@@ -27,6 +27,14 @@ running Cortex with Playwright and the system Chrome.
 
 Cortex reads and writes as the participant `council`.
 
+![Triage](docs/screenshots/triage.png)
+
+More views, captured on the database `cynapse dev seed` produces:
+[hierarchy](docs/screenshots/hierarchy.png),
+[stream timeline](docs/screenshots/stream-timeline.png),
+[provenance](docs/screenshots/provenance.png),
+[mission graph](docs/screenshots/mission-graph.png).
+
 ## Use cases
 
 What the Council wants to see and do, and where Cortex answers it.
