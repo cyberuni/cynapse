@@ -9,6 +9,9 @@ const H = 70
 const GAP_X = 70
 const GAP_Y = 24
 
+/** Keeps SVG text inside a node box, which cannot wrap. */
+const clip = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 1)}…` : text)
+
 function layout(nodes: GraphNode[]) {
 	const layers = new Map<number, GraphNode[]>()
 	for (const n of nodes) layers.set(n.layer, [...(layers.get(n.layer) ?? []), n])
@@ -107,7 +110,7 @@ export function Graph(props: { handle: string; at?: number }) {
 				</p>
 			) : null}
 			<div className="legend">
-				{(['ready', 'claimed', 'retired', 'blocked', 'tombstoned'] as const).map((s) => (
+				{(['ready', 'claimed', 'retired', 'blocked', 'open', 'tombstoned'] as const).map((s) => (
 					<span key={s} className={`pill node-${s}`}>
 						{counts[s] ?? 0} {s}
 					</span>
@@ -150,16 +153,14 @@ export function Graph(props: { handle: string; at?: number }) {
 								<title>{[n.id, n.why].filter(Boolean).join(' — ')}</title>
 								<rect width={W} height={H} rx={8} />
 								<text x={10} y={22} className="node-title">
-									{n.title}
+									{clip(n.title, 24)}
 								</text>
 								<text x={10} y={42} className="node-sub">
-									{n.status}
-									{n.by ? ` · ${n.by}` : ''}
-									{n.outcome ? ` · ${n.outcome}` : ''}
+									{clip([n.status, n.by, n.outcome].filter(Boolean).join(' · '), 28)}
 								</text>
 								{n.stream ? (
 									<text x={10} y={58} className="node-sub">
-										{n.stream}
+										{clip(n.stream, 28)}
 									</text>
 								) : null}
 							</g>

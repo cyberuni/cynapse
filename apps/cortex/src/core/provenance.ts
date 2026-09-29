@@ -25,10 +25,16 @@ export function provenance(store: Store, ref: string): Provenance | undefined {
 	const seen = new Set<string>([decision.id, ...(anchor ? [anchor.id] : []), ...transcript.map((e) => e.id)])
 	const contributions: Entry[] = []
 	for (const source of [...(anchor ? [anchor] : []), ...transcript, decision]) {
-		for (const r of source.refs) {
-			if (r.startsWith('gh:')) continue
+		const ids = source.data?.contributions
+		const pointers = [
+			...source.refs,
+			...(Array.isArray(ids) ? ids.filter((i): i is string => typeof i === 'string') : []),
+		]
+		for (const r of pointers) {
+			// A scheme ref (gh:, npm:, https:) points outside cynapse.
+			if (/^[a-z]+:/.test(r)) continue
 			const found = store.entry(r)
-			if (found && !seen.has(found.id)) {
+			if (found && !found.type.startsWith('cynapse.') && !seen.has(found.id)) {
 				seen.add(found.id)
 				contributions.push(found)
 			}

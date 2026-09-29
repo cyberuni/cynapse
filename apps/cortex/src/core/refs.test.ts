@@ -14,12 +14,27 @@ describe('linkRef', () => {
 		expect(linkRef('gh:cyberuni/cynapse').href).toBe('https://github.com/cyberuni/cynapse')
 	})
 
+	it('links GitHub commits and branches', () => {
+		expect(linkRef('gh:cyberuni/cyber-truss@a1b2c3d').href).toBe(
+			'https://github.com/cyberuni/cyber-truss/commit/a1b2c3d',
+		)
+		expect(linkRef('gh:cyberuni/cyber-truss:fix/pagination').href).toBe(
+			'https://github.com/cyberuni/cyber-truss/tree/fix/pagination',
+		)
+	})
+
+	it('links npm, Asana, and plain URLs', () => {
+		expect(linkRef('npm:cynapse').href).toBe('https://www.npmjs.com/package/cynapse')
+		expect(linkRef('asana:12345').href).toBe('https://app.asana.com/0/0/12345')
+		expect(linkRef('https://example.com/x').href).toBe('https://example.com/x')
+	})
+
 	it('deep-links an entry shorthand inside Cortex', () => {
 		expect(linkRef('m-login#3')).toEqual({ text: 'm-login#3', href: '/s/m-login#3', external: false })
 	})
 
 	it('leaves an unknown shorthand as text', () => {
-		expect(linkRef('asana:12345')).toEqual({ text: 'asana:12345' })
+		expect(linkRef('jira:ABC-1')).toEqual({ text: 'jira:ABC-1' })
 	})
 })
 

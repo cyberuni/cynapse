@@ -31,6 +31,17 @@ describe('foldGraph', () => {
 		expect(graph.nodes.find((n) => n.id === 'sso')).toMatchObject({ status: 'tombstoned', outcome: 'out of scope' })
 	})
 
+	it('shows an operation as open rather than blocked', () => {
+		const store = createFixtureStore()
+		store.append('graph-identity', {
+			author: 'planner',
+			type: 'sdd.graph.node',
+			body: 'op',
+			data: { node: 'op-identity', kind: 'operation', title: 'Identity', status: 'open' },
+		})
+		expect(foldGraph(store.entries('graph-identity')).nodes.at(-1)?.status).toBe('open')
+	})
+
 	it('keeps the edge kind', () => {
 		expect(foldGraph(graphEntries()).edges).toContainEqual({ from: 'login', to: 'refresh', kind: 'RAW' })
 	})

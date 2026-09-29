@@ -16,6 +16,26 @@ describe('provenance', () => {
 		expect(trail?.contributions.map((e) => `${e.stream}#${e.seq}`)).toEqual(['truss-auth#1', 'truss-auth#2'])
 	})
 
+	it('follows contribution ids in the anchor payload and skips meta entries', () => {
+		const store = createFixtureStore()
+		const contribution = store.entry('truss-auth#3')
+		const anchor = store.append('truss-auth', {
+			author: 'impl-writer',
+			type: 'truss.arbitration-needed',
+			body: 'again',
+			data: { contributions: [contribution?.id] },
+		})
+		const decision = store.append('truss-auth', {
+			author: 'spec-writer',
+			type: 'truss.decision',
+			body: 'd',
+			parent: anchor.id,
+			refs: ['arb-auth-rotation#4'],
+		})
+		const trail = provenance(store, `truss-auth#${decision.seq}`)
+		expect(trail?.contributions.map((e) => `${e.stream}#${e.seq}`)).toEqual(['truss-auth#3'])
+	})
+
 	it('gives a decision without arbitration just its replies', () => {
 		const trail = provenance(createFixtureStore(), 'm-login#3')
 		expect(trail?.arbitration).toBeUndefined()

@@ -158,17 +158,19 @@ export function Triage() {
 							) : null}
 						</div>
 						<div className="entry-body">
-							{a.split ? <span className="pill alert">answers split</span> : null}
-							waiting on{' '}
 							{a.waiting.length ? (
-								a.waiting.map((w) => (
-									<span key={w} className="pill warn">
-										{w}
-									</span>
-								))
+								<>
+									waiting on{' '}
+									{a.waiting.map((w) => (
+										<span key={w} className="pill warn">
+											{w}
+										</span>
+									))}
+								</>
 							) : (
-								<span className="muted">nobody</span>
-							)}
+								<span className="muted">every answer is in</span>
+							)}{' '}
+							{a.split ? <span className="pill alert">answers split</span> : null}
 						</div>
 					</div>
 				))}
