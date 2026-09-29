@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createFixtureStore } from './fixture.ts'
-import { provenance } from './provenance.ts'
+import { payloadIdRefs, provenance } from './provenance.ts'
 
 describe('provenance', () => {
 	it('walks a decision to its anchor, arbitration transcript, and contributions', () => {
@@ -45,5 +45,19 @@ describe('provenance', () => {
 
 	it('is undefined for an unknown entry', () => {
 		expect(provenance(createFixtureStore(), 'm-login#999')).toBeUndefined()
+	})
+})
+
+describe('payloadIdRefs', () => {
+	it('resolves entry ids anywhere in a payload to handle#seq', () => {
+		const store = createFixtureStore()
+		const target = store.entry('truss-auth#2')
+		const entry = store.append('coord', {
+			author: 'operator',
+			type: 'coord.message',
+			body: 'see',
+			data: { from: target?.id, many: [target?.id, 'not-an-id'], level: 'patch' },
+		})
+		expect(payloadIdRefs(store, [entry])).toEqual({ [target?.id ?? '']: 'truss-auth#2' })
 	})
 })

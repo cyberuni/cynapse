@@ -18,6 +18,8 @@ type StreamInfo = {
 	states: StateRecord[]
 	/** The ruling on each ruled decision, by the decision's seq. */
 	rulings: Record<string, { seq: number; type: string; author: string; body: string }>
+	/** Entry ids in payloads, as `handle#seq`. */
+	idRefs: Record<string, string>
 }
 
 /** Orders entries as a reply tree: each root followed by its replies, depth-first. */
@@ -369,7 +371,7 @@ export function Stream(props: { handle: string; seq?: number; side?: string }) {
 						const askKey = openAsk.get(entry.seq)
 						return (
 							<div key={entry.id} style={{ marginLeft: `${depth * 1.5}rem` }}>
-								<EntryLine entry={entry} selected={i === index}>
+								<EntryLine entry={entry} selected={i === index} idRefs={info.idRefs}>
 									{child ? (
 										<div className="anchor-box">
 											⤷ child stream <TypeChip type={child.type} />{' '}

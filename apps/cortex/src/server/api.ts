@@ -6,7 +6,7 @@ import { foldGraph } from '../core/graph.ts'
 import { hierarchy } from '../core/hierarchy.ts'
 import { members, waits } from '../core/members.ts'
 import { COUNCIL, type Store } from '../core/model.ts'
-import { provenance } from '../core/provenance.ts'
+import { payloadIdRefs, provenance } from '../core/provenance.ts'
 import { triage } from '../core/triage.ts'
 import { localOnly } from './guard.ts'
 
@@ -49,6 +49,7 @@ export function createApi(store: Store, options: { participant?: string; port?: 
 			views: store.views(stream.id).map((v) => v.name),
 			states: store.states({ stream: stream.id }),
 			rulings: rulings(store, stream.id),
+			idRefs: payloadIdRefs(store, store.entries(stream.id)),
 		})
 	})
 
