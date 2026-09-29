@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { renderRef } from './refs.js'
 
@@ -29,4 +30,9 @@ describe(renderRef.name, () => {
 		expect(renderRef('truss-auth#4')).toEqual({ ref: 'truss-auth#4', markdown: '`truss-auth#4`' })
 		expect(renderRef('jira:ABC-1')).toEqual({ ref: 'jira:ABC-1', markdown: '`jira:ABC-1`' })
 	})
+})
+
+it('stays importable in a browser: the cynapse/refs entry imports nothing', () => {
+	const source = readFileSync(new URL('./refs.ts', import.meta.url), 'utf8')
+	expect(source).not.toMatch(/^import /m)
 })
