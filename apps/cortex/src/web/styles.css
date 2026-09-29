@@ -535,3 +535,15 @@ button.option {
 	font-size: 12px;
 	color: var(--muted);
 }
+.graph-tabs .tab {
+	font-family: var(--mono);
+	font-size: 12px;
+	padding: 2px 10px;
+	border: 1px solid var(--line);
+	border-radius: 6px;
+	color: var(--muted);
+}
+.graph-tabs .tab.active {
+	color: var(--text);
+	border-color: var(--accent);
+}

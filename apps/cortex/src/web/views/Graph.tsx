@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react'
 import type { GraphNode, MissionGraph } from '../../core/graph.ts'
-import type { Entry } from '../../core/model.ts'
+import type { Entry, Stream } from '../../core/model.ts'
 import { Link, Loading, RefText } from '../components.tsx'
 import { navigate, useApi, useKeys, useListNav } from '../data.ts'
 
@@ -29,6 +29,7 @@ function layout(nodes: GraphNode[]) {
 export function Graph(props: { handle: string; at?: number }) {
 	const at = props.at !== undefined ? `?at=${props.at}` : ''
 	const { data, error } = useApi<MissionGraph>(`/api/graph/${encodeURIComponent(props.handle)}${at}`)
+	const { data: graphs } = useApi<Stream[]>('/api/streams?type=sdd.mission-graph')
 	const { data: entries } = useApi<Entry[]>(`/api/streams/${encodeURIComponent(props.handle)}/entries`)
 	const nodes = data?.nodes ?? []
 	const open = useCallback(
@@ -54,15 +55,26 @@ export function Graph(props: { handle: string; at?: number }) {
 		},
 		[steps, props.handle],
 	)
+	const switchGraph = useCallback(
+		(delta: number) => {
+			if (!graphs?.length) return
+			const at = graphs.findIndex((g) => g.handle === props.handle)
+			const next = graphs[(at + delta + graphs.length) % graphs.length]
+			if (next && next.handle !== props.handle) navigate({ view: 'graph', handle: next.handle })
+		},
+		[graphs, props.handle],
+	)
 	useKeys(
 		useMemo(
 			() => ({
+				'<': () => switchGraph(-1),
+				'>': () => switchGraph(1),
 				'[': () => go(stepIndex - 1),
 				']': () => go(stepIndex + 1),
 				'{': () => go(0),
 				'}': () => go(steps.length - 1),
 			}),
-			[go, stepIndex, steps.length],
+			[go, stepIndex, steps.length, switchGraph],
 		),
 	)
 
@@ -76,6 +88,24 @@ export function Graph(props: { handle: string; at?: number }) {
 			<h1>
 				Mission graph <span className="muted">— {props.handle}</span>
 			</h1>
+			{graphs && graphs.length > 1 ? (
+				<nav className="toolbar graph-tabs" aria-label="mission graphs">
+					{graphs.map((g) => (
+						<Link
+							key={g.handle}
+							to={{ view: 'graph', handle: g.handle }}
+							className={g.handle === props.handle ? 'tab active' : 'tab'}
+							title={g.title}
+						>
+							{g.handle}
+						</Link>
+					))}
+					<span className="muted">
+						<kbd>{'<'}</kbd>
+						<kbd>{'>'}</kbd> switch graph
+					</span>
+				</nav>
+			) : null}
 			<div className="toolbar">
 				<button type="button" onClick={() => go(0)} disabled={stepIndex <= 0}>
 					<kbd>{'{'}</kbd> first

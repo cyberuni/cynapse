@@ -32,6 +32,7 @@ const HELP: [string, string][] = [
 	['R  O', 'ratify / override the selected decision'],
 	['r', 'mark the stream read'],
 	['[ ]  { }', 'step the graph history'],
+	['<  >', 'previous / next mission graph'],
 	['Backspace', 'back'],
 	['?', 'this help'],
 ]
