@@ -41,6 +41,11 @@ describe('ruleOnDecision', () => {
 		expect(entry).toMatchObject({ type: 'truss.override', body: 'Exempt legacy clients.' })
 	})
 
+	it('rules in the namespace of the decision', () => {
+		const entry = ruleOnDecision(createFixtureStore(), { ref: 'm-login#3', ruling: 'ratify' })
+		expect(entry.type).toBe('sdd.ratify')
+	})
+
 	it('refuses to rule on something that is not a decision', () => {
 		expect(() => ruleOnDecision(createFixtureStore(), { ref: 'truss-auth#1', ruling: 'ratify' })).toThrow(
 			/not a decision/,

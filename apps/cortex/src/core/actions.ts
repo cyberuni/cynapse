@@ -40,7 +40,7 @@ export function ruleOnDecision(
 	if (!decision?.type.endsWith('.decision')) throw new ActionError(`${input.ref} is not a decision`)
 	return store.append(decision.streamId, {
 		author: COUNCIL,
-		type: `truss.${input.ruling}`,
+		type: `${decision.type.slice(0, -'.decision'.length)}.${input.ruling}`,
 		body: input.body ?? (input.ruling === 'ratify' ? 'Ratified.' : ''),
 		parent: decision.id,
 	})

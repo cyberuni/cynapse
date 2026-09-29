@@ -65,8 +65,9 @@ What the Council wants to see and do, and where Cortex answers it.
    - mark a stream read (`r`) — moves the Council's cursor;
    - answer a needs-input or escalation (`a`) — appends `council.answer` as a reply to
      the asking entry, with the chosen option in its payload, and resolves the record;
-   - ratify or override a decision (`R` / `O`) — appends `truss.ratify` or
-     `truss.override` as a reply to the decision.
+   - ratify or override a decision (`R` / `O`) — appends a ratify or override
+     entry in the decision's namespace (`truss.ratify` for a `truss.decision`,
+     `sdd.override` for an `sdd.decision`) as a reply to the decision.
 10. **Keyboard throughout.** `j`/`k` move, `Enter` opens, `u` goes up to the parent
     stream, `Backspace` goes back, and `?` lists every key.
 
