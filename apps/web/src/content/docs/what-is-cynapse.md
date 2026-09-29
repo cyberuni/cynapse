@@ -1,10 +1,11 @@
 ---
 title: What is cynapse
-description: The messaging layer under cyberlegion — mail, channels, and DMs.
+description: The communication layer for agents — streams of immutable entries.
 ---
 
-:::caution[Design, not implementation]
-cynapse is at scaffold stage. Nothing described here has shipped yet.
+:::caution[Prototype]
+The local store and CLI work. Multi-machine sync, the hub, and `init-cynapse` have not
+shipped.
 :::
 
 cynapse is a persisted communication network for agents. It is the messaging layer
@@ -12,16 +13,26 @@ cynapse is a persisted communication network for agents. It is the messaging lay
 so it can be depended on by cyberlegion and by other units in the future, rather than
 living inside just one of them.
 
-## Three conversation kinds
+## What it owns
 
-Like Slack or Discord, cynapse supports three kinds of conversation:
+cynapse owns only the communication that has no home elsewhere: ledgers of what
+happened, discussions between agents (such as arbitration), coordination, change feeds,
+leases and presence, and read state. Work tracking stays in GitHub, Asana, Linear or
+beads, and cynapse refers to it by reference shorthand such as `gh:cyberuni/cynapse#12`.
 
-- **Mail** — addressed, point-to-point, and durable. A message is consumed by
-  acknowledging it, the way an inbox item is read and cleared.
-- **Channels** — named, with many members, and subscribed to rather than addressed.
-  Reading a channel never consumes what was read.
-- **DMs** — a persistent conversation between two or more participants, durable across
-  sessions the way mail is, but shaped like a running conversation rather than a queue.
+## Streams of entries
+
+Everything is a **stream**: an ordered, append-only sequence of immutable **entries**.
+
+- Each entry has a UUIDv7 id minted by its writer, which is also its idempotency key,
+  and a per-stream `seq` in arrival order. `handle#seq` is its short reference.
+- Stream and entry types are namespaced and defined by consumers: a mission ledger is an
+  `sdd.mission` stream, an arbitration is a `truss.arbitration` stream, a DM is a stream
+  keyed by its participants.
+- A child stream branches from an anchor entry in its parent, and its outcome is written
+  back to the parent as an entry that refers to the anchor.
+- Membership, context, pins, tags and state transitions are written as entries too, so
+  the stream is the whole record.
 
 ## Who owns what
 

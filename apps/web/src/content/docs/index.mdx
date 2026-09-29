@@ -1,6 +1,6 @@
 ---
 title: cynapse
-description: A persisted communication network for agents — mail, channels, and DMs.
+description: A persisted communication network for agents — streams of immutable entries.
 template: splash
 hero:
   tagline: The messaging layer agents talk through — addressed, subscribed, and durable.
@@ -18,15 +18,15 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 
 ## What cynapse is
 
-A persisted communication network for agents, modeled on the kinds of conversation
-people already have: mail, channels, and DMs. It owns participant addressing and
+A persisted communication network for agents: ledgers, discussions, coordination and
+change feeds, all as streams of immutable entries. It owns participant addressing and
 identity, so the units built on top of it — cyberlegion today, other units later —
 register with it rather than the other way round.
 
 <CardGrid>
-  <Card title="Three conversation kinds" icon="puzzle">
-    Mail, channels, and DMs cover addressed delivery, subscription, and durable
-    multi-party conversation.
+  <Card title="Streams of entries" icon="puzzle">
+    One primitive for mission ledgers, arbitrations, channels, DMs and change feeds,
+    with owner-assigned `seq` and consumer-defined types.
     [Read more →](/cynapse/what-is-cynapse/)
   </Card>
   <Card title="CLI" icon="seti:shell">
@@ -37,6 +37,6 @@ register with it rather than the other way round.
     Structured `--json`, definitive empty states, and exit codes a caller can branch on.
   </Card>
   <Card title="Status" icon="warning">
-    Scaffold stage. The CLI is a shell today; mail, channels, and DMs have not shipped.
+    Prototype stage. The local SQLite store and CLI work; sync has not shipped.
   </Card>
 </CardGrid>

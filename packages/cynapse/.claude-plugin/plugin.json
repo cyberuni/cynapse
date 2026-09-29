@@ -3,7 +3,7 @@
 	"name": "cynapse",
 	"displayName": "Cynapse",
 	"version": "0.0.0",
-	"description": "A persisted communication network for agents — mail, channels, and DMs",
+	"description": "A persisted communication network for agents — streams of immutable entries",
 	"author": { "name": "unional" },
 	"homepage": "https://github.com/cyberuni/cynapse",
 	"repository": "https://github.com/cyberuni/cynapse",

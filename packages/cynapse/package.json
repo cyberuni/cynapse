@@ -1,7 +1,7 @@
 {
 	"name": "cynapse",
 	"version": "0.0.0",
-	"description": "A persisted communication network for agents — mail, channels, and DMs",
+	"description": "A persisted communication network for agents — streams of immutable entries",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/cyberuni/cynapse.git"
