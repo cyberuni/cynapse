@@ -7,6 +7,10 @@
 		"apps/web": {
 			"entry": ["src/**/*.{astro,ts,mdx}"],
 			"project": ["src/**/*.{astro,ts,mdx}"]
+		},
+		"apps/cortex": {
+			"entry": ["scripts/*.ts"],
+			"project": ["src/**/*.{ts,tsx}", "scripts/*.ts"]
 		}
 	}
 }

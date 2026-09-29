@@ -128,6 +128,7 @@ pnpm verify                     # lint + build + typecheck + test + knip
 pnpm build                      # compile to dist/
 pnpm cynapse dev --help         # run the CLI from source (tsx)
 pnpm web dev                    # run the docs site locally
+pnpm cortex dev                 # run Cortex, the Council's viewer (see apps/cortex/README.md)
 ```
 
 `pnpm cynapse <script>` is the root shortcut for `pnpm run --filter=./packages/cynapse <script>`.
@@ -137,6 +138,7 @@ pnpm web dev                    # run the docs site locally
 ```
 packages/cynapse/ the npm package and the plugin root
 apps/web/         Astro + Starlight docs site, deployed to GitHub Pages
+apps/cortex/      Cortex, the Council's web viewer for cynapse streams (private)
 scripts/          repo maintenance scripts
 ```
 
