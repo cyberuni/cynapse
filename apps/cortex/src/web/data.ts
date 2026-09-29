@@ -60,16 +60,21 @@ function isTyping(event: KeyboardEvent) {
 	return !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
 }
 
+/** Keeps a selection inside a list of `count` items, and at 0 while the list is empty. */
+export function clampIndex(index: number, count: number) {
+	return Math.max(0, Math.min(index, count - 1))
+}
+
 /** j/k (and arrows) move through a list, Enter opens the selected item. */
 export function useListNav(count: number, onOpen: (index: number) => void, initial = 0) {
 	const [index, setIndex] = useState(initial)
-	useEffect(() => setIndex((i) => Math.min(i, Math.max(count - 1, 0))), [count])
+	useEffect(() => setIndex((i) => clampIndex(i, count)), [count])
 	const open = useCallback(onOpen, [onOpen])
 	useEffect(() => {
 		const handler = (event: KeyboardEvent) => {
 			if (isTyping(event) || event.metaKey || event.ctrlKey || event.altKey) return
-			if (event.key === 'j' || event.key === 'ArrowDown') setIndex((i) => Math.min(i + 1, count - 1))
-			else if (event.key === 'k' || event.key === 'ArrowUp') setIndex((i) => Math.max(i - 1, 0))
+			if (event.key === 'j' || event.key === 'ArrowDown') setIndex((i) => clampIndex(i + 1, count))
+			else if (event.key === 'k' || event.key === 'ArrowUp') setIndex((i) => clampIndex(i - 1, count))
 			else if (event.key === 'Enter' && count > 0) open(index)
 			else return
 			event.preventDefault()
