@@ -8,11 +8,14 @@ import { members, waits } from '../core/members.ts'
 import { COUNCIL, type Store } from '../core/model.ts'
 import { provenance } from '../core/provenance.ts'
 import { triage } from '../core/triage.ts'
+import { localOnly } from './guard.ts'
 
 const list = (value: string | undefined) => (value ? value.split(',').filter(Boolean) : undefined)
 
-export function createApi(store: Store, participant = COUNCIL) {
+export function createApi(store: Store, options: { participant?: string; port?: number } = {}) {
+	const participant = options.participant ?? COUNCIL
 	const app = new Hono().basePath('/api')
+	app.use('*', localOnly({ port: options.port }))
 
 	app.onError((err, c) => {
 		if (err instanceof ActionError || err instanceof SyntaxError) return c.json({ error: err.message }, 400)
