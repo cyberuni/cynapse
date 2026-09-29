@@ -3,13 +3,13 @@
 // `src/server/store.test.ts` covers the real library on the real seed.
 import type {
 	AppendInput,
-	EntriesQuery,
 	Entry,
+	EntryQuery,
 	Participant,
 	SearchQuery,
-	StateInput,
+	SetStateInput,
+	StateQuery,
 	StateRecord,
-	StatesQuery,
 	Store,
 	Stream,
 	View,
@@ -139,7 +139,7 @@ export function createMemoryStore(options: { now?: () => Date } = {}): MemorySto
 			const id = mustStream(ref).id
 			return streams.filter((s) => s.parent?.streamId === id)
 		},
-		entries(ref, query: EntriesQuery = {}) {
+		entries(ref, query: EntryQuery = {}) {
 			const stream = mustStream(ref)
 			const view = query.view ? views.find((v) => v.streamId === stream.id && v.name === query.view) : undefined
 			let list = (entries.get(stream.id) ?? []).filter(
@@ -155,7 +155,7 @@ export function createMemoryStore(options: { now?: () => Date } = {}): MemorySto
 				.filter((s) => !ids || ids.includes(s.id))
 				.flatMap((s) => (entries.get(s.id) ?? []).filter((e) => matches(e, query)))
 		},
-		states(query: StatesQuery = {}) {
+		states(query: StateQuery = {}) {
 			const streamId = query.stream ? mustStream(query.stream).id : undefined
 			return states.filter(
 				(r) =>
@@ -212,10 +212,14 @@ export function createMemoryStore(options: { now?: () => Date } = {}): MemorySto
 		},
 		markRead(ref, participant, seq) {
 			const stream = mustStream(ref)
+			const target = Math.min(seq ?? stream.stats.lastSeq, stream.stats.lastSeq)
 			const member = stream.members.find((m) => m.participant === participant)
-			if (member) member.cursor = Math.max(member.cursor, seq ?? stream.stats.lastSeq)
+			if (!member) return { participant, role: '', cursor: target }
+			// Like cynapse, a cursor only moves forward.
+			member.cursor = Math.max(member.cursor, target)
+			return member
 		},
-		setState(ref, input: StateInput, author) {
+		setState(ref, input: SetStateInput, author) {
 			const stream = mustStream(ref)
 			const logged = store.append(ref, {
 				author,
