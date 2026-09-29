@@ -7,8 +7,19 @@ describe('answer', () => {
 	it('replies to the asking entry and resolves the record', () => {
 		const store = createFixtureStore()
 		const entry = answer(store, { stream: 'arb-auth-expiry', key: 'escalation', body: '15 minutes.' })
-		expect(entry).toMatchObject({ type: 'council.answer', author: 'council', parentSeq: 4 })
+		expect(entry).toMatchObject({ type: 'council.answer', author: 'council', parentSeq: 5 })
 		expect(triage(store, 'council').needsInput.map((n) => n.handle)).toEqual(['m-token-refresh'])
+	})
+
+	it('records a picked option as the choice', () => {
+		const store = createFixtureStore()
+		const entry = answer(store, {
+			stream: 'arb-auth-expiry',
+			key: 'escalation',
+			body: '15 minutes',
+			choice: '15 minutes',
+		})
+		expect(entry.data).toEqual({ choice: '15 minutes', question: 'Token expiry?' })
 	})
 
 	it('refuses a record that is not open for the Council', () => {

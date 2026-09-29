@@ -15,7 +15,24 @@ describe('foldGraph', () => {
 			revocation: 'blocked',
 			sso: 'blocked',
 		})
-		expect(graph.nodes.find((n) => n.id === 'refresh')).toMatchObject({ by: 'builder', mission: 'm-token-refresh' })
+		expect(graph.nodes.find((n) => n.id === 'refresh')).toMatchObject({ by: 'builder', stream: 'm-token-refresh' })
+	})
+
+	it('carries why a node is ready or held, and tombstones', () => {
+		const store = createFixtureStore()
+		store.append('graph-identity', {
+			author: 'operator',
+			type: 'sdd.graph.tombstone',
+			body: 'sso dropped',
+			data: { node: 'sso', reason: 'out of scope' },
+		})
+		const graph = foldGraph(store.entries('graph-identity'))
+		expect(graph.nodes.find((n) => n.id === 'audit')?.why).toBe('RAW predecessor login retired')
+		expect(graph.nodes.find((n) => n.id === 'sso')).toMatchObject({ status: 'tombstoned', outcome: 'out of scope' })
+	})
+
+	it('keeps the edge kind', () => {
+		expect(foldGraph(graphEntries()).edges).toContainEqual({ from: 'login', to: 'refresh', kind: 'RAW' })
 	})
 
 	it('steps back through history by seq', () => {

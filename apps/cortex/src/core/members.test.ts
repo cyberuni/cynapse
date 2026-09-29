@@ -21,7 +21,7 @@ describe('waits', () => {
 		expect(list).toEqual(
 			expect.arrayContaining([
 				{ waiter: 'builder', on: 'council', stream: 'm-token-refresh', seq: 2, kind: 'needs-input' },
-				{ waiter: 'spec-writer', on: 'council', stream: 'arb-auth-expiry', seq: 4, kind: 'needs-input' },
+				{ waiter: 'spec-writer', on: 'council', stream: 'arb-auth-expiry', seq: 5, kind: 'needs-input' },
 				{ waiter: 'arb-auth-expiry', on: 'test-writer', stream: 'arb-auth-expiry', kind: 'pending-answers' },
 			]),
 		)

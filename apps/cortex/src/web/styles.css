@@ -484,3 +484,50 @@ input.search {
 .help-card td {
 	padding: 3px 12px 3px 0;
 }
+
+.node.node-tombstoned rect {
+	fill: var(--bg);
+	stroke: var(--alert);
+	stroke-dasharray: 2 3;
+}
+.node.node-tombstoned text {
+	fill: var(--muted);
+	text-decoration: line-through;
+}
+.node.kind-operation rect {
+	stroke-width: 3;
+	fill: color-mix(in srgb, var(--decision) 12%, var(--panel-2));
+}
+.edge-parent-child {
+	stroke-dasharray: 2 4;
+	opacity: 0.6;
+}
+.edge-discovered-from {
+	stroke-dasharray: 6 4;
+	stroke: var(--answer);
+}
+.pill.node-tombstoned {
+	color: var(--alert);
+}
+.pill.state-escalated {
+	color: var(--alert);
+	border-color: var(--alert);
+}
+.question {
+	margin: 4px 0;
+}
+.question strong {
+	margin-right: 8px;
+}
+button.option {
+	border-color: var(--answer);
+	color: var(--answer);
+}
+.data {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px 14px;
+	font-family: var(--mono);
+	font-size: 12px;
+	margin-top: 2px;
+}

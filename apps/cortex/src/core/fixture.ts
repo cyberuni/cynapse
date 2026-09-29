@@ -175,26 +175,26 @@ function seedGraph(store: MemoryStore) {
 			{ participant: 'operator', role: 'dispatcher' },
 		],
 	})
-	const node = (id: string, title: string, mission?: string) =>
+	const node = (id: string, title: string, stream?: string) =>
 		store.append('graph-identity', {
 			author: 'planner',
 			type: 'sdd.graph.node',
 			body: title,
-			data: { node: id, title, mission },
+			data: { node: id, kind: 'mission', title, status: 'open', stream },
 		})
 	const edge = (from: string, to: string) =>
 		store.append('graph-identity', {
 			author: 'planner',
 			type: 'sdd.graph.edge',
 			body: `${from} → ${to}`,
-			data: { from, to },
+			data: { from, to, kind: 'RAW' },
 		})
-	const frontier = (ready: string[]) =>
+	const frontier = (ready: string[], whyReady: Record<string, string>) =>
 		store.append('graph-identity', {
 			author: 'operator',
 			type: 'sdd.graph.frontier',
 			body: `ready: ${ready.join(', ') || '(none)'}`,
-			data: { ready },
+			data: { ready, whyReady },
 		})
 	node('login', 'Login with tokens', 'm-login')
 	node('refresh', 'Token refresh', 'm-token-refresh')
@@ -206,7 +206,7 @@ function seedGraph(store: MemoryStore) {
 	edge('refresh', 'revocation')
 	edge('audit', 'sso')
 	edge('revocation', 'sso')
-	frontier(['login'])
+	frontier(['login'], { login: 'no RAW predecessors' })
 	store.append('graph-identity', {
 		author: 'operator',
 		type: 'sdd.graph.claim',
@@ -219,7 +219,11 @@ function seedGraph(store: MemoryStore) {
 		body: 'login retired: merged',
 		data: { node: 'login', outcome: 'merged' },
 	})
-	frontier(['refresh', 'audit'])
+	frontier(['refresh', 'audit'], {
+		refresh: 'RAW predecessor login retired',
+		audit: 'RAW predecessor login retired',
+		revocation: 'held: RAW predecessor refresh not retired',
+	})
 	store.append('graph-identity', {
 		author: 'operator',
 		type: 'sdd.graph.claim',
@@ -294,6 +298,7 @@ function seedTruss(store: MemoryStore) {
 		{ key: 'answers', kind: 'pending-answers', status: 'resolved', value: { waiting: [] } },
 		'spec-writer',
 	)
+	store.setLifecycle('arb-auth-rotation', 'closed', 'spec-writer')
 	store.append('truss-auth', {
 		author: 'spec-writer',
 		type: 'truss.decision',
@@ -339,6 +344,7 @@ function seedTruss(store: MemoryStore) {
 		{ key: 'answers', kind: 'pending-answers', status: 'open', value: { waiting: ['test-writer'] } },
 		'spec-writer',
 	)
+	store.setLifecycle('arb-auth-expiry', 'escalated', 'spec-writer')
 	const escalation = store.append('arb-auth-expiry', {
 		author: 'spec-writer',
 		type: 'truss.escalation',
@@ -347,7 +353,14 @@ function seedTruss(store: MemoryStore) {
 	})
 	store.setState(
 		'arb-auth-expiry',
-		{ key: 'escalation', kind: 'needs-input', status: 'open', subject: COUNCIL, entryId: escalation.id },
+		{
+			key: 'escalation',
+			kind: 'needs-input',
+			status: 'open',
+			subject: COUNCIL,
+			entryId: escalation.id,
+			value: { question: 'Token expiry?', options: ['15 minutes', '60 minutes'] },
+		},
 		'spec-writer',
 	)
 }

@@ -204,7 +204,15 @@ export function Stream(props: { handle: string; seq?: number; side?: string }) {
 					.filter((s) => s.status === 'open' && s.kind === 'needs-input' && s.subject === 'council')
 					.flatMap((s) => {
 						const asked = all?.find((e) => e.id === s.entryId)
-						return asked ? [[asked.seq, s.key] as const] : []
+						const options = (s.value as { options?: unknown } | undefined)?.options
+						return asked
+							? [
+									[
+										asked.seq,
+										{ key: s.key, options: Array.isArray(options) ? options.map(String) : undefined },
+									] as const,
+								]
+							: []
 					}),
 			),
 		[info?.states, all],
@@ -414,7 +422,12 @@ export function Stream(props: { handle: string; seq?: number; side?: string }) {
 										</button>
 									) : null}
 									{action?.seq === entry.seq && action.kind === 'answer' && askKey ? (
-										<AnswerBox stream={props.handle} stateKey={askKey} onDone={() => setAction(undefined)} />
+										<AnswerBox
+											stream={props.handle}
+											stateKey={askKey.key}
+											options={askKey.options}
+											onDone={() => setAction(undefined)}
+										/>
 									) : null}
 									{action?.seq === entry.seq && action.kind !== 'answer' ? (
 										<RulingBox entry={entry} ruling={action.kind} onDone={() => setAction(undefined)} />

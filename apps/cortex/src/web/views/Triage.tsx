@@ -6,12 +6,12 @@ import type { Route } from '../route.ts'
 
 type Item = { key: string; route: Route }
 
-export function AnswerBox(props: { stream: string; stateKey: string; onDone: () => void }) {
+export function AnswerBox(props: { stream: string; stateKey: string; options?: string[]; onDone: () => void }) {
 	const [body, setBody] = useState('')
 	const [error, setError] = useState<string>()
-	const submit = async () => {
+	const submit = async (choice?: string) => {
 		try {
-			await post('/api/answer', { stream: props.stream, key: props.stateKey, body })
+			await post('/api/answer', { stream: props.stream, key: props.stateKey, body: body.trim() || choice, choice })
 			props.onDone()
 		} catch (err) {
 			setError((err as Error).message)
@@ -37,6 +37,11 @@ export function AnswerBox(props: { stream: string; stateKey: string; onDone: () 
 				}}
 			/>
 			<div className="row">
+				{props.options?.map((option) => (
+					<button key={option} type="button" className="option" onClick={() => void submit(option)}>
+						choose <strong>{option}</strong>
+					</button>
+				))}
 				<button type="submit" disabled={!body.trim()}>
 					Send answer
 				</button>
@@ -108,8 +113,23 @@ export function Triage() {
 							<div className="entry-body">
 								<RefText text={n.body} />
 							</div>
+							{n.question ? (
+								<div className="question">
+									<strong>{n.question}</strong>
+									{n.options?.map((o) => (
+										<span key={o} className="pill">
+											{o}
+										</span>
+									))}
+								</div>
+							) : null}
 							{answering === key ? (
-								<AnswerBox stream={n.handle} stateKey={n.key} onDone={() => setAnswering(undefined)} />
+								<AnswerBox
+									stream={n.handle}
+									stateKey={n.key}
+									options={n.options}
+									onDone={() => setAnswering(undefined)}
+								/>
 							) : (
 								<button type="button" className="inline" onClick={() => setAnswering(key)}>
 									<kbd>a</kbd> answer
@@ -130,6 +150,7 @@ export function Triage() {
 								{a.handle}
 							</Link>
 							<span className="grow">{a.title}</span>
+							<span className={`pill state-${a.state}`}>{a.state}</span>
 							{a.anchor ? (
 								<span className="muted">
 									anchored at <RefText text={a.anchor} />
@@ -137,6 +158,7 @@ export function Triage() {
 							) : null}
 						</div>
 						<div className="entry-body">
+							{a.split ? <span className="pill alert">answers split</span> : null}
 							waiting on{' '}
 							{a.waiting.length ? (
 								a.waiting.map((w) => (

@@ -31,7 +31,7 @@ export function Graph(props: { handle: string; at?: number }) {
 	const open = useCallback(
 		(i: number) => {
 			const node = nodes[i]
-			if (node?.mission) navigate({ view: 'stream', handle: node.mission })
+			if (node?.stream) navigate({ view: 'stream', handle: node.stream })
 		},
 		[nodes],
 	)
@@ -107,7 +107,7 @@ export function Graph(props: { handle: string; at?: number }) {
 				</p>
 			) : null}
 			<div className="legend">
-				{(['ready', 'claimed', 'retired', 'blocked'] as const).map((s) => (
+				{(['ready', 'claimed', 'retired', 'blocked', 'tombstoned'] as const).map((s) => (
 					<span key={s} className={`pill node-${s}`}>
 						{counts[s] ?? 0} {s}
 					</span>
@@ -132,7 +132,7 @@ export function Graph(props: { handle: string; at?: number }) {
 						return (
 							<path
 								key={`${e.from}-${e.to}`}
-								className="edge"
+								className={`edge edge-${e.kind}`}
 								d={`M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`}
 								markerEnd="url(#arrow)"
 							/>
@@ -144,9 +144,10 @@ export function Graph(props: { handle: string; at?: number }) {
 						const box = (
 							<g
 								key={n.id}
-								className={`node node-${n.status}${i === index ? ' selected' : ''}`}
+								className={`node node-${n.status} kind-${n.kind}${i === index ? ' selected' : ''}`}
 								transform={`translate(${p.x},${p.y})`}
 							>
+								<title>{[n.id, n.why].filter(Boolean).join(' — ')}</title>
 								<rect width={W} height={H} rx={8} />
 								<text x={10} y={22} className="node-title">
 									{n.title}
@@ -156,15 +157,15 @@ export function Graph(props: { handle: string; at?: number }) {
 									{n.by ? ` · ${n.by}` : ''}
 									{n.outcome ? ` · ${n.outcome}` : ''}
 								</text>
-								{n.mission ? (
+								{n.stream ? (
 									<text x={10} y={58} className="node-sub">
-										{n.mission}
+										{n.stream}
 									</text>
 								) : null}
 							</g>
 						)
-						return n.mission ? (
-							<Link key={n.id} to={{ view: 'stream', handle: n.mission }}>
+						return n.stream ? (
+							<Link key={n.id} to={{ view: 'stream', handle: n.stream }}>
 								{box}
 							</Link>
 						) : (
@@ -173,6 +174,26 @@ export function Graph(props: { handle: string; at?: number }) {
 					})}
 				</svg>
 			</div>
+			{nodes[index] ? (
+				<div className="step-note">
+					<strong>{nodes[index].title}</strong> <code>{nodes[index].id}</code>{' '}
+					<span className={`pill node-${nodes[index].status}`}>{nodes[index].status}</span>
+					{nodes[index].kind !== 'mission' ? <span className="pill">{nodes[index].kind}</span> : null}
+					{nodes[index].blast ? <span className="pill">blast {nodes[index].blast}</span> : null}
+					{nodes[index].by ? <span className="muted"> claimed by {nodes[index].by}</span> : null}
+					{nodes[index].outcome ? <span className="muted"> · {nodes[index].outcome}</span> : null}
+					{nodes[index].why ? <div className="muted">frontier: {nodes[index].why}</div> : null}
+					{data.edges.some((e) => e.to === nodes[index]?.id) ? (
+						<div className="muted">
+							after{' '}
+							{data.edges
+								.filter((e) => e.to === nodes[index]?.id)
+								.map((e) => `${e.from} (${e.kind})`)
+								.join(', ')}
+						</div>
+					) : null}
+				</div>
+			) : null}
 			<p className="muted">
 				<kbd>j</kbd>/<kbd>k</kbd> select a node, <kbd>Enter</kbd> or a click opens its mission stream, <kbd>[</kbd>/
 				<kbd>]</kbd> step through history.

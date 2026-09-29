@@ -66,9 +66,9 @@ export function Refs({ refs }: { refs: string[] }) {
 export function TypeChip({ type, onClick, active }: { type: string; onClick?: () => void; active?: boolean }) {
 	const family = type.startsWith('cynapse.')
 		? 'meta'
-		: /decision|ratify|override/.test(type)
+		: /decision|ratify|override|consensus/.test(type)
 			? 'decision'
-			: /escalation|needs-input|arbitration-needed/.test(type)
+			: /escalation|needs-input|arbitration-needed|gate/.test(type)
 				? 'alert'
 				: /answer/.test(type)
 					? 'answer'
@@ -120,7 +120,28 @@ export function EntryLine(props: { entry: Entry; selected?: boolean; showStream?
 				</div>
 			) : null}
 			<Refs refs={entry.refs} />
+			{entry.data && !entry.type.startsWith('cynapse.') ? <DataLine data={entry.data} /> : null}
 			{props.children}
+		</div>
+	)
+}
+
+/** A typed payload's scalar fields, compact. Nested objects are left to the raw JSON tooltip. */
+function DataLine({ data }: { data: Record<string, unknown> }) {
+	const fields = Object.entries(data).flatMap(([key, value]) => {
+		if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')
+			return [[key, String(value)]]
+		if (Array.isArray(value) && value.every((v) => typeof v !== 'object')) return [[key, value.join(', ')]]
+		return []
+	})
+	if (!fields.length) return null
+	return (
+		<div className="data" title={JSON.stringify(data, null, 2)}>
+			{fields.map(([key, value]) => (
+				<span key={key}>
+					<span className="muted">{key}</span> {value}
+				</span>
+			))}
 		</div>
 	)
 }

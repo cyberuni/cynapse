@@ -1,22 +1,31 @@
 // Folds an `sdd.mission-graph` stream into a DAG at any point in its history.
 import type { Entry } from './model.ts'
 
-type NodeStatus = 'blocked' | 'ready' | 'claimed' | 'retired'
+type NodeStatus = 'blocked' | 'ready' | 'claimed' | 'retired' | 'tombstoned'
 
 export type GraphNode = {
 	id: string
+	/** `mission` or `operation`. */
+	kind: string
 	title: string
-	mission?: string
+	/** The node's own stream, when it has one. */
+	stream?: string
 	status: NodeStatus
 	by?: string
+	/** Retirement outcome, or the tombstone reason. */
 	outcome?: string
+	/** The latest frontier's reason this node is ready or held. */
+	why?: string
+	blast?: string
 	/** Longest dependency path from a root; used for layout. */
 	layer: number
 }
 
+type GraphEdge = { from: string; to: string; kind: string }
+
 export type MissionGraph = {
 	nodes: GraphNode[]
-	edges: { from: string; to: string }[]
+	edges: GraphEdge[]
 	/** The `seq` of every graph entry, for stepping through history. */
 	steps: number[]
 	/** The `seq` the graph was folded up to. */
@@ -24,12 +33,15 @@ export type MissionGraph = {
 }
 
 const str = (value: unknown) => (typeof value === 'string' ? value : undefined)
+const strings = (value: unknown) =>
+	Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : []
 
 export function foldGraph(entries: Entry[], uptoSeq = Number.POSITIVE_INFINITY): MissionGraph {
 	const graphEntries = entries.filter((e) => e.type.startsWith('sdd.graph.'))
 	const nodes = new Map<string, GraphNode>()
-	const edges: { from: string; to: string }[] = []
+	const edges: GraphEdge[] = []
 	let frontier = new Set<string>()
+	let why: Record<string, unknown> = {}
 	let at = 0
 
 	for (const entry of graphEntries) {
@@ -41,19 +53,26 @@ export function foldGraph(entries: Entry[], uptoSeq = Number.POSITIVE_INFINITY):
 			case 'sdd.graph.node': {
 				const id = str(data.node)
 				if (id)
-					nodes.set(id, { id, title: str(data.title) ?? id, mission: str(data.mission), status: 'blocked', layer: 0 })
+					nodes.set(id, {
+						id,
+						kind: str(data.kind) ?? 'mission',
+						title: str(data.title) ?? id,
+						stream: str(data.stream),
+						blast: str(data.blast),
+						status: 'blocked',
+						layer: 0,
+					})
 				break
 			}
 			case 'sdd.graph.edge': {
 				const from = str(data.from)
 				const to = str(data.to)
-				if (from && to) edges.push({ from, to })
+				if (from && to) edges.push({ from, to, kind: str(data.kind) ?? 'RAW' })
 				break
 			}
 			case 'sdd.graph.frontier':
-				frontier = new Set(
-					Array.isArray(data.ready) ? data.ready.filter((r): r is string => typeof r === 'string') : [],
-				)
+				frontier = new Set(strings(data.ready))
+				why = (data.whyReady as Record<string, unknown> | undefined) ?? {}
 				break
 			case 'sdd.graph.claim':
 				if (node) Object.assign(node, { status: 'claimed', by: str(data.by) })
@@ -61,11 +80,15 @@ export function foldGraph(entries: Entry[], uptoSeq = Number.POSITIVE_INFINITY):
 			case 'sdd.graph.retire':
 				if (node) Object.assign(node, { status: 'retired', outcome: str(data.outcome) })
 				break
+			case 'sdd.graph.tombstone':
+				if (node) Object.assign(node, { status: 'tombstoned', outcome: str(data.reason) })
+				break
 		}
 	}
 
 	for (const node of nodes.values()) {
 		if (node.status === 'blocked' && frontier.has(node.id)) node.status = 'ready'
+		node.why = str(why[node.id])
 	}
 
 	const layerOf = (id: string, seen: Set<string>): number => {

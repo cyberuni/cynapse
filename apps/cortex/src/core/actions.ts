@@ -3,7 +3,7 @@ import { COUNCIL, type Entry, type Store } from './model.ts'
 
 export class ActionError extends Error {}
 
-export function answer(store: Store, input: { stream: string; key: string; body: string }): Entry {
+export function answer(store: Store, input: { stream: string; key: string; body: string; choice?: string }): Entry {
 	const record = store
 		.states({ stream: input.stream, kind: 'needs-input', status: 'open', subject: COUNCIL })
 		.find((r) => r.key === input.key)
@@ -13,6 +13,9 @@ export function answer(store: Store, input: { stream: string; key: string; body:
 		type: 'council.answer',
 		body: input.body,
 		parent: record.entryId,
+		...(input.choice !== undefined && {
+			data: { choice: input.choice, question: (record.value as { question?: unknown } | undefined)?.question },
+		}),
 	})
 	store.setState(
 		input.stream,

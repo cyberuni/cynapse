@@ -11,12 +11,19 @@ type NeedsInput = {
 	author: string
 	body: string
 	createdAt: string
+	question?: string
+	/** Choices the asker offers; the Council may still answer freely. */
+	options?: string[]
 }
 
 type PendingArbitration = {
 	handle: string
 	title: string
+	/** Lifecycle, such as `active` or `escalated`. */
+	state: string
 	waiting: string[]
+	/** Every answer is in, but they disagree. */
+	split: boolean
 	/** `handle#seq` of the anchor in the parent stream. */
 	anchor?: string
 }
@@ -42,19 +49,25 @@ export function triage(store: Store, participant: string): Triage {
 				author: asked.author,
 				body: asked.body,
 				createdAt: asked.createdAt,
+				...questionOf(record.value),
 			},
 		]
 	})
 
-	const arbitrations = store.states({ kind: 'pending-answers', status: 'open' }).flatMap((record) => {
-		const stream = byId.get(record.streamId)
-		if (!stream) return []
+	const answers = new Map(store.states({ kind: 'pending-answers' }).map((r) => [r.streamId, r]))
+	const arbitrations = store.listStreams().flatMap((stream) => {
+		const record = answers.get(stream.id)
+		const pending = record?.status === 'open'
+		const isOpenArbitration = stream.type.endsWith('.arbitration') && !SETTLED.has(stream.state)
+		if (!pending && !isOpenArbitration) return []
 		const parent = stream.parent && byId.get(stream.parent.streamId)
 		return [
 			{
 				handle: stream.handle,
 				title: stream.title,
-				waiting: waitingOf(record.value),
+				state: stream.state,
+				waiting: waitingOf(record?.value),
+				split: (record?.value as { split?: unknown } | undefined)?.split === true,
 				anchor: parent && stream.parent ? `${parent.handle}#${stream.parent.seq}` : undefined,
 			},
 		]
@@ -69,6 +82,17 @@ export function triage(store: Store, participant: string): Triage {
 		.sort((a, b) => b.count - a.count)
 
 	return { needsInput, arbitrations, unread }
+}
+
+/** Lifecycle states in which an arbitration no longer needs anyone. */
+const SETTLED = new Set(['closed', 'resolved', 'reconciled', 'archived'])
+
+function questionOf(value: unknown): { question?: string; options?: string[] } {
+	const v = value as { question?: unknown; options?: unknown } | undefined
+	return {
+		...(typeof v?.question === 'string' && { question: v.question }),
+		...(Array.isArray(v?.options) && { options: v.options.filter((o): o is string => typeof o === 'string') }),
+	}
 }
 
 export function waitingOf(value: unknown): string[] {
