@@ -59,7 +59,8 @@ What the Council wants to see and do, and where Cortex answers it.
 5. **The mission graph.** `/g/<handle>` (`g g`): the DAG from an `sdd.mission-graph`
    stream, colored by ready, claimed, retired, blocked, and tombstoned, with why each
    node is ready or held. `[` `]` step through its history one graph entry at a time,
-   and each step has its own URL (`?at=<seq>`).
+   and each step has its own URL (`?at=<seq>`). With more than one graph, tabs (and
+   `<` `>`) switch between them.
 6. **Search across streams** by type and tag (`/search`, `/` or `g s`): for example
    `type:truss.decision type:sdd.decision` for all decisions, or `topic:auth`.
 7. **Members and waiting.** The stream side panel lists members with their role, cursor
@@ -75,8 +76,9 @@ What the Council wants to see and do, and where Cortex answers it.
      the asking entry, with the chosen option in its payload, and resolves the record;
    - ratify or override a decision (`R` / `O`) — appends a ratify or override
      entry in the decision's namespace (`truss.ratify` for a `truss.decision`,
-     `sdd.override` for an `sdd.decision`) as a reply to the decision. A decision is ruled on once; a second ruling gets a 409
-     (`already_ruled`), and the stream shows the ruling in place of the actions.
+     `sdd.override` for an `sdd.decision`) as a reply to the decision. A decision is
+     ruled on once: a second ruling gets a 409 (`already_ruled`), and the stream shows
+     the ruling in place of the actions.
 10. **Keyboard throughout.** `j`/`k` move, `Enter` opens, `u` goes up to the parent
     stream, `Backspace` goes back, and `?` lists every key.
 
