@@ -1,14 +1,43 @@
-import { mkdtempSync } from 'node:fs'
+import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Command } from 'commander'
 import { CynapseError } from '../cli-error.js'
 import { runLoadTest, runLoadWorker } from '../dev/load.js'
+import { SEED_START, SeedClock, seed } from '../dev/seed.js'
 import { output } from '../output.js'
+import { openStore, resolveDbPath } from '../store/open.js'
 import { parseInteger } from './context.js'
 
 export function registerDev(program: Command): void {
 	const dev = program.command('dev').description('development tools: load test and example data')
+
+	dev
+		.command('seed')
+		.description('build the example world: SDD hierarchy and graph, cyber-truss arbitration, coordination, feed')
+		.option('--reset', 'delete the database first')
+		.action((opts, command: Command) => {
+			const db = command.optsWithGlobals<{ db?: string }>().db ?? resolveDbPath()
+			if (opts.reset) for (const suffix of ['', '-wal', '-shm']) rmSync(`${db}${suffix}`, { force: true })
+			const clock = new SeedClock(SEED_START)
+			const store = openStore({ path: db, clock: clock.now })
+			try {
+				if (store.listStreams().length) {
+					throw new CynapseError(`${db} already has streams; pass --reset to rebuild it`)
+				}
+				const summary = seed(store, clock)
+				output({ db, ...summary }, () =>
+					[
+						`seeded ${db}`,
+						`${summary.streams.length} streams, ${summary.entries} entries, ${summary.participants} participants`,
+						`council: ${summary.councilUnread} unread, ${summary.openNeedsInput} open needs-input`,
+						...summary.streams.map((s) => `  ${s.handle}  ${s.type}  ${s.state}  ${s.entries} entries`),
+					].join('\n'),
+				)
+			} finally {
+				store.close()
+			}
+		})
 
 	dev
 		.command('load-test')
