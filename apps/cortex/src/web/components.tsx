@@ -98,7 +98,14 @@ export function time(iso: string) {
 }
 
 /** One entry: header line, body with linked refs, and its tags. */
-export function EntryLine(props: { entry: Entry; selected?: boolean; showStream?: boolean; children?: ReactNode }) {
+export function EntryLine(props: {
+	entry: Entry
+	selected?: boolean
+	showStream?: boolean
+	/** Entry ids in the payload to render as `handle#seq` links. */
+	idRefs?: Record<string, string>
+	children?: ReactNode
+}) {
 	const { entry } = props
 	return (
 		<div className="entry" data-selected={props.selected} id={`e-${entry.stream}-${entry.seq}`}>
@@ -120,26 +127,36 @@ export function EntryLine(props: { entry: Entry; selected?: boolean; showStream?
 				</div>
 			) : null}
 			<Refs refs={entry.refs} />
-			{entry.data && !entry.type.startsWith('cynapse.') ? <DataLine data={entry.data} /> : null}
+			{entry.data && !entry.type.startsWith('cynapse.') ? <DataLine data={entry.data} idRefs={props.idRefs} /> : null}
 			{props.children}
 		</div>
 	)
 }
 
-/** A typed payload's scalar fields, compact. Nested objects are left to the raw JSON tooltip. */
-function DataLine({ data }: { data: Record<string, unknown> }) {
-	const fields = Object.entries(data).flatMap(([key, value]) => {
+/**
+ * A typed payload's scalar fields, compact. Nested objects are left to the raw JSON
+ * tooltip. An entry id found in `idRefs` renders as its `handle#seq` link.
+ */
+function DataLine({ data, idRefs = {} }: { data: Record<string, unknown>; idRefs?: Record<string, string> }) {
+	const fields = Object.entries(data).flatMap(([key, value]): [string, string[]][] => {
 		if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')
-			return [[key, String(value)]]
-		if (Array.isArray(value) && value.every((v) => typeof v !== 'object')) return [[key, value.join(', ')]]
+			return [[key, [String(value)]]]
+		if (Array.isArray(value) && value.every((v) => typeof v !== 'object')) return [[key, value.map(String)]]
 		return []
 	})
 	if (!fields.length) return null
 	return (
 		<div className="data" title={JSON.stringify(data, null, 2)}>
-			{fields.map(([key, value]) => (
+			{fields.map(([key, values]) => (
 				<span key={key}>
-					<span className="muted">{key}</span> {value}
+					<span className="muted">{key}</span>{' '}
+					{values.map((v, i) => (
+						// biome-ignore lint/suspicious/noArrayIndexKey: values are positional and static
+						<span key={i}>
+							{i > 0 ? ', ' : null}
+							{idRefs[v] ? <RefText text={idRefs[v]} /> : v}
+						</span>
+					))}
 				</span>
 			))}
 		</div>

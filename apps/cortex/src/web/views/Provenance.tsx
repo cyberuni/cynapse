@@ -41,12 +41,16 @@ export function Provenance(props: { handle: string; seq: number }) {
 			<h1>
 				Provenance <span className="muted">— {`${data.decision.stream}#${data.decision.seq}`}</span>
 			</h1>
-			{step(1, 'Decision', <EntryLine entry={data.decision} selected={sel === data.decision.id} showStream />)}
+			{step(
+				1,
+				'Decision',
+				<EntryLine entry={data.decision} selected={sel === data.decision.id} showStream idRefs={data.idRefs} />,
+			)}
 			{step(
 				2,
 				'Asked by',
 				data.anchor ? (
-					<EntryLine entry={data.anchor} selected={sel === data.anchor.id} showStream />
+					<EntryLine entry={data.anchor} selected={sel === data.anchor.id} showStream idRefs={data.idRefs} />
 				) : (
 					<Empty what="anchor entries — the decision replies to nothing" />
 				),
@@ -64,7 +68,7 @@ export function Provenance(props: { handle: string; seq: number }) {
 							— electorate {data.arbitration.members.map((m) => m.participant).join(', ')}
 						</p>
 						{data.transcript.map((e) => (
-							<EntryLine key={e.id} entry={e} selected={sel === e.id} showStream />
+							<EntryLine key={e.id} entry={e} selected={sel === e.id} showStream idRefs={data.idRefs} />
 						))}
 					</>
 				) : (

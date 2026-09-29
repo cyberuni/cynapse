@@ -34,6 +34,7 @@ describe('provenance', () => {
 		})
 		const trail = provenance(store, `truss-auth#${decision.seq}`)
 		expect(trail?.contributions.map((e) => `${e.stream}#${e.seq}`)).toEqual(['truss-auth#3'])
+		expect(trail?.idRefs).toEqual({ [contribution?.id ?? '']: 'truss-auth#3' })
 	})
 
 	it('gives a decision without arbitration just its replies', () => {
