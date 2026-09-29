@@ -4,8 +4,8 @@ description: Install cynapse and run the CLI
 ---
 
 :::caution
-`cynapse` is at scaffold stage. The CLI shell, plugin manifests, and release pipeline
-are in place; mail, channels, and DMs have not shipped yet.
+`cynapse` is at prototype stage. The local store and CLI work; multi-machine sync has
+not shipped yet.
 :::
 
 ## Installation
@@ -26,8 +26,14 @@ The binary is `cynapse`.
 
 ```bash
 cynapse --help
-cynapse --version
+cynapse --db /tmp/world.db dev seed --reset   # build an example world
+cynapse --db /tmp/world.db stream tree
+cynapse --db /tmp/world.db --as council stream show truss-pagination-arb-2
+cynapse --db /tmp/world.db entry list m-seq-order --view distilled
 ```
+
+The store defaults to `$CYNAPSE_HOME/cynapse.db` (home `~/.cynapse`). Writes need a
+participant: `--as <participant>` or `$CYNAPSE_PARTICIPANT`.
 
 Every command accepts `--json` for structured output. See the
 [CLI reference](/cynapse/cli/).

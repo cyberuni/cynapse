@@ -60,11 +60,11 @@ the synapse between agents — extracted out of [cyberlegion](https://github.com
 per [cyberuni/cyberlegion#20](https://github.com/cyberuni/cyberlegion/issues/20), so it
 can be depended on as a peer rather than living inside just one unit.
 
-It supports three conversation kinds, the way Slack or Discord does:
-
-- **Mail** — addressed, point-to-point, durable; consumed by acknowledging.
-- **Channels** — named, many members, subscribed to; reading never consumes.
-- **DMs** — a persistent conversation between two or more participants.
+It owns the communication that has no home elsewhere: ledgers of what happened,
+discussions between agents (such as arbitration), coordination, change feeds, leases and
+presence, and read state. Work tracking stays in GitHub, Asana, Linear or beads;
+cynapse refers to it by reference shorthand (`gh:cyberuni/cynapse#12`). Channels, DMs,
+mission ledgers and arbitrations are all streams with a consumer-defined type.
 
 Ships as an npm package:
 
@@ -87,9 +87,14 @@ Ships as an npm package:
 
 ### Status
 
-Scaffold stage. The CLI is a shell (global options, usage errors, exit codes) and the
-release pipeline is live. Mail, channels, and DMs have not shipped yet, and neither has
-any skill.
+Prototype stage. The core model from
+`.research/agent-messaging-architecture/conclusion.md` is built: streams of immutable
+entries behind a `Store` interface (`src/store/types.ts`), with a stock-SQLite
+implementation (`node:sqlite`, WAL, `seq` assigned under `BEGIN IMMEDIATE`, no daemon),
+and CLI commands for streams, entries, read cursors, tags and state records.
+`cynapse dev seed` builds an example world and `cynapse dev load-test` checks `seq`
+under concurrent writer processes. Sync, the hub, `init-cynapse`, and skills have not
+shipped yet.
 
 ### Plugin layout
 
@@ -144,6 +149,11 @@ The CLI follows the [10 agent-CLI principles](https://github.com/kunchenguid/axi
 - **Structured output** goes through `src/output.ts` (`output(data, readable)`); `--json` is handled there — never branch on `process.argv` for format inside a command.
 - **Empty states**: use `printEmpty(entity)` so an empty result names what was empty (`0 members found`), never a blank line.
 - **Errors & exit codes**: throw `CynapseError` with an exit code; the top-level catch in `src/cli.ts` renders it via `renderCliError` / `exitCodeFor`. Never call `process.exit` inside a command. Commander usage errors (unknown flag or subcommand) exit `2`.
+- **Store access**: commands open the store through `withStore` in
+  `src/commands/context.ts` and act as `--as` / `$CYNAPSE_PARTICIPANT` via `actor()`.
+  Every write goes through the `Store` interface, never raw SQL outside `src/store/`.
+- **Metadata is written as entries**: any store method that changes stream metadata or
+  state also appends a `cynapse.*` entry in the same transaction. Keep it that way.
 - **The program is a function**: `createProgram()` in `src/program.ts` builds a fresh command tree so tests drive it without touching `process.argv`.
 
 ### Version

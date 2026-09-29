@@ -1,5 +1,9 @@
 import { Command, type CommanderError } from 'commander'
 import { CynapseError, EXIT_USAGE } from './cli-error.js'
+import { registerDev } from './commands/dev.js'
+import { registerEntry } from './commands/entry.js'
+import { registerRead, registerState, registerTag } from './commands/state.js'
+import { registerStream } from './commands/stream.js'
 import { setOutputFormat } from './output.js'
 import { readPackageVersion } from './version.js'
 
@@ -14,9 +18,11 @@ export function createProgram(version: string = readPackageVersion()): Command {
 
 	program
 		.name('cynapse')
-		.description('A persisted communication network for agents — mail, channels, and DMs')
+		.description('A persisted communication network for agents — streams of immutable entries')
 		.version(version, '-v, --version')
 		.option('--json', 'emit JSON instead of human-readable text')
+		.option('--db <path>', 'database file (default: $CYNAPSE_HOME/cynapse.db, home ~/.cynapse)')
+		.option('--as <participant>', 'the participant acting (default: $CYNAPSE_PARTICIPANT)')
 		.hook('preAction', (command) => {
 			if (command.opts().json) setOutputFormat('json')
 		})
@@ -35,6 +41,13 @@ export function createProgram(version: string = readPackageVersion()): Command {
 		throw new CynapseError(error.message, { exitCode: EXIT_USAGE, cause: error })
 	})
 	program.configureOutput({ writeErr: () => {} })
+
+	registerStream(program)
+	registerEntry(program)
+	registerRead(program)
+	registerTag(program)
+	registerState(program)
+	registerDev(program)
 
 	return program
 }

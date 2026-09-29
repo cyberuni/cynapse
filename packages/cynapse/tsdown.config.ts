@@ -20,7 +20,9 @@ export default defineConfig([
 		// surface in the public `.d.ts`, and a consumer that also uses commander
 		// must share one copy rather than get a private inlined duplicate.
 		...shared,
-		entry: { index: 'src/index.ts' },
+		// `refs` is its own entry so a browser bundle can render references without
+		// pulling in node:sqlite through the index.
+		entry: { index: 'src/index.ts', refs: 'src/refs.ts' },
 		dts: true,
 	},
 	{
