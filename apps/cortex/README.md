@@ -9,6 +9,11 @@ from a few Council actions, which are written back as ordinary entries and state
 
 ## Run it
 
+> **Interim.** The cynapse store is still in review
+> ([#16](https://github.com/cyberuni/cynapse/pull/16)). Until it is on trunk, this branch
+> always runs on the built-in fixture, and `CORTEX_DB` takes effect once Cortex is
+> rebased onto it.
+
 ```sh
 # From the repository root: seed an example database, then start Cortex on it.
 pnpm cynapse dev --db /tmp/cynapse.db dev seed --reset
