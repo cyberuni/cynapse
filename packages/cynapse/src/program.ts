@@ -1,5 +1,6 @@
 import { Command, type CommanderError } from 'commander'
 import { CynapseError, EXIT_USAGE } from './cli-error.js'
+import { registerDev } from './commands/dev.js'
 import { registerEntry } from './commands/entry.js'
 import { registerRead, registerState, registerTag } from './commands/state.js'
 import { registerStream } from './commands/stream.js'
@@ -46,6 +47,7 @@ export function createProgram(version: string = readPackageVersion()): Command {
 	registerRead(program)
 	registerTag(program)
 	registerState(program)
+	registerDev(program)
 
 	return program
 }

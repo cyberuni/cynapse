@@ -114,6 +114,13 @@ export class SqliteStore implements Store {
 		this.#db.close()
 	}
 
+	/** SQLite's own consistency check; `ok` when the file is sound. */
+	integrityCheck(): string {
+		return this.#all<{ integrity_check: string }>('PRAGMA integrity_check')
+			.map((row) => row.integrity_check)
+			.join('; ')
+	}
+
 	// ── participants ────────────────────────────────────────────────────────────
 
 	addParticipant(participant: Participant): Participant {
