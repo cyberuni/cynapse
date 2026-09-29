@@ -18,7 +18,7 @@ function cortexApi(): Plugin {
 					if (!listener) {
 						const { store, label } = openCortexStore()
 						server.config.logger.info(`  Cortex store: ${label}`)
-						listener = getRequestListener(createApi(store).fetch)
+						listener = getRequestListener(createApi(store, { port: server.config.server.port }).fetch)
 					}
 					void listener(req, res)
 				} catch (err) {
@@ -33,5 +33,6 @@ function cortexApi(): Plugin {
 
 export default defineConfig({
 	plugins: [react(), cortexApi()],
-	server: { port: 5173 },
+	// Loopback only, on a fixed port the API's host guard can check.
+	server: { host: '127.0.0.1', port: 5173, strictPort: true },
 })

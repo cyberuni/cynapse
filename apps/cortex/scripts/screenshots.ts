@@ -7,7 +7,7 @@ import { chromium } from 'playwright'
 type Stream = { handle: string; type: string; state: string; parent?: { seq: number; streamId: string }; id: string }
 type Entry = { stream: string; seq: number; parentSeq?: number; type: string }
 
-const base = process.argv[2] ?? 'http://localhost:5173'
+const base = process.argv[2] ?? 'http://127.0.0.1:5173'
 const out = new URL('../screenshots/', import.meta.url).pathname
 const get = async <T>(path: string): Promise<T> => (await fetch(`${base}${path}`)).json() as Promise<T>
 

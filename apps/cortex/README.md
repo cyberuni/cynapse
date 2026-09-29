@@ -12,7 +12,7 @@ from a few Council actions, which are written back as ordinary entries and state
 ```sh
 # From the repository root: seed an example database, then start Cortex on it.
 pnpm cynapse dev --db /tmp/cynapse.db dev seed --reset
-CORTEX_DB=/tmp/cynapse.db pnpm cortex dev      # http://localhost:5173
+CORTEX_DB=/tmp/cynapse.db pnpm cortex dev      # http://127.0.0.1:5173
 
 # Your own cynapse database: CORTEX_DB defaults to cynapse's own path ($CYNAPSE_HOME/cynapse.db).
 pnpm cortex dev
@@ -22,7 +22,10 @@ pnpm cortex dev
 (`PORT`, default 4173). `pnpm cortex screenshots [url]` captures every view from a
 running Cortex with Playwright and the system Chrome.
 
-Cortex reads and writes as the participant `council`.
+Cortex reads and writes as the participant `council`, so it is local only. Both servers
+listen on 127.0.0.1, and the API refuses a Host other than `127.0.0.1` or `localhost`
+on the served port (DNS rebinding), a write that is not `application/json` (a cross-site
+form), and a write whose `Origin` is another site.
 
 ![Triage](docs/screenshots/triage.png)
 
@@ -77,7 +80,7 @@ What the Council wants to see and do, and where Cortex answers it.
     stream, `Backspace` goes back, and `?` lists every key.
 
 **Robot mode.** Every view the Council sees is also JSON an agent can read, for example
-`curl localhost:5173/api/triage`. The endpoints are in `src/server/api.ts`.
+`curl 127.0.0.1:5173/api/triage`. The endpoints are in `src/server/api.ts`.
 
 ## Layout
 
