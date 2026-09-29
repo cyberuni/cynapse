@@ -9,11 +9,6 @@ from a few Council actions, which are written back as ordinary entries and state
 
 ## Run it
 
-> **Interim.** The cynapse store is still in review
-> ([#16](https://github.com/cyberuni/cynapse/pull/16)). Until it is on trunk, this branch
-> always runs on the built-in fixture, and `CORTEX_DB` takes effect once Cortex is
-> rebased onto it.
-
 ```sh
 # From the repository root: seed an example database, then start Cortex on it.
 pnpm cynapse dev --db /tmp/cynapse.db dev seed --reset
@@ -21,9 +16,6 @@ CORTEX_DB=/tmp/cynapse.db pnpm cortex dev      # http://localhost:5173
 
 # Your own cynapse database: CORTEX_DB defaults to cynapse's own path ($CYNAPSE_HOME/cynapse.db).
 pnpm cortex dev
-
-# No database at all: the built-in fixture.
-CORTEX_FIXTURE=1 pnpm cortex dev
 ```
 
 `pnpm cortex build && pnpm cortex start` serves the built UI and the API on one port
@@ -97,5 +89,6 @@ scripts/      screenshot capture
 ```
 
 `src/core/model.ts` names the part of the cynapse `Store` that Cortex uses. The core
-derivations are tested against an in-memory store (`memory-store.ts`) and a fixture
-shaped like cynapse's seed (`fixture.ts`).
+derivations are unit-tested against an in-memory store (`memory-store.ts`) holding a
+small world shaped like cynapse's seed (`fixture.ts`); `src/server/store.test.ts` runs the
+API on the real library over a database `seed()` produced.
