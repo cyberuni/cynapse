@@ -2,7 +2,7 @@
 
 ## Last updated
 
-September 2026 (round 8)
+September 2026 (round 9)
 
 ## Question
 
@@ -145,6 +145,13 @@ recipient for read and ack state (PR10, PR16).
   JetStream (SY08–SY10). Dolt is a second candidate: it syncs through the existing git
   remote with no hub to run (LC09), but its merge without a leader conflicts with
   owner-assigned `seq`.
+- **Messages stay out of the repository.** Raw conversation (transcripts, answers,
+  coordination, combat logs) lives in the database outside any repository, and agents read
+  it through the CLI's budget flags, never through file search. Only a distilled result
+  reaches the repository, as an intended artifact: an ADR through the `decision-record`
+  route, or one summary per reconciled stream. This rests on hypothesis HY01, which is not
+  yet tested (see "What should be checked again later"). SDD's raw combat log
+  (`.agents/plans/*.log.jsonl`) is a candidate to move onto a cynapse stream.
 - **External platforms are routing destinations, not backends.** That includes Slack,
   Linear, Asana, GitHub and beads (BK09, BK12, BK16).
 - **Don't sync through JSONL committed to git.** Beads tried it and moved to Dolt
@@ -217,9 +224,8 @@ Every read command supports unread-only, metadata-only, and start-from-latest-su
   mcp_agent_mail confirms the row split.
 - **High:** routing out to the systems of record, and plugin-prefixed conventions. The
   collision was tested directly.
-- **Medium-high:** SQLite's write transaction as the local order owner. It is sound in
-  principle, and the corruption evidence points at a custom engine, but there is no load
-  test yet.
+- **High:** SQLite's write transaction as the local order owner on one machine. The load
+  test held with up to 32 concurrent writers (LC10).
 - **Medium:** the hub technology (NATS or Dolt), and summarization on reconciled streams.
 
 ## Strongest supporting evidence
@@ -253,14 +259,15 @@ Every read command supports unread-only, metadata-only, and start-from-latest-su
 
 - `bd compact` and AgentMail's internal storage model (snippet-only, PR08).
 - Discord's thread-from-message ID behavior (from memory).
-- Local SQLite with 10 or more concurrent CLI writers (no test yet).
+- HY01, the claim that messages stored in a repository hurt agent sessions (one anecdote,
+  LC11; not measured).
 - GitHub sub-issues (from memory).
 - Everything about Reddit (secondary sources only).
 
 ## What should be checked again later
 
-- A load test of stock SQLite in WAL mode with 10 or more concurrent writers assigning
-  `seq`.
+- HY01: run the two-copy test in its evidence entry before relying on "messages stay out
+  of the repository" as more than a design judgement.
 - Dolt as a sync layer that needs no hub, and how it could coexist with owner-assigned
   `seq`.
 - Whether cyber-truss arbitration ever spans more than one mission.

@@ -2917,3 +2917,56 @@ Source:
 Notes:
 - #317 (opened 2026-09-10, closed "not planned" 2026-09-11) asks to serve on stock SQLite instead of FrankenSQLite. It cites a corruption class across #152, #156, #213, #257, #278, #291, #298 and more. Hourly `sqlite3_backup` copies made through stock SQLite verify clean on databases the serving path had corrupted.
 - The beads README describes a "Distributed graph issue tracker for AI agents, powered by Dolt". It runs embedded Dolt (single writer) by default, or server mode for concurrent writers. It syncs via `bd dolt push/pull` to `refs/dolt/data`; `.beads/issues.jsonl` is an export.
+
+## Claim LC10
+
+Date: 2026-09-30
+Status: supports
+Confidence: high
+
+Source:
+- Label: cynapse PR #16 load test (`cynapse dev load-test`)
+- URL: https://github.com/cyberuni/cynapse/pull/16
+- Type: direct test
+- Fetched: yes
+
+Notes:
+- Separate writer processes appended to one stream on stock `node:sqlite` in WAL mode, with `seq` assigned under `BEGIN IMMEDIATE` and `UNIQUE (stream, seq)` in the schema. Runs: 10×200, 12×500, and 32×250 entries.
+- Every run: `seq` contiguous and unique, each writer's order kept, `integrity_check` ok. About 2.5k–2.9k appends/s; p50 0.3 ms, p99 57–179 ms.
+- Replacing `BEGIN IMMEDIATE` with a plain `BEGIN` makes the test fail, so the test really covers the ordering rule.
+- A single machine only. It says nothing about a hub or about network filesystems.
+
+## Claim LC11
+
+Date: 2026-09-30
+Status: supports
+Confidence: low
+
+Source:
+- Label: This session's cyber-truss rename (a session note found as if it were a living doc)
+- URL: file:///home/unional/code/cyberuni/cyber-truss/docs/sessions/2026-09-13-model-review.md (lines 135, 141)
+- Type: observation (anecdote)
+- Fetched: yes (read locally)
+
+Notes:
+- The only references to the old name "cyber-net" in cyber-truss were in a dated session note. It is a historical record, but in the file tree and in search results it looks exactly like current documentation, so a repository-wide rename had to treat it as live text.
+- A single anecdote. It shows the mechanism behind HY01 (a text search cannot tell history from guidance), not its size.
+
+## Claim HY01
+
+Date: 2026-09-30
+Status: mixed
+Confidence: low
+
+Source:
+- Label: Hypothesis (the Council): messages stored as Markdown inside a repository hurt agent sessions
+- URL: n/a
+- Type: hypothesis, untested
+- Fetched: n/a
+
+Notes:
+- Claim: saving conversation (messages, transcripts, answers, combat logs) as Markdown in a repository hurts agent sessions. There is more for an agent to read, which costs tokens. Search results get polluted, because a message found by grep carries no type, state, or position, so history and rejected proposals read like current guidance. Both cause confusion.
+- Supporting mechanism: LC11. Related costs in peers: mcp_agent_mail's git-archived Markdown needed a commit coalescer and file-descriptor fixes (PR11, PR15); beads moved off JSONL committed to git (PR03–PR05). Those are performance costs, not context costs.
+- Counterweight: a copy in the repository gives provenance that travels with the code (visible to collaborators, reviewable in PRs, kept across machines). That is why SDD commits its ledger (LC02).
+- Test: two copies of one repository with identical content. Copy A has a realistic volume of Markdown messages committed (for example one mission's combat log, two arbitration transcripts, and a coordination thread). Copy B has the same content in a cynapse database outside the repository. Run the same set of agent tasks (a rename, a bug fix, a doc update, a question about a decision) N times on each, blind to the hypothesis. Measure tokens read, the share of file reads or search hits that are messages rather than task material, task success, and errors that cite a message as if it were current guidance.
+- Supported if copy A reads meaningfully more tokens or shows message-induced errors, with no gain in success. Weakened if the difference is within run-to-run noise.
