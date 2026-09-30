@@ -139,6 +139,7 @@ pnpm cortex dev                 # run Cortex, the Council's viewer (see apps/cor
 packages/cynapse/ the npm package and the plugin root
 apps/web/         Astro + Starlight docs site, deployed to GitHub Pages
 apps/cortex/      Cortex, the Council's web viewer for cynapse streams (private)
+docs/adr/         architecture decision records (see docs/adr/README.md)
 scripts/          repo maintenance scripts
 ```
 
