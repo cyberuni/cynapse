@@ -98,3 +98,14 @@
   and whether to use Dolt or beads as the backend.
 - Conclusion changed materially: yes, the additions above.
 - Triggered by: PR03-PR05, PR10, PR12-PR14, PR16, LC09.
+
+## 2026-09-30 (round 9): messages stay out of the repository
+
+- What changed: added "messages stay out of the repository" to the store verdict. Raw
+  conversation lives in the database outside any repository, and only distilled artifacts
+  reach it. Recorded the Council's hypothesis HY01 with a two-copy test. Recorded the PR #16
+  load test (LC10) and raised confidence in SQLite as the local order owner to high.
+- Why: the Council raised the hypothesis that Markdown messages in a repository cost agents
+  context and cause confusion. The prototype produced the load-test numbers.
+- Conclusion changed materially: yes (a new verdict line, and higher confidence).
+- Triggered by: HY01, LC10, LC11.
