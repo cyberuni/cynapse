@@ -45,6 +45,41 @@ by people and tools that never pass through cynapse.
   limits and per-store APIs stay with the consumer, whether that is a user, an agent or a
   custom UI such as Cortex.
 
+### Write-back
+
+A work channel is the working conversation. The subject's own store is what that store's
+readers see. **A consumer writes back to the subject's store only what changes the
+subject as those readers see it, and never mirrors the conversation.** Four triggers:
+
+1. **A decision that changes scope or approach** updates the subject's description (the
+   GitHub issue body), so the description stays the current spec. Each such edit gets a
+   short comment saying what changed, with a link to the decision entry. A body edit
+   leaves no timeline event (LC13), so without the comment the change is invisible to
+   anyone watching the subject.
+2. **A change in the channel's state records** maps to a label or field. For example,
+   `needs-input` becomes a "needs decision" label, and the label is removed when the
+   state clears. Readers of the store can then see stalled work without opening cynapse.
+3. **A lifecycle milestone** gets one summary comment: a PR opened, an escalation that
+   needs a human who works in that store, and the channel being reconciled. The
+   reconciled summary is the distilled result, with a link back to the channel, not the
+   transcript.
+4. **A relation** is written as metadata on the subjects
+   ([ADR-0010](0010-a-network-of-subjects-across-stores.md)), not as a comment.
+
+Individual messages, arbitration transcripts, and coordination (leases, claims, presence)
+are never written back.
+
+**The consumer writes; cynapse supplies the trigger.** A decision entry or state change in
+the channel tells the consumer, through the store plugin's convention
+([ADR-0008](0008-routing-conventions-and-init-cynapse.md)), what to write and in what
+format. The four triggers are conventions, not cynapse entry types.
+
+**Each write-back is linked in both directions.** The consumer records a
+`cynapse.published` entry in the channel that refers to what it wrote, such as the GitHub
+comment, and what it wrote carries a stamp pointing back to that entry. This records
+cynapse's own action, not a change made outside cynapse, so it doesn't conflict with
+reading external stores from their source.
+
 ## Considered options
 
 - **Store only what no other store can, and guide and compose (chosen).**
@@ -56,6 +91,11 @@ by people and tools that never pass through cynapse.
   changes from outside.
 - **Record external changes as entries.** Rejected. It copies the source's history into a
   second home.
+- **Mirror the channel into the subject's store,** for example every message as a comment.
+  Rejected. It floods the store's readers, copies the conversation into a second home,
+  and exposes raw transcripts that only the distilled result should reach.
+- **Make the write-back triggers cynapse entry types.** Not chosen. Each organization
+  decides what its readers see, so the triggers belong to the store plugin's convention.
 
 ## Consequences
 
@@ -66,6 +106,9 @@ by people and tools that never pass through cynapse.
 - Whether a store's API can answer "what is related to X" cheaply decides how much
   guidance a consumer needs. A store that can't answer it is a reason to use cynapse's
   store for that store's relations.
+- `cynapse.published` is the one entry type that write-back adds. It is added when the
+  first write-back is built, and consumers will depend on its shape. The triggers are
+  convention content and can be revisited cheaply.
 - That cynapse holds no credentials is expensive to undo. Which facts count as having no
   home is decided case by case and can be revisited cheaply.
 
