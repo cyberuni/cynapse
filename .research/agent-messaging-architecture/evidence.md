@@ -2970,3 +2970,40 @@ Notes:
 - Counterweight: a copy in the repository gives provenance that travels with the code (visible to collaborators, reviewable in PRs, kept across machines). That is why SDD commits its ledger (LC02).
 - Test: two copies of one repository with identical content. Copy A has a realistic volume of Markdown messages committed (for example one mission's combat log, two arbitration transcripts, and a coordination thread). Copy B has the same content in a cynapse database outside the repository. Run the same set of agent tasks (a rename, a bug fix, a doc update, a question about a decision) N times on each, blind to the hypothesis. Measure tokens read, the share of file reads or search hits that are messages rather than task material, task success, and errors that cite a message as if it were current guidance.
 - Supported if copy A reads meaningfully more tokens or shows message-induced errors, with no gain in success. Weakened if the difference is within run-to-run noise.
+
+## Claim LC12
+
+Date: 2026-10-03
+Status: supports
+Confidence: high
+
+Source:
+- Label: Issue transfer test on two scratch repositories (`unional/cynapse-transfer-test-a` and `-b`)
+- URL: n/a (run with `gh issue transfer` and `gh api graphql`)
+- Type: observation (run directly)
+- Fetched: yes
+
+Notes:
+- Before the transfer, issue a#1 was `node_id` `I_kwDOU6p_P88AAAABU2Tg5w` with `databaseId` 5694087399. After the transfer to b, it is b#1, with `node_id` `I_kwDOU6p_a88AAAABU2TkKg` and `databaseId` 5694088234. Both IDs changed.
+- `node(id:)` on the old `node_id` returns NOT_FOUND. The old ID does not redirect.
+- The old readable reference still resolves: REST `GET repos/…/test-a/issues/1` returns the transferred issue in b, including its new `node_id`. The new issue's timeline has a `TransferredEvent` with `fromRepository`, but not the old number.
+- Consequence: GitHub's native ID is stable across a repository rename but not across an issue transfer. A move can be detected by resolving the old readable reference.
+
+## Claim LC13
+
+Date: 2026-10-03
+Status: mixed
+Confidence: medium (GitHub high; the others documentation only)
+
+Source:
+- Label: Feasibility of fetching one work item in a single call, for GitHub, GitLab, Asana and Linear
+- URL: https://docs.github.com/en/graphql/guides/using-global-node-ids ; https://docs.gitlab.com/ee/api/graphql/reference/ ; https://developers.asana.com/reference/gettask ; https://developers.asana.com/reference/getstoriesfortask ; https://linear.app/developers/graphql
+- Type: observation (GitHub run directly) plus documentation (cited from memory, not fetched)
+- Fetched: GitHub yes; others no
+
+Notes:
+- GitHub: one `gh api graphql` call turns `owner/name#n` into the `node_id` and returns the body, labels, parent and sub-issues, linked PRs, and `timelineItems(since:)`. Ran on cyberuni/cynapse issue #20 and PRs #8 and #12; it cost 1 rate-limit point. The timeline needs each event type listed, returns at most 100 items per call, and a body edit leaves no event.
+- GitLab: one `glab api graphql` call by full path and iid returns the global ID, labels, blocking counts, related MRs and notes. Notes have no `since`. Moving an issue creates a new issue.
+- Linear: `issue(id:)` accepts an identifier or a UUID. Relations, parent, children, history and comments come back in one query, but history and comments have no `since`. There is no first-party CLI.
+- Asana: `cyber-asana task get <gid> --opt-fields …` returns metadata and parent, subtask and dependency stubs. Comment history (stories) is a separate endpoint with no `since`.
+- Consequence: one call per store returns a subject's ID, metadata and relations for GitHub, GitLab and Linear, and for Asana apart from its stories. No store returns a complete timeline in one call.

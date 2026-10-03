@@ -33,6 +33,11 @@ by people and tools that never pass through cynapse.
   - *Guidance:* through buddy-agent-harness and context-aware skills, cynapse tells a
     consumer what to fetch, from where, and how to read it: which query returns a
     subject's timeline, and what its relation metadata means.
+  - *One call per store:* guidance names a single invocation per store (one `gh`, `glab`,
+    `cyber-asana` or Linear call) that returns a subject's native ID, metadata and
+    relations. The timeline is a follow-up call that pages: no store returns a complete
+    history in one call (LC13). A store that needs two calls for the subject itself is a
+    gap for that store's plugin to close, not a reason for cynapse to call the store.
   - *Composition:* a consumer passes the data it fetched to cynapse, and cynapse returns
     a structured result. A change feed across stores, merging GitHub's timeline for #12
     with the entries in #12's work channel, is composed when it is read and never stored.
@@ -67,4 +72,5 @@ by people and tools that never pass through cynapse.
 ## Related
 
 - [ADR-0002](0002-own-only-communication-with-no-other-home.md), [ADR-0008](0008-routing-conventions-and-init-cynapse.md).
+- Evidence: LC13.
 - Research round 11 in `changes.md`.
