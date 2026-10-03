@@ -15,7 +15,7 @@ type Ruling = { seq: number; type: string; author: string; body: string }
 
 const isRuling = (e: Entry) => /\.(ratify|override)$/.test(e.type)
 
-/** Each ruled decision in a stream, by the decision's `seq`, with the ruling that settled it. */
+/** Each ruled decision in a channel, by the decision's `seq`, with the ruling that settled it. */
 export function rulings(store: Store, ref: string): Record<number, Ruling> {
 	const out: Record<number, Ruling> = {}
 	for (const e of store.entries(ref)) {
@@ -26,12 +26,12 @@ export function rulings(store: Store, ref: string): Record<number, Ruling> {
 	return out
 }
 
-export function answer(store: Store, input: { stream: string; key: string; body: string; choice?: string }): Entry {
+export function answer(store: Store, input: { channel: string; key: string; body: string; choice?: string }): Entry {
 	const record = store
-		.states({ stream: input.stream, kind: 'needs-input', status: 'open', subject: COUNCIL })
+		.states({ channel: input.channel, kind: 'needs-input', status: 'open', subject: COUNCIL })
 		.find((r) => r.key === input.key)
-	if (!record) throw new ActionError(`no open needs-input '${input.key}' for the Council in ${input.stream}`)
-	const entry = store.append(input.stream, {
+	if (!record) throw new ActionError(`no open needs-input '${input.key}' for the Council in ${input.channel}`)
+	const entry = store.append(input.channel, {
 		author: COUNCIL,
 		type: 'council.answer',
 		body: input.body,
@@ -41,7 +41,7 @@ export function answer(store: Store, input: { stream: string; key: string; body:
 		}),
 	})
 	store.setState(
-		input.stream,
+		input.channel,
 		{
 			key: record.key,
 			kind: record.kind,
@@ -61,14 +61,14 @@ export function ruleOnDecision(
 ): Entry {
 	const decision = store.entry(input.ref)
 	if (!decision?.type.endsWith('.decision')) throw new ActionError(`${input.ref} is not a decision`)
-	const existing = rulings(store, decision.streamId)[decision.seq]
+	const existing = rulings(store, decision.channelId)[decision.seq]
 	if (existing) {
 		const verb = existing.type.endsWith('.ratify') ? 'ratified' : 'overridden'
 		throw new ActionError(`${input.ref} was already ${verb} in #${existing.seq}`, 'already_ruled')
 	}
 	const note = input.body?.trim()
 	if (input.ruling === 'override' && !note) throw new ActionError('an override needs the Council outcome')
-	return store.append(decision.streamId, {
+	return store.append(decision.channelId, {
 		author: COUNCIL,
 		type: `${decision.type.slice(0, -'.decision'.length)}.${input.ruling}`,
 		body: note || 'Ratified.',

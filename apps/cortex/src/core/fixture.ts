@@ -27,7 +27,7 @@ export function createFixtureStore(): MemoryStore {
 }
 
 function seedHierarchy(store: MemoryStore) {
-	store.createStream({
+	store.createChannel({
 		handle: 'init-identity',
 		type: 'sdd.initiative',
 		title: 'Identity platform',
@@ -58,7 +58,7 @@ function seedHierarchy(store: MemoryStore) {
 			type: 'sdd.epic.opened',
 			body: `Epic: ${epic.title}`,
 		})
-		store.createStream({
+		store.createChannel({
 			handle: epic.handle,
 			type: 'sdd.epic',
 			title: epic.title,
@@ -74,7 +74,7 @@ function seedHierarchy(store: MemoryStore) {
 				type: 'sdd.mission.opened',
 				body: `Mission: ${missionTitles[mission]}`,
 			})
-			store.createStream({
+			store.createChannel({
 				handle: mission,
 				type: 'sdd.mission',
 				title: missionTitles[mission] ?? mission,
@@ -166,7 +166,7 @@ function seedHierarchy(store: MemoryStore) {
 }
 
 function seedGraph(store: MemoryStore) {
-	store.createStream({
+	store.createChannel({
 		handle: 'graph-identity',
 		type: 'sdd.mission-graph',
 		title: 'Identity mission graph',
@@ -175,12 +175,12 @@ function seedGraph(store: MemoryStore) {
 			{ participant: 'operator', role: 'dispatcher' },
 		],
 	})
-	const node = (id: string, title: string, stream?: string) =>
+	const node = (id: string, title: string, channel?: string) =>
 		store.append('graph-identity', {
 			author: 'planner',
 			type: 'sdd.graph.node',
 			body: title,
-			data: { node: id, kind: 'mission', title, status: 'open', stream },
+			data: { node: id, kind: 'mission', title, status: 'open', channel },
 		})
 	const edge = (from: string, to: string) =>
 		store.append('graph-identity', {
@@ -234,7 +234,7 @@ function seedGraph(store: MemoryStore) {
 
 function seedTruss(store: MemoryStore) {
 	const electorate = ['spec-writer', 'test-writer', 'impl-writer']
-	store.createStream({
+	store.createChannel({
 		handle: 'truss-auth',
 		type: 'truss.mission',
 		title: 'Propagate token auth across artifacts',
@@ -262,14 +262,14 @@ function seedTruss(store: MemoryStore) {
 	contribution('test-writer', 'tests', 'Tests assert a 15-minute expiry and single-use refresh tokens.')
 	contribution('impl-writer', 'impl', 'Impl keeps a 60-minute expiry for legacy clients.')
 
-	// A settled arbitration: anchor → child stream → decision written back.
+	// A settled arbitration: anchor → child channel → decision written back.
 	const settled = store.append('truss-auth', {
 		author: 'test-writer',
 		type: 'truss.arbitration-needed',
 		body: 'Does refresh rotation apply to legacy clients?',
 		refs: ['truss-auth#1', 'truss-auth#2'],
 	})
-	store.createStream({
+	store.createChannel({
 		handle: 'arb-auth-rotation',
 		type: 'truss.arbitration',
 		title: 'Rotation for legacy clients',
@@ -317,7 +317,7 @@ function seedTruss(store: MemoryStore) {
 		refs: ['truss-auth#1', 'truss-auth#2', 'truss-auth#3'],
 		tags: ['topic:auth'],
 	})
-	store.createStream({
+	store.createChannel({
 		handle: 'arb-auth-expiry',
 		type: 'truss.arbitration',
 		title: 'Token expiry',
@@ -366,7 +366,7 @@ function seedTruss(store: MemoryStore) {
 }
 
 function seedCoordination(store: MemoryStore) {
-	store.createStream({
+	store.createChannel({
 		handle: 'coord',
 		type: 'coord.channel',
 		title: 'Fleet coordination',
@@ -394,7 +394,7 @@ function seedCoordination(store: MemoryStore) {
 		body: 'Waiting on the Council for revocation semantics.',
 	})
 
-	store.createStream({
+	store.createChannel({
 		handle: 'changes',
 		type: 'feed.changes',
 		title: 'Change feed',

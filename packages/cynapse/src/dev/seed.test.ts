@@ -16,18 +16,18 @@ afterEach(() => {
 })
 
 describe(seed.name, () => {
-	it('builds the SDD hierarchy as anchored child streams', () => {
+	it('builds the SDD hierarchy as anchored child channels', () => {
 		seed(store, clock)
 		const [initiative] = store.tree('init-agent-comms')
-		expect(initiative?.children.map((c) => c.stream.handle)).toEqual(['epic-store', 'epic-viewer'])
-		expect(initiative?.children[0]?.children.map((c) => c.stream.handle)).toEqual(['m-seq-order', 'm-stream-ids'])
-		const mission = store.getStream('m-seq-order')
+		expect(initiative?.children.map((c) => c.channel.handle)).toEqual(['epic-store', 'epic-viewer'])
+		expect(initiative?.children[0]?.children.map((c) => c.channel.handle)).toEqual(['m-seq-order', 'm-channel-ids'])
+		const mission = store.getChannel('m-seq-order')
 		expect(store.entry(mission?.parent?.entryId as string)?.type).toBe('sdd.mission.opened')
 	})
 
 	it('reconciles one mission with a distilled view over its raw ledger', () => {
 		seed(store, clock)
-		expect(store.getStream('m-seq-order')?.state).toBe('reconciled')
+		expect(store.getChannel('m-seq-order')?.state).toBe('reconciled')
 		const raw = store.entries('m-seq-order')
 		const distilled = store.entries('m-seq-order', { view: 'distilled' })
 		expect(distilled.length).toBeGreaterThan(0)
@@ -53,7 +53,7 @@ describe(seed.name, () => {
 
 	it('writes each truss decision back to the mission, pointing at its arbitration anchor', () => {
 		seed(store, clock)
-		const arbitration = store.getStream('truss-pagination-arb-1')
+		const arbitration = store.getChannel('truss-pagination-arb-1')
 		const decision = store.entries('truss-pagination', { types: ['truss.decision'] })[0]
 		expect(decision?.parent).toBe(arbitration?.parent?.entryId)
 		expect(arbitration?.members.map((m) => m.role)).toContain('elector')
@@ -66,8 +66,8 @@ describe(seed.name, () => {
 	it('leaves decisions pending and items unread for the Council', () => {
 		const summary = seed(store, clock)
 		const open = store.states({ kind: 'needs-input', status: 'open', subject: 'council' })
-		expect(open.map((s) => store.getStream(s.streamId)?.handle).sort()).toEqual([
-			'm-stream-ids',
+		expect(open.map((s) => store.getChannel(s.channelId)?.handle).sort()).toEqual([
+			'm-channel-ids',
 			'truss-pagination-arb-2',
 		])
 		expect(summary.councilUnread).toBeGreaterThan(0)

@@ -20,15 +20,15 @@ describe('waits', () => {
 		const list = waits(createFixtureStore())
 		expect(list).toEqual(
 			expect.arrayContaining([
-				{ waiter: 'builder', on: 'council', stream: 'm-token-refresh', seq: 2, kind: 'needs-input' },
-				{ waiter: 'spec-writer', on: 'council', stream: 'arb-auth-expiry', seq: 5, kind: 'needs-input' },
-				{ waiter: 'arb-auth-expiry', on: 'test-writer', stream: 'arb-auth-expiry', kind: 'pending-answers' },
+				{ waiter: 'builder', on: 'council', channel: 'm-token-refresh', seq: 2, kind: 'needs-input' },
+				{ waiter: 'spec-writer', on: 'council', channel: 'arb-auth-expiry', seq: 5, kind: 'needs-input' },
+				{ waiter: 'arb-auth-expiry', on: 'test-writer', channel: 'arb-auth-expiry', kind: 'pending-answers' },
 			]),
 		)
 		expect(list).toHaveLength(3)
 	})
 
-	it('narrows to one stream', () => {
+	it('narrows to one channel', () => {
 		expect(waits(createFixtureStore(), 'm-token-refresh')).toHaveLength(1)
 	})
 })

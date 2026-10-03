@@ -24,13 +24,13 @@ describe('local-only guard', () => {
 	})
 
 	it('refuses a write that is not JSON, such as a cross-site form post', async () => {
-		const res = await post('http://localhost:5173/api/streams/m-login/read', { 'content-type': 'text/plain' })
+		const res = await post('http://localhost:5173/api/channels/m-login/read', { 'content-type': 'text/plain' })
 		expect(res.status).toBe(403)
 		expect(await res.json()).toEqual({ error: expect.stringMatching(/application\/json/) })
 	})
 
 	it('refuses a write from another origin', async () => {
-		const res = await post('http://localhost:5173/api/streams/m-login/read', {
+		const res = await post('http://localhost:5173/api/channels/m-login/read', {
 			...JSON_TYPE,
 			origin: 'https://evil.example',
 		})
@@ -39,12 +39,12 @@ describe('local-only guard', () => {
 	})
 
 	it('accepts a JSON write from the served origin, or with no Origin at all', async () => {
-		const same = await post('http://localhost:5173/api/streams/m-login/read', {
+		const same = await post('http://localhost:5173/api/channels/m-login/read', {
 			...JSON_TYPE,
 			origin: 'http://localhost:5173',
 		})
 		expect(same.status).toBe(200)
-		const agent = await post('http://127.0.0.1:5173/api/streams/m-login/read', JSON_TYPE)
+		const agent = await post('http://127.0.0.1:5173/api/channels/m-login/read', JSON_TYPE)
 		expect(agent.status).toBe(200)
 	})
 })

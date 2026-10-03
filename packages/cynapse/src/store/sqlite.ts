@@ -8,10 +8,13 @@ import { SCHEMA } from './schema.js'
 import type {
 	AppendInput,
 	Briefing,
-	CreateStreamInput,
+	Channel,
+	ChannelTraits,
+	ChannelTree,
+	CreateChannelInput,
 	Entry,
 	EntryQuery,
-	ListStreamsQuery,
+	ListChannelsQuery,
 	Member,
 	Participant,
 	ParticipantKind,
@@ -21,9 +24,6 @@ import type {
 	StateRecord,
 	StateStatus,
 	Store,
-	Stream,
-	StreamTraits,
-	StreamTree,
 	View,
 	ViewFilter,
 } from './types.js'
@@ -36,15 +36,15 @@ export interface SqliteStoreOptions {
 	busyTimeoutMs?: number
 }
 
-const DEFAULT_TRAITS: StreamTraits = { membership: 'open', wake: false }
+const DEFAULT_TRAITS: ChannelTraits = { membership: 'open', wake: false }
 
-interface StreamRow {
+interface ChannelRow {
 	id: string
 	handle: string
 	type: string
 	title: string
 	purpose: string | null
-	parent_stream: string | null
+	parent_channel: string | null
 	parent_entry: string | null
 	traits: string
 	state: string
@@ -54,7 +54,7 @@ interface StreamRow {
 
 interface EntryRow {
 	id: string
-	stream: string
+	channel: string
 	handle: string
 	seq: number
 	author: string
@@ -71,7 +71,7 @@ interface EntryRow {
 }
 
 interface StateRow {
-	stream: string
+	channel: string
 	key: string
 	kind: string
 	status: string
@@ -83,10 +83,10 @@ interface StateRow {
 }
 
 const ENTRY_SELECT = `
-	SELECT e.id, e.stream, s.handle, e.seq, e.author, e.type, e.parent, p.seq AS parent_seq,
+	SELECT e.id, e.channel, s.handle, e.seq, e.author, e.type, e.parent, p.seq AS parent_seq,
 		e.root, r.seq AS root_seq, e.refs, e.tags AS write_tags, e.body, e.data, e.recorded_at
 	FROM entries e
-	JOIN streams s ON s.id = e.stream
+	JOIN channels s ON s.id = e.channel
 	LEFT JOIN entries p ON p.id = e.parent
 	LEFT JOIN entries r ON r.id = e.root`
 
@@ -94,7 +94,7 @@ const ENTRY_SELECT = `
  * The solo-tier store: stock SQLite in WAL mode, embedded, with no daemon.
  *
  * SQLite's write lock is the order owner. Every write runs in `BEGIN IMMEDIATE`, which
- * takes the lock up front, and assigns `seq` inside that transaction as the stream's last
+ * takes the lock up front, and assigns `seq` inside that transaction as the channel's last
  * seq + 1 — so concurrent CLI processes can never hand out the same seq or leave a gap.
  */
 export class SqliteStore implements Store {
@@ -144,19 +144,19 @@ export class SqliteStore implements Store {
 		)
 	}
 
-	// ── streams ─────────────────────────────────────────────────────────────────
+	// ── channels ─────────────────────────────────────────────────────────────────
 
-	createStream(input: CreateStreamInput): Stream {
+	createChannel(input: CreateChannelInput): Channel {
 		const id = this.#write(() => {
 			const anchor = input.anchor ? this.#requireEntryRow(input.anchor) : undefined
 			const id = anchor ? uuidv5(anchor.id) : input.key ? uuidv5(input.key) : uuidv7(this.#clock())
-			// A derived id makes creation idempotent: two agents opening the same stream at
-			// once end up in one stream, not two.
-			if (this.#get('SELECT 1 AS found FROM streams WHERE id = ?', id)) {
+			// A derived id makes creation idempotent: two agents opening the same channel at
+			// once end up in one channel, not two.
+			if (this.#get('SELECT 1 AS found FROM channels WHERE id = ?', id)) {
 				const field = this.#createConflict(id, input)
 				if (field) {
 					throw new CynapseError(
-						`stream id ${id} (derived from the ${anchor ? 'anchor' : 'key'}) already exists and differs in ${field}`,
+						`channel id ${id} (derived from the ${anchor ? 'anchor' : 'key'}) already exists and differs in ${field}`,
 						{
 							code: 'id_conflict',
 						},
@@ -164,13 +164,13 @@ export class SqliteStore implements Store {
 				}
 				return id
 			}
-			const taken = this.#findStreamId(input.handle)
-			if (taken) throw new CynapseError(`stream handle "${input.handle}" is already taken`)
+			const taken = this.#findChannelId(input.handle)
+			if (taken) throw new CynapseError(`channel handle "${input.handle}" is already taken`)
 			validateHandle(input.handle)
 			this.#ensureParticipant(input.author)
 			const traits = { ...DEFAULT_TRAITS, ...input.traits }
 			this.#run(
-				`INSERT INTO streams (id, handle, type, title, purpose, parent_stream, parent_entry, traits, state,
+				`INSERT INTO channels (id, handle, type, title, purpose, parent_channel, parent_entry, traits, state,
 					conventions, created_at)
 				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 				id,
@@ -178,17 +178,17 @@ export class SqliteStore implements Store {
 				input.type,
 				input.title,
 				input.purpose ?? null,
-				anchor?.stream ?? null,
+				anchor?.channel ?? null,
 				anchor?.id ?? null,
 				JSON.stringify(traits),
 				input.state ?? 'active',
 				JSON.stringify(input.conventions ?? []),
 				this.#now(),
 			)
-			this.#run('INSERT INTO stream_handles (handle, stream) VALUES (?, ?)', input.handle, id)
+			this.#run('INSERT INTO channel_handles (handle, channel) VALUES (?, ?)', input.handle, id)
 			this.#appendIn(id, {
 				author: input.author,
-				type: 'cynapse.stream.created',
+				type: 'cynapse.channel.created',
 				data: {
 					handle: input.handle,
 					type: input.type,
@@ -199,28 +199,28 @@ export class SqliteStore implements Store {
 			})
 			return id
 		})
-		return this.#requireStream(id)
+		return this.#requireChannel(id)
 	}
 
 	/**
-	 * The first field in which a repeated create of a derived-id stream differs from the
-	 * stored stream. A handle still matches after a rename, since the old one is an alias.
+	 * The first field in which a repeated create of a derived-id channel differs from the
+	 * stored channel. A handle still matches after a rename, since the old one is an alias.
 	 */
-	#createConflict(id: string, input: CreateStreamInput): string | undefined {
-		const stored = this.#get<StreamRow>('SELECT * FROM streams WHERE id = ?', id) as StreamRow
-		if (this.#findStreamId(input.handle) !== id) return 'handle'
+	#createConflict(id: string, input: CreateChannelInput): string | undefined {
+		const stored = this.#get<ChannelRow>('SELECT * FROM channels WHERE id = ?', id) as ChannelRow
+		if (this.#findChannelId(input.handle) !== id) return 'handle'
 		if (stored.type !== input.type) return 'type'
 		if (stored.title !== input.title) return 'title'
 		if (!isDeepStrictEqual(JSON.parse(stored.traits), { ...DEFAULT_TRAITS, ...input.traits })) return 'traits'
 		return undefined
 	}
 
-	getStream(ref: string, options: { as?: string } = {}): Stream | undefined {
-		const id = this.#findStreamId(ref)
-		return id ? this.#loadStream(id, options.as) : undefined
+	getChannel(ref: string, options: { as?: string } = {}): Channel | undefined {
+		const id = this.#findChannelId(ref)
+		return id ? this.#loadChannel(id, options.as) : undefined
 	}
 
-	listStreams(query: ListStreamsQuery = {}): Stream[] {
+	listChannels(query: ListChannelsQuery = {}): Channel[] {
 		const where: string[] = []
 		const params: SQLInputValue[] = []
 		if (query.type) {
@@ -232,43 +232,43 @@ export class SqliteStore implements Store {
 			params.push(query.state)
 		}
 		if (query.parent) {
-			where.push('parent_stream = ?')
-			params.push(this.#requireStreamId(query.parent))
+			where.push('parent_channel = ?')
+			params.push(this.#requireChannelId(query.parent))
 		}
 		const rows = this.#all<{ id: string }>(
-			`SELECT id FROM streams ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY created_at, id`,
+			`SELECT id FROM channels ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY created_at, id`,
 			...params,
 		)
-		return rows.map((row) => this.#loadStream(row.id))
+		return rows.map((row) => this.#loadChannel(row.id))
 	}
 
-	children(ref: string): Stream[] {
-		return this.listStreams({ parent: ref })
+	children(ref: string): Channel[] {
+		return this.listChannels({ parent: ref })
 	}
 
-	tree(ref?: string): StreamTree[] {
-		const build = (stream: Stream): StreamTree => ({
-			stream,
-			children: this.children(stream.id).map(build),
+	tree(ref?: string): ChannelTree[] {
+		const build = (channel: Channel): ChannelTree => ({
+			channel,
+			children: this.children(channel.id).map(build),
 		})
-		if (ref) return [build(this.#requireStream(this.#requireStreamId(ref)))]
+		if (ref) return [build(this.#requireChannel(this.#requireChannelId(ref)))]
 		const roots = this.#all<{ id: string }>(
-			'SELECT id FROM streams WHERE parent_stream IS NULL ORDER BY created_at, id',
+			'SELECT id FROM channels WHERE parent_channel IS NULL ORDER BY created_at, id',
 		)
-		return roots.map((row) => build(this.#loadStream(row.id)))
+		return roots.map((row) => build(this.#loadChannel(row.id)))
 	}
 
 	brief(ref: string, options: { as?: string } = {}): Briefing {
-		const stream = this.#requireStream(this.#requireStreamId(ref), options.as)
-		const pinned = stream.pinned
-			.map((seq) => this.entry(stream.id, seq))
+		const channel = this.#requireChannel(this.#requireChannelId(ref), options.as)
+		const pinned = channel.pinned
+			.map((seq) => this.entry(channel.id, seq))
 			.filter((entry): entry is Entry => entry !== undefined)
 		return {
-			stream,
-			states: this.states({ stream: stream.id, status: 'open' }),
+			channel,
+			states: this.states({ channel: channel.id, status: 'open' }),
 			pinned,
-			views: this.views(stream.id),
-			children: this.children(stream.id).map(({ id, handle, type, title, state }) => ({
+			views: this.views(channel.id),
+			children: this.children(channel.id).map(({ id, handle, type, title, state }) => ({
 				id,
 				handle,
 				type,
@@ -278,29 +278,29 @@ export class SqliteStore implements Store {
 		}
 	}
 
-	renameStream(ref: string, handle: string, author: string): Stream {
+	renameChannel(ref: string, handle: string, author: string): Channel {
 		const id = this.#write(() => {
-			const id = this.#requireStreamId(ref)
+			const id = this.#requireChannelId(ref)
 			validateHandle(handle)
-			const owner = this.#findStreamId(handle)
-			if (owner && owner !== id) throw new CynapseError(`stream handle "${handle}" is already taken`)
-			const from = this.#get<{ handle: string }>('SELECT handle FROM streams WHERE id = ?', id)?.handle
+			const owner = this.#findChannelId(handle)
+			if (owner && owner !== id) throw new CynapseError(`channel handle "${handle}" is already taken`)
+			const from = this.#get<{ handle: string }>('SELECT handle FROM channels WHERE id = ?', id)?.handle
 			if (from === handle) return id
-			this.#run('UPDATE streams SET handle = ? WHERE id = ?', handle, id)
-			this.#run('INSERT OR IGNORE INTO stream_handles (handle, stream) VALUES (?, ?)', handle, id)
-			this.#appendIn(id, { author, type: 'cynapse.stream.renamed', data: { from, to: handle } })
+			this.#run('UPDATE channels SET handle = ? WHERE id = ?', handle, id)
+			this.#run('INSERT OR IGNORE INTO channel_handles (handle, channel) VALUES (?, ?)', handle, id)
+			this.#appendIn(id, { author, type: 'cynapse.channel.renamed', data: { from, to: handle } })
 			return id
 		})
-		return this.#requireStream(id)
+		return this.#requireChannel(id)
 	}
 
 	addMember(ref: string, participant: string, role: string, author: string): Entry {
 		return this.#writeEntry(() => {
-			const id = this.#requireStreamId(ref)
+			const id = this.#requireChannelId(ref)
 			this.#ensureParticipant(participant)
 			this.#run(
-				`INSERT INTO members (stream, participant, role) VALUES (?, ?, ?)
-				ON CONFLICT (stream, participant) DO UPDATE SET role = excluded.role`,
+				`INSERT INTO members (channel, participant, role) VALUES (?, ?, ?)
+				ON CONFLICT (channel, participant) DO UPDATE SET role = excluded.role`,
 				id,
 				participant,
 				role,
@@ -311,8 +311,8 @@ export class SqliteStore implements Store {
 
 	addContext(ref: string, contextRef: string, author: string): Entry {
 		return this.#writeEntry(() => {
-			const id = this.#requireStreamId(ref)
-			this.#run('INSERT OR IGNORE INTO context (stream, ref) VALUES (?, ?)', id, contextRef)
+			const id = this.#requireChannelId(ref)
+			this.#run('INSERT OR IGNORE INTO context (channel, ref) VALUES (?, ?)', id, contextRef)
 			return this.#appendIn(id, {
 				author,
 				type: 'cynapse.context.added',
@@ -325,8 +325,8 @@ export class SqliteStore implements Store {
 	pin(entryRef: string, author: string): Entry {
 		return this.#writeEntry(() => {
 			const target = this.#requireEntryRow(entryRef)
-			this.#run('INSERT OR IGNORE INTO pins (stream, entry) VALUES (?, ?)', target.stream, target.id)
-			return this.#appendIn(target.stream, {
+			this.#run('INSERT OR IGNORE INTO pins (channel, entry) VALUES (?, ?)', target.channel, target.id)
+			return this.#appendIn(target.channel, {
 				author,
 				type: 'cynapse.pinned',
 				refs: [`${target.handle}#${target.seq}`],
@@ -337,9 +337,9 @@ export class SqliteStore implements Store {
 
 	setLifecycle(ref: string, state: string, author: string): Entry {
 		return this.#writeEntry(() => {
-			const id = this.#requireStreamId(ref)
-			const from = this.#get<{ state: string }>('SELECT state FROM streams WHERE id = ?', id)?.state
-			this.#run('UPDATE streams SET state = ? WHERE id = ?', state, id)
+			const id = this.#requireChannelId(ref)
+			const from = this.#get<{ state: string }>('SELECT state FROM channels WHERE id = ?', id)?.state
+			this.#run('UPDATE channels SET state = ? WHERE id = ?', state, id)
 			return this.#appendIn(id, {
 				author,
 				type: 'cynapse.state.changed',
@@ -350,10 +350,10 @@ export class SqliteStore implements Store {
 
 	defineView(ref: string, name: string, filter: ViewFilter, author: string): Entry {
 		return this.#writeEntry(() => {
-			const id = this.#requireStreamId(ref)
+			const id = this.#requireChannelId(ref)
 			this.#run(
-				`INSERT INTO views (stream, name, filter) VALUES (?, ?, ?)
-				ON CONFLICT (stream, name) DO UPDATE SET filter = excluded.filter`,
+				`INSERT INTO views (channel, name, filter) VALUES (?, ?, ?)
+				ON CONFLICT (channel, name) DO UPDATE SET filter = excluded.filter`,
 				id,
 				name,
 				JSON.stringify(filter),
@@ -363,39 +363,39 @@ export class SqliteStore implements Store {
 	}
 
 	views(ref: string): View[] {
-		const id = this.#requireStreamId(ref)
-		return this.#all<{ stream: string; name: string; filter: string }>(
-			'SELECT stream, name, filter FROM views WHERE stream = ? ORDER BY name',
+		const id = this.#requireChannelId(ref)
+		return this.#all<{ channel: string; name: string; filter: string }>(
+			'SELECT channel, name, filter FROM views WHERE channel = ? ORDER BY name',
 			id,
-		).map((row) => ({ streamId: row.stream, name: row.name, filter: JSON.parse(row.filter) as ViewFilter }))
+		).map((row) => ({ channelId: row.channel, name: row.name, filter: JSON.parse(row.filter) as ViewFilter }))
 	}
 
 	// ── entries ─────────────────────────────────────────────────────────────────
 
 	append(ref: string, input: AppendInput): Entry {
-		return this.#writeEntry(() => this.#appendIn(this.#requireStreamId(ref), input))
+		return this.#writeEntry(() => this.#appendIn(this.#requireChannelId(ref), input))
 	}
 
 	entry(ref: string, seq?: number): Entry | undefined {
 		const row =
 			seq === undefined
 				? this.#findEntryRow(ref)
-				: this.#get<EntryRow>(`${ENTRY_SELECT} WHERE e.stream = ? AND e.seq = ?`, this.#findStreamId(ref) ?? '', seq)
+				: this.#get<EntryRow>(`${ENTRY_SELECT} WHERE e.channel = ? AND e.seq = ?`, this.#findChannelId(ref) ?? '', seq)
 		return row ? this.#toEntry(row) : undefined
 	}
 
 	entries(ref: string, query: EntryQuery = {}): Entry[] {
-		const id = this.#requireStreamId(ref)
-		const where = ['e.stream = ?']
+		const id = this.#requireChannelId(ref)
+		const where = ['e.channel = ?']
 		const params: SQLInputValue[] = [id]
 		let filter: ViewFilter = query
 		if (query.view) {
 			const view = this.#get<{ filter: string }>(
-				'SELECT filter FROM views WHERE stream = ? AND name = ?',
+				'SELECT filter FROM views WHERE channel = ? AND name = ?',
 				id,
 				query.view,
 			)
-			if (!view) throw new CynapseError(`no view named "${query.view}" on stream ${ref}`)
+			if (!view) throw new CynapseError(`no view named "${query.view}" on channel ${ref}`)
 			filter = mergeFilters(JSON.parse(view.filter) as ViewFilter, query)
 		}
 		applyFilter(filter, where, params)
@@ -409,7 +409,7 @@ export class SqliteStore implements Store {
 		}
 		if (query.fromSummary) {
 			const summary = this.#get<{ seq: number }>(
-				"SELECT MAX(seq) AS seq FROM entries WHERE stream = ? AND type = 'cynapse.summary'",
+				"SELECT MAX(seq) AS seq FROM entries WHERE channel = ? AND type = 'cynapse.summary'",
 				id,
 			)
 			if (summary?.seq) {
@@ -432,9 +432,9 @@ export class SqliteStore implements Store {
 		const where: string[] = []
 		const params: SQLInputValue[] = []
 		applyFilter(query, where, params)
-		if (query.streams?.length) {
-			const ids = query.streams.map((ref) => this.#requireStreamId(ref))
-			where.push(`e.stream IN (${ids.map(() => '?').join(', ')})`)
+		if (query.channels?.length) {
+			const ids = query.channels.map((ref) => this.#requireChannelId(ref))
+			where.push(`e.channel IN (${ids.map(() => '?').join(', ')})`)
 			params.push(...ids)
 		}
 		const limit = query.limit ? `LIMIT ${Math.max(0, Math.trunc(query.limit))}` : ''
@@ -456,20 +456,20 @@ export class SqliteStore implements Store {
 
 	markRead(ref: string, participant: string, seq?: number): Member {
 		return this.#write(() => {
-			const id = this.#requireStreamId(ref)
+			const id = this.#requireChannelId(ref)
 			const last = this.#lastSeq(id)
 			const target = Math.min(seq ?? last, last)
 			this.#ensureParticipant(participant)
 			// A cursor only moves forward; re-reading old entries must not mark newer ones unread.
 			this.#run(
-				`INSERT INTO cursors (stream, participant, seq) VALUES (?, ?, ?)
-				ON CONFLICT (stream, participant) DO UPDATE SET seq = MAX(seq, excluded.seq)`,
+				`INSERT INTO cursors (channel, participant, seq) VALUES (?, ?, ?)
+				ON CONFLICT (channel, participant) DO UPDATE SET seq = MAX(seq, excluded.seq)`,
 				id,
 				participant,
 				target,
 			)
 			const role = this.#get<{ role: string }>(
-				'SELECT role FROM members WHERE stream = ? AND participant = ?',
+				'SELECT role FROM members WHERE channel = ? AND participant = ?',
 				id,
 				participant,
 			)?.role
@@ -477,13 +477,13 @@ export class SqliteStore implements Store {
 		})
 	}
 
-	unread(participant: string): { streamId: string; handle: string; count: number }[] {
-		return this.#all<{ streamId: string; handle: string; count: number }>(
-			`SELECT s.id AS streamId, s.handle AS handle, COUNT(e.id) AS count
+	unread(participant: string): { channelId: string; handle: string; count: number }[] {
+		return this.#all<{ channelId: string; handle: string; count: number }>(
+			`SELECT s.id AS channelId, s.handle AS handle, COUNT(e.id) AS count
 			FROM members m
-			JOIN streams s ON s.id = m.stream
-			LEFT JOIN cursors c ON c.stream = m.stream AND c.participant = m.participant
-			JOIN entries e ON e.stream = m.stream AND e.seq > COALESCE(c.seq, 0) AND e.author <> m.participant
+			JOIN channels s ON s.id = m.channel
+			LEFT JOIN cursors c ON c.channel = m.channel AND c.participant = m.participant
+			JOIN entries e ON e.channel = m.channel AND e.seq > COALESCE(c.seq, 0) AND e.author <> m.participant
 			WHERE m.participant = ?
 			GROUP BY s.id
 			ORDER BY s.handle`,
@@ -495,9 +495,9 @@ export class SqliteStore implements Store {
 
 	setState(ref: string, input: SetStateInput, author: string): StateRecord {
 		return this.#write(() => {
-			const id = this.#requireStreamId(ref)
+			const id = this.#requireChannelId(ref)
 			if (input.kind === 'lifecycle') throw new CynapseError('lifecycle is set with setLifecycle, not setState')
-			const previous = this.#get<StateRow>('SELECT * FROM states WHERE stream = ? AND key = ?', id, input.key)
+			const previous = this.#get<StateRow>('SELECT * FROM states WHERE channel = ? AND key = ?', id, input.key)
 			const entryId = input.entryId ? this.#requireEntryRow(input.entryId).id : undefined
 			const logged = this.#appendIn(id, {
 				author,
@@ -513,9 +513,9 @@ export class SqliteStore implements Store {
 				},
 			})
 			this.#run(
-				`INSERT INTO states (stream, key, kind, status, subject, entry, value, seq, updated_at)
+				`INSERT INTO states (channel, key, kind, status, subject, entry, value, seq, updated_at)
 				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-				ON CONFLICT (stream, key) DO UPDATE SET kind = excluded.kind, status = excluded.status,
+				ON CONFLICT (channel, key) DO UPDATE SET kind = excluded.kind, status = excluded.status,
 					subject = excluded.subject, entry = excluded.entry, value = excluded.value, seq = excluded.seq,
 					updated_at = excluded.updated_at`,
 				id,
@@ -529,7 +529,7 @@ export class SqliteStore implements Store {
 				logged.recordedAt,
 			)
 			return this.#toState(
-				this.#get<StateRow>('SELECT * FROM states WHERE stream = ? AND key = ?', id, input.key) as StateRow,
+				this.#get<StateRow>('SELECT * FROM states WHERE channel = ? AND key = ?', id, input.key) as StateRow,
 			)
 		})
 	}
@@ -537,9 +537,9 @@ export class SqliteStore implements Store {
 	states(query: StateQuery = {}): StateRecord[] {
 		const where: string[] = []
 		const params: SQLInputValue[] = []
-		if (query.stream) {
-			where.push('stream = ?')
-			params.push(this.#requireStreamId(query.stream))
+		if (query.channel) {
+			where.push('channel = ?')
+			params.push(this.#requireChannelId(query.channel))
 		}
 		for (const field of ['kind', 'status', 'subject'] as const) {
 			const value = query[field]
@@ -549,7 +549,7 @@ export class SqliteStore implements Store {
 			}
 		}
 		return this.#all<StateRow>(
-			`SELECT * FROM states ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY updated_at, stream, key`,
+			`SELECT * FROM states ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY updated_at, channel, key`,
 			...params,
 		).map((row) => this.#toState(row))
 	}
@@ -578,14 +578,14 @@ export class SqliteStore implements Store {
 		return this.entry(id) as Entry
 	}
 
-	#appendIn(streamId: string, input: AppendInput): Entry {
+	#appendIn(channelId: string, input: AppendInput): Entry {
 		if (input.id) {
 			if (!isUuid(input.id)) throw new CynapseError(`entry id "${input.id}" is not a UUID`)
 			const existing = this.#findEntryRow(input.id)
 			if (existing) {
 				// Same id with the same payload is a retry, not a new entry. Same id with a
 				// different payload is a collision, and returning the stored entry would hide it.
-				const field = this.#appendConflict(existing, streamId, input)
+				const field = this.#appendConflict(existing, channelId, input)
 				if (field) {
 					throw new CynapseError(
 						`entry id ${input.id} is already used by ${existing.handle}#${existing.seq}, which differs in ${field}`,
@@ -600,19 +600,19 @@ export class SqliteStore implements Store {
 		let parent: string | null = null
 		if (input.parent) {
 			const parentRow = this.#requireEntryRow(input.parent)
-			if (parentRow.stream !== streamId) {
-				throw new CynapseError(`parent ${input.parent} is in another stream; replies stay in one stream`)
+			if (parentRow.channel !== channelId) {
+				throw new CynapseError(`parent ${input.parent} is in another channel; replies stay in one channel`)
 			}
 			parent = parentRow.id
 			root = parentRow.root ?? parentRow.id
 		}
 		this.#ensureParticipant(input.author)
-		const seq = this.#lastSeq(streamId) + 1
+		const seq = this.#lastSeq(channelId) + 1
 		this.#run(
-			`INSERT INTO entries (id, stream, seq, author, type, parent, root, refs, tags, body, data, recorded_at)
+			`INSERT INTO entries (id, channel, seq, author, type, parent, root, refs, tags, body, data, recorded_at)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			id,
-			streamId,
+			channelId,
 			seq,
 			input.author,
 			input.type,
@@ -631,10 +631,10 @@ export class SqliteStore implements Store {
 	}
 
 	/** The first field in which a retried append differs from the stored entry, if any. */
-	#appendConflict(existing: EntryRow, streamId: string, input: AppendInput): string | undefined {
+	#appendConflict(existing: EntryRow, channelId: string, input: AppendInput): string | undefined {
 		const parent = input.parent ? this.#requireEntryRow(input.parent).id : null
 		const checks: [string, unknown, unknown][] = [
-			['stream', existing.stream, streamId],
+			['channel', existing.channel, channelId],
 			['author', existing.author, input.author],
 			['type', existing.type, input.type],
 			['parent', existing.parent, parent],
@@ -656,7 +656,7 @@ export class SqliteStore implements Store {
 			const target = this.#requireEntryRow(entryRef)
 			for (const tag of add) this.#run('INSERT OR IGNORE INTO entry_tags (entry, tag) VALUES (?, ?)', target.id, tag)
 			for (const tag of remove) this.#run('DELETE FROM entry_tags WHERE entry = ? AND tag = ?', target.id, tag)
-			return this.#appendIn(target.stream, {
+			return this.#appendIn(target.channel, {
 				author,
 				type: 'cynapse.label',
 				refs: [`${target.handle}#${target.seq}`],
@@ -665,14 +665,19 @@ export class SqliteStore implements Store {
 		})
 	}
 
-	#lastSeq(streamId: string): number {
-		return this.#get<{ seq: number | null }>('SELECT MAX(seq) AS seq FROM entries WHERE stream = ?', streamId)?.seq ?? 0
+	#lastSeq(channelId: string): number {
+		return (
+			this.#get<{ seq: number | null }>('SELECT MAX(seq) AS seq FROM entries WHERE channel = ?', channelId)?.seq ?? 0
+		)
 	}
 
-	#cursor(streamId: string, participant: string): number {
+	#cursor(channelId: string, participant: string): number {
 		return (
-			this.#get<{ seq: number }>('SELECT seq FROM cursors WHERE stream = ? AND participant = ?', streamId, participant)
-				?.seq ?? 0
+			this.#get<{ seq: number }>(
+				'SELECT seq FROM cursors WHERE channel = ? AND participant = ?',
+				channelId,
+				participant,
+			)?.seq ?? 0
 		)
 	}
 
@@ -680,31 +685,31 @@ export class SqliteStore implements Store {
 		this.#run("INSERT OR IGNORE INTO participants (id, kind, name) VALUES (?, 'agent', ?)", id, id)
 	}
 
-	#findStreamId(ref: string): string | undefined {
+	#findChannelId(ref: string): string | undefined {
 		if (isUuid(ref)) {
-			const row = this.#get<{ id: string }>('SELECT id FROM streams WHERE id = ?', ref.toLowerCase())
+			const row = this.#get<{ id: string }>('SELECT id FROM channels WHERE id = ?', ref.toLowerCase())
 			if (row) return row.id
 		}
-		return this.#get<{ stream: string }>('SELECT stream FROM stream_handles WHERE handle = ?', ref)?.stream
+		return this.#get<{ channel: string }>('SELECT channel FROM channel_handles WHERE handle = ?', ref)?.channel
 	}
 
-	#requireStreamId(ref: string): string {
-		const id = this.#findStreamId(ref)
-		if (!id) throw new CynapseError(`no stream found for "${ref}"`)
+	#requireChannelId(ref: string): string {
+		const id = this.#findChannelId(ref)
+		if (!id) throw new CynapseError(`no channel found for "${ref}"`)
 		return id
 	}
 
-	#requireStream(id: string, as?: string): Stream {
-		return this.#loadStream(id, as)
+	#requireChannel(id: string, as?: string): Channel {
+		return this.#loadChannel(id, as)
 	}
 
 	#findEntryRow(ref: string): EntryRow | undefined {
 		if (isUuid(ref)) return this.#get<EntryRow>(`${ENTRY_SELECT} WHERE e.id = ?`, ref.toLowerCase())
 		const short = /^(.+)#(\d+)$/.exec(ref)
 		if (!short) return undefined
-		const streamId = this.#findStreamId(short[1] as string)
-		if (!streamId) return undefined
-		return this.#get<EntryRow>(`${ENTRY_SELECT} WHERE e.stream = ? AND e.seq = ?`, streamId, Number(short[2]))
+		const channelId = this.#findChannelId(short[1] as string)
+		if (!channelId) return undefined
+		return this.#get<EntryRow>(`${ENTRY_SELECT} WHERE e.channel = ? AND e.seq = ?`, channelId, Number(short[2]))
 	}
 
 	#requireEntryRow(ref: string): EntryRow {
@@ -713,42 +718,42 @@ export class SqliteStore implements Store {
 		return row
 	}
 
-	#loadStream(id: string, as?: string): Stream {
-		const row = this.#get<StreamRow>('SELECT * FROM streams WHERE id = ?', id)
-		if (!row) throw new CynapseError(`no stream found for "${id}"`)
+	#loadChannel(id: string, as?: string): Channel {
+		const row = this.#get<ChannelRow>('SELECT * FROM channels WHERE id = ?', id)
+		if (!row) throw new CynapseError(`no channel found for "${id}"`)
 		const aliases = this.#all<{ handle: string }>(
-			'SELECT handle FROM stream_handles WHERE stream = ? AND handle <> ? ORDER BY handle',
+			'SELECT handle FROM channel_handles WHERE channel = ? AND handle <> ? ORDER BY handle',
 			id,
 			row.handle,
 		).map((alias) => alias.handle)
 		const members = this.#all<Member>(
 			`SELECT m.participant, m.role, COALESCE(c.seq, 0) AS cursor
-			FROM members m LEFT JOIN cursors c ON c.stream = m.stream AND c.participant = m.participant
-			WHERE m.stream = ? ORDER BY m.rowid`,
+			FROM members m LEFT JOIN cursors c ON c.channel = m.channel AND c.participant = m.participant
+			WHERE m.channel = ? ORDER BY m.rowid`,
 			id,
 		)
-		const context = this.#all<{ ref: string }>('SELECT ref FROM context WHERE stream = ? ORDER BY rowid', id).map(
+		const context = this.#all<{ ref: string }>('SELECT ref FROM context WHERE channel = ? ORDER BY rowid', id).map(
 			(c) => c.ref,
 		)
 		const pinned = this.#all<{ seq: number }>(
-			'SELECT e.seq FROM pins p JOIN entries e ON e.id = p.entry WHERE p.stream = ? ORDER BY e.seq',
+			'SELECT e.seq FROM pins p JOIN entries e ON e.id = p.entry WHERE p.channel = ? ORDER BY e.seq',
 			id,
 		).map((p) => p.seq)
 		const stats = this.#get<{ entries: number; lastSeq: number | null; lastAt: string | null }>(
-			'SELECT COUNT(*) AS entries, MAX(seq) AS lastSeq, MAX(recorded_at) AS lastAt FROM entries WHERE stream = ?',
+			'SELECT COUNT(*) AS entries, MAX(seq) AS lastSeq, MAX(recorded_at) AS lastAt FROM entries WHERE channel = ?',
 			id,
 		)
-		let parent: Stream['parent']
-		if (row.parent_entry && row.parent_stream) {
+		let parent: Channel['parent']
+		if (row.parent_entry && row.parent_channel) {
 			const anchorSeq = this.#get<{ seq: number }>('SELECT seq FROM entries WHERE id = ?', row.parent_entry)?.seq ?? 0
-			parent = { streamId: row.parent_stream, entryId: row.parent_entry, seq: anchorSeq }
+			parent = { channelId: row.parent_channel, entryId: row.parent_entry, seq: anchorSeq }
 		}
 		const lastSeq = stats?.lastSeq ?? 0
 		let unread: number | undefined
 		if (as) {
 			unread =
 				this.#get<{ count: number }>(
-					'SELECT COUNT(*) AS count FROM entries WHERE stream = ? AND seq > ? AND author <> ?',
+					'SELECT COUNT(*) AS count FROM entries WHERE channel = ? AND seq > ? AND author <> ?',
 					id,
 					this.#cursor(id, as),
 					as,
@@ -764,7 +769,7 @@ export class SqliteStore implements Store {
 			...(parent ? { parent } : {}),
 			members,
 			context,
-			traits: JSON.parse(row.traits) as StreamTraits,
+			traits: JSON.parse(row.traits) as ChannelTraits,
 			state: row.state,
 			pinned,
 			conventions: JSON.parse(row.conventions) as string[],
@@ -785,8 +790,8 @@ export class SqliteStore implements Store {
 		const created = timestampOf(row.id)
 		return {
 			id: row.id,
-			streamId: row.stream,
-			stream: row.handle,
+			channelId: row.channel,
+			channel: row.handle,
 			seq: row.seq,
 			author: row.author,
 			type: row.type,
@@ -804,7 +809,7 @@ export class SqliteStore implements Store {
 
 	#toState(row: StateRow): StateRecord {
 		return {
-			streamId: row.stream,
+			channelId: row.channel,
 			key: row.key,
 			kind: row.kind,
 			status: row.status as StateStatus,
@@ -835,9 +840,9 @@ export class SqliteStore implements Store {
 
 function validateHandle(handle: string): void {
 	// `#` separates a handle from a seq in a short reference, and a handle shaped like a
-	// UUID would shadow a stream id.
+	// UUID would shadow a channel id.
 	if (!/^[a-z0-9][a-z0-9._/-]*$/i.test(handle) || isUuid(handle)) {
-		throw new CynapseError(`"${handle}" is not a valid stream handle (letters, digits, . _ / -)`)
+		throw new CynapseError(`"${handle}" is not a valid channel handle (letters, digits, . _ / -)`)
 	}
 }
 

@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { MemberRow, Wait } from '../../core/members.ts'
-import type { Entry, StateRecord, Stream as StreamData } from '../../core/model.ts'
+import type { Channel as ChannelData, Entry, StateRecord } from '../../core/model.ts'
 import { EntryLine, Link, Loading, Refs, RefText, Tag, TypeChip } from '../components.tsx'
 import { navigate, post, useApi, useKeys, useListNav } from '../data.ts'
 import { AnswerBox } from './Triage.tsx'
 
 type Child = { handle: string; title: string; type: string; state: string; anchorSeq?: number }
 
-type StreamInfo = {
-	stream: StreamData
+type ChannelInfo = {
+	channel: ChannelData
 	anchor?: string
 	members: MemberRow[]
 	waits: Wait[]
@@ -41,7 +41,7 @@ function threaded(entries: Entry[]): { entry: Entry; depth: number }[] {
 }
 
 function Timeline(props: { handle: string; compact?: boolean }) {
-	const { data } = useApi<Entry[]>(`/api/streams/${encodeURIComponent(props.handle)}/entries`)
+	const { data } = useApi<Entry[]>(`/api/channels/${encodeURIComponent(props.handle)}/entries`)
 	if (!data) return <Loading />
 	const content = data.filter((e) => !e.type.startsWith('cynapse.'))
 	return (
@@ -58,7 +58,7 @@ function RulingBox(props: { entry: Entry; ruling: 'ratify' | 'override'; onDone:
 	const [error, setError] = useState<string>()
 	const submit = async () => {
 		try {
-			await post('/api/rule', { ref: `${props.entry.stream}#${props.entry.seq}`, ruling: props.ruling, body })
+			await post('/api/rule', { ref: `${props.entry.channel}#${props.entry.seq}`, ruling: props.ruling, body })
 			props.onDone()
 		} catch (err) {
 			setError((err as Error).message)
@@ -98,7 +98,7 @@ function RulingBox(props: { entry: Entry; ruling: 'ratify' | 'override'; onDone:
 	)
 }
 
-function Sidebar({ info }: { info: StreamInfo }) {
+function Sidebar({ info }: { info: ChannelInfo }) {
 	const open = info.states.filter((s) => s.status === 'open')
 	return (
 		<aside className="side-panel">
@@ -125,7 +125,7 @@ function Sidebar({ info }: { info: StreamInfo }) {
 						{w.seq ? (
 							<>
 								{' '}
-								<RefText text={`${w.stream}#${w.seq}`} />
+								<RefText text={`${w.channel}#${w.seq}`} />
 							</>
 						) : null}
 					</span>
@@ -144,17 +144,17 @@ function Sidebar({ info }: { info: StreamInfo }) {
 					<h3>Pinned</h3>
 					{info.pinned.map((e) => (
 						<div key={e.id} className="pinned">
-							<RefText text={`${e.stream}#${e.seq}`} /> <RefText text={e.body} />
+							<RefText text={`${e.channel}#${e.seq}`} /> <RefText text={e.body} />
 						</div>
 					))}
 				</>
 			) : null}
 			{info.children.length ? (
 				<>
-					<h3>Child streams</h3>
+					<h3>Child channels</h3>
 					{info.children.map((c) => (
 						<div key={c.handle} className="wait">
-							<Link className="seq" to={{ view: 'stream', handle: c.handle }}>
+							<Link className="seq" to={{ view: 'channel', handle: c.handle }}>
 								{c.handle}
 							</Link>{' '}
 							<span className={`pill state-${c.state}`}>{c.state}</span>
@@ -166,9 +166,9 @@ function Sidebar({ info }: { info: StreamInfo }) {
 	)
 }
 
-export function Stream(props: { handle: string; seq?: number; side?: string }) {
-	const base = `/api/streams/${encodeURIComponent(props.handle)}`
-	const { data: info, error } = useApi<StreamInfo>(base)
+export function Channel(props: { handle: string; seq?: number; side?: string }) {
+	const base = `/api/channels/${encodeURIComponent(props.handle)}`
+	const { data: info, error } = useApi<ChannelInfo>(base)
 	const [view, setView] = useState<string>('')
 	const [types, setTypes] = useState<string[]>([])
 	const [tag, setTag] = useState<string>()
@@ -178,10 +178,10 @@ export function Stream(props: { handle: string; seq?: number; side?: string }) {
 	const [action, setAction] = useState<{ seq: number; kind: 'answer' | 'ratify' | 'override' }>()
 
 	useEffect(() => {
-		setView(info?.stream.state === 'reconciled' && info.views.includes('distilled') ? 'distilled' : '')
+		setView(info?.channel.state === 'reconciled' && info.views.includes('distilled') ? 'distilled' : '')
 		setTypes([])
 		setTag(undefined)
-	}, [info?.stream.handle, info?.stream.state, info?.views])
+	}, [info?.channel.handle, info?.channel.state, info?.views])
 
 	const query = new URLSearchParams()
 	if (view) query.set('view', view)
@@ -231,8 +231,8 @@ export function Stream(props: { handle: string; seq?: number; side?: string }) {
 			const e = shown[i]?.entry
 			if (!e) return
 			const child = childAt.get(e.seq)
-			if (child) navigate({ view: 'stream', handle: props.handle, seq: e.seq, side: child.handle })
-			else if (e.type.endsWith('.decision')) navigate({ view: 'provenance', handle: e.stream, seq: e.seq })
+			if (child) navigate({ view: 'channel', handle: props.handle, seq: e.seq, side: child.handle })
+			else if (e.type.endsWith('.decision')) navigate({ view: 'provenance', handle: e.channel, seq: e.seq })
 		},
 		[shown, childAt, props.handle],
 	)
@@ -244,7 +244,7 @@ export function Stream(props: { handle: string; seq?: number; side?: string }) {
 	}, [props.seq, shown, setIndex])
 	const current = shown[index]?.entry
 	useEffect(() => {
-		if (current && current.stream === props.handle) {
+		if (current && current.channel === props.handle) {
 			const hash = `#${current.seq}`
 			if (window.location.hash !== hash)
 				window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}${hash}`)
@@ -275,12 +275,12 @@ export function Stream(props: { handle: string; seq?: number; side?: string }) {
 					}),
 				s: () => {
 					const child = current && childAt.get(current.seq)
-					if (child) navigate({ view: 'stream', handle: props.handle, seq: current.seq, side: child.handle })
+					if (child) navigate({ view: 'channel', handle: props.handle, seq: current.seq, side: child.handle })
 				},
-				x: () => props.side && navigate({ view: 'stream', handle: props.handle, seq: current?.seq }),
+				x: () => props.side && navigate({ view: 'channel', handle: props.handle, seq: current?.seq }),
 				p: () =>
 					current?.type.endsWith('.decision') &&
-					navigate({ view: 'provenance', handle: current.stream, seq: current.seq }),
+					navigate({ view: 'provenance', handle: current.channel, seq: current.seq }),
 				a: () => current && openAsk.has(current.seq) && setAction({ seq: current.seq, kind: 'answer' }),
 				R: () => current && rulable(current) && setAction({ seq: current.seq, kind: 'ratify' }),
 				O: () => current && rulable(current) && setAction({ seq: current.seq, kind: 'override' }),
@@ -291,31 +291,31 @@ export function Stream(props: { handle: string; seq?: number; side?: string }) {
 	)
 
 	if (!info) return <Loading error={error} />
-	const { stream } = info
+	const { channel } = info
 	const me = info.members.find((m) => m.participant === 'council')
 	return (
 		<div className={props.side ? 'split' : 'with-side'}>
 			<div className="view">
-				<header className="stream-head">
+				<header className="channel-head">
 					<div className="row">
-						<TypeChip type={stream.type} />
-						<h1>{stream.title}</h1>
-						<span className={`pill state-${stream.state}`}>{stream.state}</span>
+						<TypeChip type={channel.type} />
+						<h1>{channel.title}</h1>
+						<span className={`pill state-${channel.state}`}>{channel.state}</span>
 					</div>
 					<div className="muted">
-						<code>{stream.handle}</code>
-						{stream.aliases.length ? ` (was ${stream.aliases.join(', ')})` : ''}
+						<code>{channel.handle}</code>
+						{channel.aliases.length ? ` (was ${channel.aliases.join(', ')})` : ''}
 						{info.anchor ? (
 							<>
 								{' '}
 								· branched from <RefText text={info.anchor} />
 							</>
 						) : null}
-						{stream.conventions.length ? ` · conventions: ${stream.conventions.join(', ')}` : ''}
-						{me ? ` · you read to #${me.cursor} of #${stream.stats.lastSeq}` : ''}
+						{channel.conventions.length ? ` · conventions: ${channel.conventions.join(', ')}` : ''}
+						{me ? ` · you read to #${me.cursor} of #${channel.stats.lastSeq}` : ''}
 					</div>
-					{stream.purpose ? <p>{stream.purpose}</p> : null}
-					<Refs refs={stream.context} />
+					{channel.purpose ? <p>{channel.purpose}</p> : null}
+					<Refs refs={channel.context} />
 				</header>
 
 				<div className="toolbar">
@@ -374,8 +374,8 @@ export function Stream(props: { handle: string; seq?: number; side?: string }) {
 								<EntryLine entry={entry} selected={i === index} idRefs={info.idRefs}>
 									{child ? (
 										<div className="anchor-box">
-											⤷ child stream <TypeChip type={child.type} />{' '}
-											<Link className="seq" to={{ view: 'stream', handle: child.handle }}>
+											⤷ child channel <TypeChip type={child.type} />{' '}
+											<Link className="seq" to={{ view: 'channel', handle: child.handle }}>
 												{child.handle}
 											</Link>{' '}
 											<span className={`pill state-${child.state}`}>{child.state}</span>
@@ -395,7 +395,7 @@ export function Stream(props: { handle: string; seq?: number; side?: string }) {
 											</button>
 											<Link
 												className="inline"
-												to={{ view: 'stream', handle: props.handle, seq: entry.seq, side: child.handle }}
+												to={{ view: 'channel', handle: props.handle, seq: entry.seq, side: child.handle }}
 											>
 												<kbd>s</kbd> side by side
 											</Link>
@@ -404,13 +404,13 @@ export function Stream(props: { handle: string; seq?: number; side?: string }) {
 									) : null}
 									{isDecision ? (
 										<div className="row">
-											<Link className="inline" to={{ view: 'provenance', handle: entry.stream, seq: entry.seq }}>
+											<Link className="inline" to={{ view: 'provenance', handle: entry.channel, seq: entry.seq }}>
 												<kbd>p</kbd> provenance
 											</Link>
 											{ruling ? (
 												<span className="ruling">
 													<TypeChip type={ruling.type} /> by {ruling.author} in{' '}
-													<RefText text={`${entry.stream}#${ruling.seq}`} />
+													<RefText text={`${entry.channel}#${ruling.seq}`} />
 													{ruling.body ? <>: {ruling.body}</> : null}
 												</span>
 											) : (
@@ -444,7 +444,7 @@ export function Stream(props: { handle: string; seq?: number; side?: string }) {
 									) : null}
 									{action?.seq === entry.seq && action.kind === 'answer' && askKey ? (
 										<AnswerBox
-											stream={props.handle}
+											channel={props.handle}
 											stateKey={askKey.key}
 											options={askKey.options}
 											onDone={() => setAction(undefined)}
@@ -460,12 +460,12 @@ export function Stream(props: { handle: string; seq?: number; side?: string }) {
 				</div>
 			</div>
 			{props.side ? (
-				<div className="view side-stream">
+				<div className="view side-channel">
 					<div className="row">
 						<h2 className="grow">
-							<Link to={{ view: 'stream', handle: props.side }}>{props.side}</Link>
+							<Link to={{ view: 'channel', handle: props.side }}>{props.side}</Link>
 						</h2>
-						<Link className="inline" to={{ view: 'stream', handle: props.handle, seq: props.seq }}>
+						<Link className="inline" to={{ view: 'channel', handle: props.handle, seq: props.seq }}>
 							<kbd>x</kbd> close
 						</Link>
 					</div>

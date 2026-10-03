@@ -25,29 +25,29 @@ function captureError(fn: () => unknown): CynapseError {
 }
 
 function mission(handle = 'auth') {
-	return store.createStream({ handle, type: 'sdd.mission', title: 'Add auth', author: 'alice' })
+	return store.createChannel({ handle, type: 'sdd.mission', title: 'Add auth', author: 'alice' })
 }
 
-describe('streams', () => {
-	it('creates a stream with a UUIDv7 id and records its creation as the first entry', () => {
-		const stream = mission()
-		expect(stream.id[14]).toBe('7')
-		expect(stream).toMatchObject({ handle: 'auth', type: 'sdd.mission', state: 'active', stats: { lastSeq: 1 } })
-		expect(store.entries('auth')[0]).toMatchObject({ seq: 1, type: 'cynapse.stream.created', author: 'alice' })
+describe('channels', () => {
+	it('creates a channel with a UUIDv7 id and records its creation as the first entry', () => {
+		const channel = mission()
+		expect(channel.id[14]).toBe('7')
+		expect(channel).toMatchObject({ handle: 'auth', type: 'sdd.mission', state: 'active', stats: { lastSeq: 1 } })
+		expect(store.entries('auth')[0]).toMatchObject({ seq: 1, type: 'cynapse.channel.created', author: 'alice' })
 	})
 
-	it('derives a keyed stream id, so opening it twice gives one stream', () => {
-		const a = store.createStream({ handle: 'dm-a-b', type: 'cynapse.dm', title: 'DM', author: 'a', key: 'dm:a,b' })
-		const b = store.createStream({ handle: 'dm-a-b', type: 'cynapse.dm', title: 'DM', author: 'b', key: 'dm:a,b' })
+	it('derives a keyed channel id, so opening it twice gives one channel', () => {
+		const a = store.createChannel({ handle: 'dm-a-b', type: 'cynapse.dm', title: 'DM', author: 'a', key: 'dm:a,b' })
+		const b = store.createChannel({ handle: 'dm-a-b', type: 'cynapse.dm', title: 'DM', author: 'b', key: 'dm:a,b' })
 		expect(a.id).toBe(uuidv5('dm:a,b'))
 		expect(b.id).toBe(a.id)
-		expect(store.listStreams()).toHaveLength(1)
+		expect(store.listChannels()).toHaveLength(1)
 	})
 
-	it('branches a child stream from an anchor entry in the parent', () => {
+	it('branches a child channel from an anchor entry in the parent', () => {
 		mission()
 		const anchor = store.append('auth', { author: 'alice', type: 'truss.arbitration-needed', body: 'which token?' })
-		const child = store.createStream({
+		const child = store.createChannel({
 			handle: 'auth-arb-1',
 			type: 'truss.arbitration',
 			title: 'Token format',
@@ -55,32 +55,32 @@ describe('streams', () => {
 			anchor: 'auth#2',
 		})
 		expect(child.id).toBe(uuidv5(anchor.id))
-		expect(child.parent).toEqual({ streamId: anchor.streamId, entryId: anchor.id, seq: 2 })
+		expect(child.parent).toEqual({ channelId: anchor.channelId, entryId: anchor.id, seq: 2 })
 		expect(store.children('auth').map((s) => s.handle)).toEqual(['auth-arb-1'])
-		expect(store.tree()[0]?.children[0]?.stream.handle).toBe('auth-arb-1')
+		expect(store.tree()[0]?.children[0]?.channel.handle).toBe('auth-arb-1')
 	})
 
 	it('keeps the old handle as an alias after a rename', () => {
-		const stream = mission()
-		store.renameStream('auth', 'auth-v2', 'alice')
-		expect(store.getStream('auth')?.id).toBe(stream.id)
-		expect(store.getStream('auth-v2')).toMatchObject({ handle: 'auth-v2', aliases: ['auth'] })
-		expect(store.entries('auth-v2').at(-1)?.type).toBe('cynapse.stream.renamed')
+		const channel = mission()
+		store.renameChannel('auth', 'auth-v2', 'alice')
+		expect(store.getChannel('auth')?.id).toBe(channel.id)
+		expect(store.getChannel('auth-v2')).toMatchObject({ handle: 'auth-v2', aliases: ['auth'] })
+		expect(store.entries('auth-v2').at(-1)?.type).toBe('cynapse.channel.renamed')
 	})
 
-	it('refuses a derived id reused with a different stream, naming the field', () => {
+	it('refuses a derived id reused with a different channel, naming the field', () => {
 		const dm = { handle: 'dm-a-b', type: 'cynapse.dm', title: 'DM', author: 'a', key: 'dm:a,b' }
-		store.createStream(dm)
-		store.renameStream('dm-a-b', 'dm-ab', 'a')
-		expect(store.createStream({ ...dm, author: 'b' }).handle).toBe('dm-ab')
-		const error = captureError(() => store.createStream({ ...dm, title: 'Other' }))
+		store.createChannel(dm)
+		store.renameChannel('dm-a-b', 'dm-ab', 'a')
+		expect(store.createChannel({ ...dm, author: 'b' }).handle).toBe('dm-ab')
+		const error = captureError(() => store.createChannel({ ...dm, title: 'Other' }))
 		expect(error).toMatchObject({ code: 'id_conflict' })
 		expect(error.message).toContain('title')
-		expect(captureError(() => store.createStream({ ...dm, traits: { wake: true } })).message).toContain('traits')
-		expect(captureError(() => store.createStream({ ...dm, handle: 'dm-x' })).message).toContain('handle')
+		expect(captureError(() => store.createChannel({ ...dm, traits: { wake: true } })).message).toContain('traits')
+		expect(captureError(() => store.createChannel({ ...dm, handle: 'dm-x' })).message).toContain('handle')
 	})
 
-	it('refuses a handle another stream holds', () => {
+	it('refuses a handle another channel holds', () => {
 		mission()
 		expect(() => mission()).toThrow(CynapseError)
 	})
@@ -93,16 +93,16 @@ describe('streams', () => {
 		store.pin(decision.id, 'bob')
 		store.setLifecycle('auth', 'reconciled', 'alice')
 		const brief = store.brief('auth', { as: 'bob' })
-		expect(brief.stream).toMatchObject({
+		expect(brief.channel).toMatchObject({
 			members: [{ participant: 'bob', role: 'reviewer', cursor: 0 }],
 			context: ['gh:cyberuni/cynapse#12'],
 			pinned: [decision.seq],
 			state: 'reconciled',
 		})
 		expect(brief.pinned.map((e) => e.body)).toEqual(['use JWT'])
-		expect(brief.stream.stats.unread).toBeGreaterThan(0)
+		expect(brief.channel.stats.unread).toBeGreaterThan(0)
 		expect(store.entries('auth', { types: ['cynapse.*'] }).map((e) => e.type)).toEqual([
-			'cynapse.stream.created',
+			'cynapse.channel.created',
 			'cynapse.member.joined',
 			'cynapse.context.added',
 			'cynapse.pinned',
@@ -130,7 +130,7 @@ describe('entries', () => {
 		store.addTags(id, ['a.z'], 'bob')
 		expect(store.append('auth', write).seq).toBe(2)
 		for (const [field, change] of [
-			['stream', {}],
+			['channel', {}],
 			['type', { type: 'other' }],
 			['body', { body: 'twice' }],
 			['data', { data: { n: 2 } }],
@@ -139,7 +139,7 @@ describe('entries', () => {
 			['parent', { parent: 'auth#1' }],
 			['author', { author: 'bob' }],
 		] as [string, Partial<AppendInput>][]) {
-			const error = captureError(() => store.append(field === 'stream' ? 'other' : 'auth', { ...write, ...change }))
+			const error = captureError(() => store.append(field === 'channel' ? 'other' : 'auth', { ...write, ...change }))
 			expect(error, field).toMatchObject({ code: 'id_conflict' })
 			expect(error.message, field).toContain(id)
 			expect(error.message, field).toContain(`differs in ${field}`)
@@ -152,7 +152,7 @@ describe('entries', () => {
 		const first = store.append('auth', { id, author: 'alice', type: 'note', body: 'once' })
 		const again = store.append('auth', { id, author: 'alice', type: 'note', body: 'once' })
 		expect(again).toEqual(first)
-		expect(store.getStream('auth')?.stats.entries).toBe(2)
+		expect(store.getChannel('auth')?.stats.entries).toBe(2)
 	})
 
 	it('resolves the short reference handle#seq anywhere an entry is expected', () => {
@@ -195,7 +195,7 @@ describe('entries', () => {
 		const meta = store.entries('auth', { metaOnly: true }).at(-1)
 		expect(meta).toMatchObject({ type: 'note', body: '' })
 		expect(meta?.data).toBeUndefined()
-		expect(store.unread('bob')).toEqual([{ streamId: expect.any(String), handle: 'auth', count: 2 }])
+		expect(store.unread('bob')).toEqual([{ channelId: expect.any(String), handle: 'auth', count: 2 }])
 	})
 
 	it('filters through a saved view such as distilled', () => {
@@ -205,16 +205,16 @@ describe('entries', () => {
 		store.defineView('auth', 'distilled', { types: ['sdd.decision'] }, 'alice')
 		expect(store.entries('auth', { view: 'distilled' }).map((e) => e.body)).toEqual(['decided'])
 		expect(store.views('auth')).toEqual([
-			{ streamId: expect.any(String), name: 'distilled', filter: { types: ['sdd.decision'] } },
+			{ channelId: expect.any(String), name: 'distilled', filter: { types: ['sdd.decision'] } },
 		])
 	})
 
-	it('searches across streams by type prefix', () => {
+	it('searches across channels by type prefix', () => {
 		mission('a')
 		mission('b')
 		store.append('a', { author: 'x', type: 'sdd.gate', data: { verdict: 'approve' } })
 		store.append('b', { author: 'x', type: 'sdd.gate', data: { verdict: 'reject' } })
-		expect(store.search({ types: ['sdd.*'] }).map((e) => e.stream)).toEqual(['a', 'b'])
+		expect(store.search({ types: ['sdd.*'] }).map((e) => e.channel)).toEqual(['a', 'b'])
 	})
 })
 

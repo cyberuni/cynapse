@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { Stream as StreamData } from '../core/model.ts'
+import type { Channel as ChannelData } from '../core/model.ts'
 import type { Triage as TriageData } from '../core/triage.ts'
 import { Link } from './components.tsx'
 import { isTyping, navigate, useApi } from './data.ts'
 import { createKeymap } from './keys.ts'
 import { parseRoute, type Route } from './route.ts'
+import { Channel } from './views/Channel.tsx'
 import { Graph } from './views/Graph.tsx'
 import { Provenance } from './views/Provenance.tsx'
 import { Search } from './views/Search.tsx'
-import { Stream } from './views/Stream.tsx'
 import { Tree } from './views/Tree.tsx'
 import { Triage } from './views/Triage.tsx'
 
@@ -20,17 +20,17 @@ const HELP: [string, string][] = [
 	['j k  ↓ ↑', 'move selection'],
 	['Enter', 'open selected'],
 	['h l  ← →', 'collapse / expand (tree)'],
-	['u', 'up to the parent stream (anchor)'],
-	['v', 'raw / distilled (stream)'],
-	['t', 'threads (stream)'],
-	['m', 'show cynapse meta entries (stream)'],
-	['o', 'open child stream inline'],
-	['s', 'open child stream side by side'],
+	['u', 'up to the parent channel (anchor)'],
+	['v', 'raw / distilled (channel)'],
+	['t', 'threads (channel)'],
+	['m', 'show cynapse meta entries (channel)'],
+	['o', 'open child channel inline'],
+	['s', 'open child channel side by side'],
 	['x', 'close side-by-side'],
 	['p', 'provenance of the selected decision'],
 	['a', 'answer the selected needs-input'],
 	['R  O', 'ratify / override the selected decision'],
-	['r', 'mark the stream read'],
+	['r', 'mark the channel read'],
 	['[ ]  { }', 'step the graph history'],
 	['<  >', 'previous / next mission graph'],
 	['Backspace', 'back'],
@@ -53,10 +53,10 @@ function useRoute(): Route {
 export function App() {
 	const route = useRoute()
 	const [help, setHelp] = useState(false)
-	const { data: graphs } = useApi<StreamData[]>('/api/streams?type=sdd.mission-graph')
+	const { data: graphs } = useApi<ChannelData[]>('/api/channels?type=sdd.mission-graph')
 	const { data: triage } = useApi<TriageData>('/api/triage')
 	const { data: current } = useApi<{ anchor?: string }>(
-		route.view === 'stream' ? `/api/streams/${encodeURIComponent(route.handle)}` : undefined,
+		route.view === 'channel' ? `/api/channels/${encodeURIComponent(route.handle)}` : undefined,
 	)
 	const graph = graphs?.[0]?.handle
 	const keymap = useMemo(() => createKeymap(CHORDS), [])
@@ -116,8 +116,8 @@ export function App() {
 			<main>
 				{route.view === 'triage' ? <Triage /> : null}
 				{route.view === 'tree' ? <Tree /> : null}
-				{route.view === 'stream' ? (
-					<Stream key={`${route.handle}`} handle={route.handle} seq={route.seq} side={route.side} />
+				{route.view === 'channel' ? (
+					<Channel key={`${route.handle}`} handle={route.handle} seq={route.seq} side={route.side} />
 				) : null}
 				{route.view === 'provenance' ? (
 					<Provenance key={`${route.handle}#${route.seq}`} handle={route.handle} seq={route.seq} />

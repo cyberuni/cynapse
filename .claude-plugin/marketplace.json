@@ -6,7 +6,7 @@
 		{
 			"name": "cynapse",
 			"displayName": "Cynapse",
-			"description": "A persisted communication network for agents — streams of immutable entries",
+			"description": "A persisted communication network for agents — channels of immutable entries",
 			"source": {
 				"source": "npm",
 				"package": "cynapse"

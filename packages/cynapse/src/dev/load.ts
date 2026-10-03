@@ -9,16 +9,16 @@ export interface WorkerResult {
 }
 
 /**
- * One load-test writer: appends `count` entries to `stream`, each in its own write
+ * One load-test writer: appends `count` entries to `channel`, each in its own write
  * transaction, the way separate CLI invocations would.
  */
-export function runLoadWorker(options: { db: string; stream: string; writer: string; count: number }): WorkerResult {
+export function runLoadWorker(options: { db: string; channel: string; writer: string; count: number }): WorkerResult {
 	const store = new SqliteStore({ path: options.db })
 	const latencies: number[] = []
 	try {
 		for (let i = 0; i < options.count; i++) {
 			const start = performance.now()
-			store.append(options.stream, { author: options.writer, type: 'load.tick', data: { writer: options.writer, i } })
+			store.append(options.channel, { author: options.writer, type: 'load.tick', data: { writer: options.writer, i } })
 			latencies.push(performance.now() - start)
 		}
 	} finally {
@@ -42,7 +42,7 @@ export interface LoadReport {
 }
 
 /**
- * Starts `writers` separate processes that all append to one stream at once, then checks
+ * Starts `writers` separate processes that all append to one channel at once, then checks
  * what the conclusion claims SQLite's write lock gives: `seq` contiguous and unique, each
  * writer's entries in its own order, and a clean `integrity_check`.
  *
@@ -54,9 +54,9 @@ export async function runLoadTest(options: {
 	entriesPerWriter: number
 	workerCommand: string[]
 }): Promise<LoadReport> {
-	const stream = 'load-test'
+	const channel = 'load-test'
 	const setup = new SqliteStore({ path: options.db })
-	setup.createStream({ handle: stream, type: 'load.test', title: 'Concurrent writers', author: 'load' })
+	setup.createChannel({ handle: channel, type: 'load.test', title: 'Concurrent writers', author: 'load' })
 	setup.close()
 
 	const [command, ...baseArgs] = options.workerCommand as [string, ...string[]]
@@ -69,8 +69,8 @@ export async function runLoadTest(options: {
 				'load-worker',
 				'--db',
 				options.db,
-				'--stream',
-				stream,
+				'--channel',
+				channel,
 				'--writer',
 				`w${String(i).padStart(2, '0')}`,
 				'--count',
@@ -82,8 +82,8 @@ export async function runLoadTest(options: {
 
 	const store = new SqliteStore({ path: options.db })
 	try {
-		const entries = store.entries(stream, { types: ['load.tick'] })
-		const seqs = store.entries(stream, { metaOnly: true }).map((e) => e.seq)
+		const entries = store.entries(channel, { types: ['load.tick'] })
+		const seqs = store.entries(channel, { metaOnly: true }).map((e) => e.seq)
 		const seqContiguous = seqs.every((seq, i) => seq === i + 1)
 		const seqUnique = new Set(seqs).size === seqs.length
 		const perWriterOrderKept = results.every((result) => {

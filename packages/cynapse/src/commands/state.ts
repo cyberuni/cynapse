@@ -7,7 +7,7 @@ import { stateLine } from './render.js'
 
 export function registerRead(program: Command): void {
 	program
-		.command('read <stream>')
+		.command('read <channel>')
 		.description('advance your read cursor (to the latest entry unless --to is given)')
 		.option('--to <seq>', 'mark read up to this seq')
 		.action(async (ref: string, opts, command: Command) => {
@@ -21,12 +21,12 @@ export function registerRead(program: Command): void {
 
 	program
 		.command('unread')
-		.description('streams you are a member of with unread entries')
+		.description('channels you are a member of with unread entries')
 		.action(async (_opts, command: Command) => {
 			const participant = actor(command)
 			await withStore(command, (store) => {
 				const counts = store.unread(participant)
-				if (!counts.length) return printEmpty('unread streams')
+				if (!counts.length) return printEmpty('unread channels')
 				output({ count: counts.length, items: counts }, () =>
 					counts.map((c) => `${c.handle}  ${c.count} unread`).join('\n'),
 				)
@@ -62,28 +62,28 @@ export function registerState(program: Command): void {
 	state
 		.command('list')
 		.description('list state records')
-		.option('--stream <stream>', 'only this stream')
+		.option('--channel <channel>', 'only this channel')
 		.option('--kind <kind>', 'only this kind, such as needs-input')
 		.option('--status <status>', 'open or resolved')
 		.option('--subject <participant>', 'only records waiting on this participant')
 		.action(async (opts, command: Command) => {
 			await withStore(command, (store) => {
 				const records = store.states({
-					stream: opts.stream,
+					channel: opts.channel,
 					kind: opts.kind,
 					status: opts.status,
 					subject: opts.subject,
 				})
 				if (!records.length) return printEmpty('state records')
-				const handles = new Map(store.listStreams().map((s) => [s.id, s.handle]))
+				const handles = new Map(store.listChannels().map((s) => [s.id, s.handle]))
 				output({ count: records.length, items: records }, () =>
-					records.map((r) => stateLine(r, handles.get(r.streamId))).join('\n'),
+					records.map((r) => stateLine(r, handles.get(r.channelId))).join('\n'),
 				)
 			})
 		})
 
 	state
-		.command('set <stream> <key>')
+		.command('set <channel> <key>')
 		.description('set a state record; the transition is also written as an entry')
 		.requiredOption('--kind <kind>', 'such as needs-input, pending-answers, lease')
 		.requiredOption('--status <status>', 'open or resolved')
@@ -114,13 +114,13 @@ export function registerState(program: Command): void {
 		})
 
 	state
-		.command('lifecycle <stream> <state>')
-		.description('move a stream to a lifecycle state, such as reconciled')
+		.command('lifecycle <channel> <state>')
+		.description('move a channel to a lifecycle state, such as reconciled')
 		.action(async (ref: string, lifecycle: string, _opts, command: Command) => {
 			const author = actor(command)
 			await withStore(command, (store) => {
 				const logged = store.setLifecycle(ref, lifecycle, author)
-				output(logged, () => `${logged.stream} is now ${lifecycle}`)
+				output(logged, () => `${logged.channel} is now ${lifecycle}`)
 			})
 		})
 }

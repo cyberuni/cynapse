@@ -2,7 +2,7 @@
  * The store contract. Everything above this line — the CLI, the seed, Cortex — talks to a
  * `Store`; the engine behind it (SQLite today, a hub later) is replaceable.
  *
- * Every stream parameter named `ref` accepts a stream's UUID, its current handle, or any
+ * Every channel parameter named `ref` accepts a channel's UUID, its current handle, or any
  * handle it used to have. Every entry parameter accepts an entry UUID or the short form
  * `handle#seq`.
  */
@@ -16,7 +16,7 @@ export interface Participant {
 	name: string
 }
 
-export interface StreamTraits {
+export interface ChannelTraits {
 	membership: 'open' | 'fixed'
 	retention?: string
 	/** Whether members are woken when an entry lands. */
@@ -31,25 +31,25 @@ export interface Member {
 	cursor: number
 }
 
-/** The anchor entry in the parent stream that a child stream branches from. */
+/** The anchor entry in the parent channel that a child channel branches from. */
 export interface Anchor {
-	streamId: string
+	channelId: string
 	entryId: string
 	seq: number
 }
 
-export interface StreamStats {
+export interface ChannelStats {
 	entries: number
 	lastSeq: number
 	lastAt?: string
-	/** Present only when the stream was read on behalf of a participant. */
+	/** Present only when the channel was read on behalf of a participant. */
 	unread?: number
 }
 
-export interface Stream {
+export interface Channel {
 	id: string
 	handle: string
-	/** Handles this stream used to have; they still resolve. */
+	/** Handles this channel used to have; they still resolve. */
 	aliases: string[]
 	/** Namespaced and defined by the consumer, such as `sdd.mission`. */
 	type: string
@@ -59,24 +59,24 @@ export interface Stream {
 	members: Member[]
 	/** Reference shorthands, such as `gh:cyberuni/cynapse#12`. */
 	context: string[]
-	traits: StreamTraits
+	traits: ChannelTraits
 	/** The lifecycle state, such as `active`, `paused` or `reconciled`. */
 	state: string
 	/** Seqs of the pinned entries. */
 	pinned: number[]
 	/** Names of the conventions that apply, plugin-prefixed. */
 	conventions: string[]
-	stats: StreamStats
+	stats: ChannelStats
 	createdAt: string
 }
 
 export interface Entry {
 	/** UUIDv7 minted by the writer; also the idempotency key. */
 	id: string
-	streamId: string
-	/** The stream's current handle, so `${stream}#${seq}` is the entry's short reference. */
-	stream: string
-	/** Arrival order within the stream, assigned by the stream's order owner. */
+	channelId: string
+	/** The channel's current handle, so `${channel}#${seq}` is the entry's short reference. */
+	channel: string
+	/** Arrival order within the channel, assigned by the channel's order owner. */
 	seq: number
 	author: string
 	type: string
@@ -93,16 +93,16 @@ export interface Entry {
 	data?: Record<string, unknown>
 	/** When the writer minted it, from the UUIDv7. */
 	createdAt: string
-	/** When it arrived in the stream. */
+	/** When it arrived in the channel. */
 	recordedAt: string
 }
 
 export type StateStatus = 'open' | 'resolved'
 
-/** What is true right now on a stream: a pending answer, a needs-input, a lease. */
+/** What is true right now on a channel: a pending answer, a needs-input, a lease. */
 export interface StateRecord {
-	streamId: string
-	/** Unique within the stream. */
+	channelId: string
+	/** Unique within the channel. */
 	key: string
 	kind: string
 	status: StateStatus
@@ -124,24 +124,24 @@ export interface ViewFilter {
 	authors?: string[]
 }
 
-/** A saved filter over a stream's entries, such as `distilled`. */
+/** A saved filter over a channel's entries, such as `distilled`. */
 export interface View {
-	streamId: string
+	channelId: string
 	name: string
 	filter: ViewFilter
 }
 
-export interface CreateStreamInput {
+export interface CreateChannelInput {
 	handle: string
 	type: string
 	title: string
 	author: string
 	purpose?: string
-	/** Branch from this entry; the stream id becomes UUIDv5 of the anchor's id. */
+	/** Branch from this entry; the channel id becomes UUIDv5 of the anchor's id. */
 	anchor?: string
-	/** A natural key, such as a DM's participants; the stream id becomes UUIDv5 of it. */
+	/** A natural key, such as a DM's participants; the channel id becomes UUIDv5 of it. */
 	key?: string
-	traits?: Partial<StreamTraits>
+	traits?: Partial<ChannelTraits>
 	conventions?: string[]
 	/** Initial lifecycle state; defaults to `active`. */
 	state?: string
@@ -153,7 +153,7 @@ export interface AppendInput {
 	author: string
 	type: string
 	tags?: string[]
-	/** The entry this one replies to, in the same stream. */
+	/** The entry this one replies to, in the same channel. */
 	parent?: string
 	refs?: string[]
 	body?: string
@@ -176,13 +176,13 @@ export interface EntryQuery extends ViewFilter {
 }
 
 export interface SearchQuery extends ViewFilter {
-	streams?: string[]
+	channels?: string[]
 	limit?: number
 	metaOnly?: boolean
 }
 
 export interface StateQuery {
-	stream?: string
+	channel?: string
 	kind?: string
 	status?: StateStatus
 	subject?: string
@@ -197,30 +197,30 @@ export interface SetStateInput {
 	value?: unknown
 }
 
-export interface ListStreamsQuery {
+export interface ListChannelsQuery {
 	type?: string
-	/** Streams anchored in this stream. */
+	/** Channels anchored in this channel. */
 	parent?: string
 	state?: string
 }
 
-export interface StreamTree {
-	stream: Stream
-	children: StreamTree[]
+export interface ChannelTree {
+	channel: Channel
+	children: ChannelTree[]
 }
 
-/** The agent's briefing: everything needed to start work on a stream, in one call. */
+/** The agent's briefing: everything needed to start work on a channel, in one call. */
 export interface Briefing {
-	stream: Stream
+	channel: Channel
 	/** Open state records: pending answers, needs-input, leases. */
 	states: StateRecord[]
 	pinned: Entry[]
 	views: View[]
-	children: Pick<Stream, 'id' | 'handle' | 'type' | 'title' | 'state'>[]
+	children: Pick<Channel, 'id' | 'handle' | 'type' | 'title' | 'state'>[]
 }
 
 export interface UnreadCount {
-	streamId: string
+	channelId: string
 	handle: string
 	count: number
 }
@@ -232,14 +232,14 @@ export interface Store {
 	addParticipant(participant: Participant): Participant
 	participants(): Participant[]
 
-	// streams
-	createStream(input: CreateStreamInput): Stream
-	getStream(ref: string, options?: { as?: string }): Stream | undefined
-	listStreams(query?: ListStreamsQuery): Stream[]
-	children(ref: string): Stream[]
-	tree(ref?: string): StreamTree[]
+	// channels
+	createChannel(input: CreateChannelInput): Channel
+	getChannel(ref: string, options?: { as?: string }): Channel | undefined
+	listChannels(query?: ListChannelsQuery): Channel[]
+	children(ref: string): Channel[]
+	tree(ref?: string): ChannelTree[]
 	brief(ref: string, options?: { as?: string }): Briefing
-	renameStream(ref: string, handle: string, author: string): Stream
+	renameChannel(ref: string, handle: string, author: string): Channel
 	addMember(ref: string, participant: string, role: string, author: string): Entry
 	addContext(ref: string, contextRef: string, author: string): Entry
 	pin(entryRef: string, author: string): Entry

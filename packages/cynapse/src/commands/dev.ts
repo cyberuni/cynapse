@@ -22,16 +22,16 @@ export function registerDev(program: Command): void {
 			const clock = new SeedClock(SEED_START)
 			const store = openStore({ path: db, clock: clock.now })
 			try {
-				if (store.listStreams().length) {
-					throw new CynapseError(`${db} already has streams; pass --reset to rebuild it`)
+				if (store.listChannels().length) {
+					throw new CynapseError(`${db} already has channels; pass --reset to rebuild it`)
 				}
 				const summary = seed(store, clock)
 				output({ db, ...summary }, () =>
 					[
 						`seeded ${db}`,
-						`${summary.streams.length} streams, ${summary.entries} entries, ${summary.participants} participants`,
+						`${summary.channels.length} channels, ${summary.entries} entries, ${summary.participants} participants`,
 						`council: ${summary.councilUnread} unread, ${summary.openNeedsInput} open needs-input`,
-						...summary.streams.map((s) => `  ${s.handle}  ${s.type}  ${s.state}  ${s.entries} entries`),
+						...summary.channels.map((s) => `  ${s.handle}  ${s.type}  ${s.state}  ${s.entries} entries`),
 					].join('\n'),
 				)
 			} finally {
@@ -41,7 +41,7 @@ export function registerDev(program: Command): void {
 
 	dev
 		.command('load-test')
-		.description('concurrent processes append to one stream; checks seq and integrity')
+		.description('concurrent processes append to one channel; checks seq and integrity')
 		.option('--writers <n>', 'concurrent writer processes', '12')
 		.option('--entries <n>', 'entries per writer', '200')
 		.action(async (opts, command: Command) => {
@@ -69,7 +69,7 @@ export function registerDev(program: Command): void {
 
 	dev
 		.command('load-worker', { hidden: true })
-		.requiredOption('--stream <stream>')
+		.requiredOption('--channel <channel>')
 		.requiredOption('--writer <participant>')
 		.requiredOption('--count <n>')
 		.action((opts, command: Command) => {
@@ -77,7 +77,7 @@ export function registerDev(program: Command): void {
 			if (!db) throw new CynapseError('load-worker needs --db')
 			const result = runLoadWorker({
 				db,
-				stream: opts.stream,
+				channel: opts.channel,
 				writer: opts.writer,
 				count: parseInteger(opts.count, '--count'),
 			})

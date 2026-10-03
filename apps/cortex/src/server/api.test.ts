@@ -12,27 +12,27 @@ describe('api', () => {
 		expect(body.arbitrations[0].waiting).toEqual(['test-writer'])
 	})
 
-	it('serves the stream tree', async () => {
+	it('serves the channel tree', async () => {
 		const body = await json(api().request('/api/tree'))
 		expect(body.map((n: { handle: string }) => n.handle)).toContain('init-identity')
 	})
 
-	it('serves one stream with its members, waits, children, and pinned entries', async () => {
-		const body = await json(api().request('/api/streams/truss-auth'))
-		expect(body.stream.handle).toBe('truss-auth')
+	it('serves one channel with its members, waits, children, and pinned entries', async () => {
+		const body = await json(api().request('/api/channels/truss-auth'))
+		expect(body.channel.handle).toBe('truss-auth')
 		expect(body.children.map((c: { handle: string }) => c.handle)).toEqual(['arb-auth-rotation', 'arb-auth-expiry'])
 		expect(body.members.length).toBeGreaterThan(0)
-		const login = await json(api().request('/api/streams/m-login'))
+		const login = await json(api().request('/api/channels/m-login'))
 		expect(login.pinned.map((e: { seq: number }) => e.seq)).toEqual([3])
 		expect(login.views).toEqual(['distilled'])
 	})
 
-	it('lists streams, optionally by type', async () => {
-		const body = await json(api().request('/api/streams?type=sdd.mission-graph'))
+	it('lists channels, optionally by type', async () => {
+		const body = await json(api().request('/api/channels?type=sdd.mission-graph'))
 		expect(body.map((s: { handle: string }) => s.handle)).toEqual(['graph-identity'])
 	})
 
-	it('refuses a second ruling with 409 and shows the first on the stream', async () => {
+	it('refuses a second ruling with 409 and shows the first on the channel', async () => {
 		const app = api()
 		const rule = (ruling: string) =>
 			app.request('/api/rule', {
@@ -44,25 +44,25 @@ describe('api', () => {
 		const again = await rule('override')
 		expect(again.status).toBe(409)
 		expect(await again.json()).toMatchObject({ code: 'already_ruled' })
-		const info = await json(app.request('/api/streams/truss-auth'))
+		const info = await json(app.request('/api/channels/truss-auth'))
 		expect(info.rulings['5']).toMatchObject({ type: 'truss.ratify' })
 	})
 
-	it('404s an unknown stream', async () => {
-		expect((await api().request('/api/streams/nope')).status).toBe(404)
+	it('404s an unknown channel', async () => {
+		expect((await api().request('/api/channels/nope')).status).toBe(404)
 	})
 
 	it('filters entries by view, type and tag', async () => {
 		const app = api()
-		const distilled = await json(app.request('/api/streams/m-login/entries?view=distilled'))
+		const distilled = await json(app.request('/api/channels/m-login/entries?view=distilled'))
 		expect(distilled.map((e: { type: string }) => e.type)).toEqual(['sdd.decision', 'sdd.outcome'])
-		const typed = await json(app.request('/api/streams/m-login/entries?types=sdd.review'))
+		const typed = await json(app.request('/api/channels/m-login/entries?types=sdd.review'))
 		expect(typed).toHaveLength(1)
 	})
 
-	it('searches across streams', async () => {
+	it('searches across channels', async () => {
 		const body = await json(api().request('/api/search?types=truss.decision,sdd.decision'))
-		expect(body.map((e: { stream: string; seq: number }) => `${e.stream}#${e.seq}`)).toEqual([
+		expect(body.map((e: { channel: string; seq: number }) => `${e.channel}#${e.seq}`)).toEqual([
 			'm-login#3',
 			'truss-auth#5',
 		])
@@ -86,12 +86,12 @@ describe('api', () => {
 		const app = api()
 		const post = (path: string, body: unknown) =>
 			app.request(path, { method: 'POST', body: JSON.stringify(body), headers: { 'content-type': 'application/json' } })
-		expect((await post('/api/streams/m-login/read', {})).status).toBe(200)
+		expect((await post('/api/channels/m-login/read', {})).status).toBe(200)
 		const triage = await json(app.request('/api/triage'))
 		expect(triage.unread.find((u: { handle: string }) => u.handle === 'm-login')).toBeUndefined()
 
 		const answered = await json(
-			post('/api/answer', { stream: 'm-token-refresh', key: 'revocation', body: 'Whole family.' }),
+			post('/api/answer', { channel: 'm-token-refresh', key: 'revocation', body: 'Whole family.' }),
 		)
 		expect(answered.type).toBe('council.answer')
 		const ruled = await json(post('/api/rule', { ref: 'truss-auth#5', ruling: 'ratify' }))

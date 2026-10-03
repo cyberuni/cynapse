@@ -3,7 +3,7 @@
 export type Route =
 	| { view: 'triage' }
 	| { view: 'tree' }
-	| { view: 'stream'; handle: string; seq?: number; side?: string }
+	| { view: 'channel'; handle: string; seq?: number; side?: string }
 	| { view: 'provenance'; handle: string; seq: number }
 	| { view: 'graph'; handle: string; at?: number }
 	| { view: 'search'; types: string[]; tags: string[] }
@@ -21,7 +21,7 @@ export function parseRoute(pathname: string, search: string, hash: string): Rout
 			if (a) {
 				const seq = int(hash.slice(1))
 				const side = params.get('side') ?? undefined
-				return { view: 'stream', handle: a, ...(seq !== undefined && { seq }), ...(side && { side }) }
+				return { view: 'channel', handle: a, ...(seq !== undefined && { seq }), ...(side && { side }) }
 			}
 			break
 		case 'p': {
@@ -48,7 +48,7 @@ export function routeHref(route: Route): string {
 			return '/'
 		case 'tree':
 			return '/tree'
-		case 'stream':
+		case 'channel':
 			return `/s/${enc(route.handle)}${route.side ? `?side=${enc(route.side)}` : ''}${route.seq ? `#${route.seq}` : ''}`
 		case 'provenance':
 			return `/p/${enc(route.handle)}/${route.seq}`

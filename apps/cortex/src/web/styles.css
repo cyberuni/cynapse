@@ -148,7 +148,7 @@ main {
 	gap: 24px;
 }
 .side-panel,
-.side-stream {
+.side-channel {
 	border-left: 1px solid var(--line);
 	padding-left: 18px;
 }
@@ -317,10 +317,10 @@ button.chip {
 	border-radius: 0 6px 6px 0;
 	margin-left: -1px;
 }
-.stream-head h1 {
+.channel-head h1 {
 	margin: 0;
 }
-.stream-head p {
+.channel-head p {
 	margin: 6px 0;
 }
 .anchor-box {

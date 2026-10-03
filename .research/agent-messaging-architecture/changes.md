@@ -109,3 +109,12 @@
   context and cause confusion. The prototype produced the load-test numbers.
 - Conclusion changed materially: yes (a new verdict line, and higher confidence).
 - Triggered by: HY01, LC10, LC11.
+
+## 2026-10-03 (round 10): stream becomes channel
+
+- What changed: the core primitive is called a channel, not a stream (ADR-0009). Only the
+  term changes; the model does not.
+- Why: the user pointed out that "stream" suggests one-way flow between two endpoints,
+  while a cynapse channel has many participants writing in both directions.
+- Conclusion changed materially: no (terminology only).
+- Triggered by: user direction; LG15.

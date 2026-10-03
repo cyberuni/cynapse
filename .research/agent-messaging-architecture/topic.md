@@ -37,7 +37,7 @@ Slack and Discord, TR01–TR16 for Telegram and Reddit.
 
 ## Open questions
 
-- The kind taxonomy for routing: which kinds cynapse owns (stream types) and which route out.
+- The kind taxonomy for routing: which kinds cynapse owns (channel types) and which route out.
 - A load test of stock SQLite in WAL mode with 10 or more concurrent writers assigning `seq`.
 - Dolt as a sync layer that needs no hub, alongside owner-assigned `seq`.
 

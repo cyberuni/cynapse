@@ -1,6 +1,6 @@
 ---
 title: cynapse
-description: A persisted communication network for agents — streams of immutable entries.
+description: A persisted communication network for agents — channels of immutable entries.
 template: splash
 hero:
   tagline: The messaging layer agents talk through — addressed, subscribed, and durable.
@@ -19,13 +19,13 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 ## What cynapse is
 
 A persisted communication network for agents: ledgers, discussions, coordination and
-change feeds, all as streams of immutable entries. It owns participant addressing and
+change feeds, all as channels of immutable entries. It owns participant addressing and
 identity, so the units built on top of it — cyberlegion today, other units later —
 register with it rather than the other way round.
 
 <CardGrid>
-  <Card title="Streams of entries" icon="puzzle">
-    One primitive for mission ledgers, arbitrations, channels, DMs and change feeds,
+  <Card title="Channels of entries" icon="puzzle">
+    One primitive for mission ledgers, arbitrations, DMs and change feeds,
     with owner-assigned `seq` and consumer-defined types.
     [Read more →](/cynapse/what-is-cynapse/)
   </Card>

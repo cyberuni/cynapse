@@ -63,8 +63,8 @@ can be depended on as a peer rather than living inside just one unit.
 It owns the communication that has no home elsewhere: ledgers of what happened,
 discussions between agents (such as arbitration), coordination, change feeds, leases and
 presence, and read state. Work tracking stays in GitHub, Asana, Linear or beads;
-cynapse refers to it by reference shorthand (`gh:cyberuni/cynapse#12`). Channels, DMs,
-mission ledgers and arbitrations are all streams with a consumer-defined type.
+cynapse refers to it by reference shorthand (`gh:cyberuni/cynapse#12`). DMs, mission
+ledgers and arbitrations are all channels with a consumer-defined type.
 
 Ships as an npm package:
 
@@ -88,10 +88,10 @@ Ships as an npm package:
 ### Status
 
 Prototype stage. The core model from
-`.research/agent-messaging-architecture/conclusion.md` is built: streams of immutable
+`.research/agent-messaging-architecture/conclusion.md` is built: channels of immutable
 entries behind a `Store` interface (`src/store/types.ts`), with a stock-SQLite
 implementation (`node:sqlite`, WAL, `seq` assigned under `BEGIN IMMEDIATE`, no daemon),
-and CLI commands for streams, entries, read cursors, tags and state records.
+and CLI commands for channels, entries, read cursors, tags and state records.
 `cynapse dev seed` builds an example world and `cynapse dev load-test` checks `seq`
 under concurrent writer processes. Sync, the hub, `init-cynapse`, and skills have not
 shipped yet.
@@ -138,7 +138,7 @@ pnpm cortex dev                 # run Cortex, the Council's viewer (see apps/cor
 ```
 packages/cynapse/ the npm package and the plugin root
 apps/web/         Astro + Starlight docs site, deployed to GitHub Pages
-apps/cortex/      Cortex, the Council's web viewer for cynapse streams (private)
+apps/cortex/      Cortex, the Council's web viewer for cynapse channels (private)
 docs/adr/         architecture decision records (see docs/adr/README.md)
 scripts/          repo maintenance scripts
 ```
@@ -155,7 +155,7 @@ The CLI follows the [10 agent-CLI principles](https://github.com/kunchenguid/axi
 - **Store access**: commands open the store through `withStore` in
   `src/commands/context.ts` and act as `--as` / `$CYNAPSE_PARTICIPANT` via `actor()`.
   Every write goes through the `Store` interface, never raw SQL outside `src/store/`.
-- **Metadata is written as entries**: any store method that changes stream metadata or
+- **Metadata is written as entries**: any store method that changes channel metadata or
   state also appends a `cynapse.*` entry in the same transaction. Keep it that way.
 - **The program is a function**: `createProgram()` in `src/program.ts` builds a fresh command tree so tests drive it without touching `process.argv`.
 

@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react'
 import type { GraphNode, MissionGraph } from '../../core/graph.ts'
-import type { Entry, Stream } from '../../core/model.ts'
+import type { Channel, Entry } from '../../core/model.ts'
 import { Link, Loading, RefText } from '../components.tsx'
 import { navigate, useApi, useKeys, useListNav } from '../data.ts'
 
@@ -29,13 +29,13 @@ function layout(nodes: GraphNode[]) {
 export function Graph(props: { handle: string; at?: number }) {
 	const at = props.at !== undefined ? `?at=${props.at}` : ''
 	const { data, error } = useApi<MissionGraph>(`/api/graph/${encodeURIComponent(props.handle)}${at}`)
-	const { data: graphs } = useApi<Stream[]>('/api/streams?type=sdd.mission-graph')
-	const { data: entries } = useApi<Entry[]>(`/api/streams/${encodeURIComponent(props.handle)}/entries`)
+	const { data: graphs } = useApi<Channel[]>('/api/channels?type=sdd.mission-graph')
+	const { data: entries } = useApi<Entry[]>(`/api/channels/${encodeURIComponent(props.handle)}/entries`)
 	const nodes = data?.nodes ?? []
 	const open = useCallback(
 		(i: number) => {
 			const node = nodes[i]
-			if (node?.stream) navigate({ view: 'stream', handle: node.stream })
+			if (node?.channel) navigate({ view: 'channel', handle: node.channel })
 		},
 		[nodes],
 	)
@@ -133,7 +133,7 @@ export function Graph(props: { handle: string; at?: number }) {
 			</div>
 			{current ? (
 				<p className="step-note">
-					<Link className="seq" to={{ view: 'stream', handle: props.handle, seq: current.seq }}>
+					<Link className="seq" to={{ view: 'channel', handle: props.handle, seq: current.seq }}>
 						#{current.seq}
 					</Link>{' '}
 					<span className="author">{current.author}</span> <code>{current.type}</code> <RefText text={current.body} />
@@ -188,15 +188,15 @@ export function Graph(props: { handle: string; at?: number }) {
 								<text x={10} y={42} className="node-sub">
 									{clip([n.status, n.by, n.outcome].filter(Boolean).join(' · '), 28)}
 								</text>
-								{n.stream ? (
+								{n.channel ? (
 									<text x={10} y={58} className="node-sub">
-										{clip(n.stream, 28)}
+										{clip(n.channel, 28)}
 									</text>
 								) : null}
 							</g>
 						)
-						return n.stream ? (
-							<Link key={n.id} to={{ view: 'stream', handle: n.stream }}>
+						return n.channel ? (
+							<Link key={n.id} to={{ view: 'channel', handle: n.channel }}>
 								{box}
 							</Link>
 						) : (
@@ -226,7 +226,7 @@ export function Graph(props: { handle: string; at?: number }) {
 				</div>
 			) : null}
 			<p className="muted">
-				<kbd>j</kbd>/<kbd>k</kbd> select a node, <kbd>Enter</kbd> or a click opens its mission stream, <kbd>[</kbd>/
+				<kbd>j</kbd>/<kbd>k</kbd> select a node, <kbd>Enter</kbd> or a click opens its mission channel, <kbd>[</kbd>/
 				<kbd>]</kbd> step through history.
 			</p>
 		</div>

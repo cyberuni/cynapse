@@ -1,8 +1,8 @@
 import { createHash, randomBytes } from 'node:crypto'
 
 /**
- * The namespace cynapse derives stream IDs in. Fixed forever: changing it would give
- * every derived stream a new identity.
+ * The namespace cynapse derives channel IDs in. Fixed forever: changing it would give
+ * every derived channel a new identity.
  */
 export const CYNAPSE_NAMESPACE = '0199a6c4-5b1e-5c3a-9d2f-6e7c8b9a0d1e'
 

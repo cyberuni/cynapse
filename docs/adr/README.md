@@ -17,3 +17,4 @@ A decision is changed by a new record that supersedes the old one, never by rewr
 | [0006](0006-state-views-and-lifecycle.md) | State records, views, and lifecycle instead of deletion |
 | [0007](0007-stock-sqlite-outside-the-repository.md) | Stock SQLite outside the repository; the write transaction orders |
 | [0008](0008-routing-conventions-and-init-cynapse.md) | Routing kinds, prefixed conventions, and `init-cynapse` |
+| [0009](0009-call-the-stream-a-channel.md) | Call the stream a channel |

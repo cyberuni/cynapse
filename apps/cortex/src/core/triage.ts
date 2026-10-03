@@ -24,7 +24,7 @@ type PendingArbitration = {
 	waiting: string[]
 	/** Every answer is in, but they disagree. */
 	split: boolean
-	/** `handle#seq` of the anchor in the parent stream. */
+	/** `handle#seq` of the anchor in the parent channel. */
 	anchor?: string
 }
 
@@ -33,16 +33,16 @@ type UnreadCount = { handle: string; title: string; type: string; count: number 
 export type Triage = { needsInput: NeedsInput[]; arbitrations: PendingArbitration[]; unread: UnreadCount[] }
 
 export function triage(store: Store, participant: string): Triage {
-	const byId = new Map(store.listStreams().map((s) => [s.id, s]))
+	const byId = new Map(store.listChannels().map((s) => [s.id, s]))
 
 	const needsInput = store.states({ kind: 'needs-input', status: 'open', subject: participant }).flatMap((record) => {
-		const stream = byId.get(record.streamId)
+		const channel = byId.get(record.channelId)
 		const asked = record.entryId ? store.entry(record.entryId) : undefined
-		if (!stream || !asked) return []
+		if (!channel || !asked) return []
 		return [
 			{
-				handle: stream.handle,
-				title: stream.title,
+				handle: channel.handle,
+				title: channel.title,
 				key: record.key,
 				seq: asked.seq,
 				type: asked.type,
@@ -54,30 +54,30 @@ export function triage(store: Store, participant: string): Triage {
 		]
 	})
 
-	const answers = new Map(store.states({ kind: 'pending-answers' }).map((r) => [r.streamId, r]))
-	const arbitrations = store.listStreams().flatMap((stream) => {
-		const record = answers.get(stream.id)
+	const answers = new Map(store.states({ kind: 'pending-answers' }).map((r) => [r.channelId, r]))
+	const arbitrations = store.listChannels().flatMap((channel) => {
+		const record = answers.get(channel.id)
 		const pending = record?.status === 'open'
-		const isOpenArbitration = stream.type.endsWith('.arbitration') && !SETTLED.has(stream.state)
+		const isOpenArbitration = channel.type.endsWith('.arbitration') && !SETTLED.has(channel.state)
 		if (!pending && !isOpenArbitration) return []
-		const parent = stream.parent && byId.get(stream.parent.streamId)
+		const parent = channel.parent && byId.get(channel.parent.channelId)
 		return [
 			{
-				handle: stream.handle,
-				title: stream.title,
-				state: stream.state,
+				handle: channel.handle,
+				title: channel.title,
+				state: channel.state,
 				waiting: waitingOf(record?.value),
 				split: (record?.value as { split?: unknown } | undefined)?.split === true,
-				anchor: parent && stream.parent ? `${parent.handle}#${stream.parent.seq}` : undefined,
+				anchor: parent && channel.parent ? `${parent.handle}#${channel.parent.seq}` : undefined,
 			},
 		]
 	})
 
 	const unread = store
 		.unread(participant)
-		.flatMap(({ streamId, count }) => {
-			const stream = byId.get(streamId)
-			return stream ? [{ handle: stream.handle, title: stream.title, type: stream.type, count }] : []
+		.flatMap(({ channelId, count }) => {
+			const channel = byId.get(channelId)
+			return channel ? [{ handle: channel.handle, title: channel.title, type: channel.type, count }] : []
 		})
 		.sort((a, b) => b.count - a.count)
 

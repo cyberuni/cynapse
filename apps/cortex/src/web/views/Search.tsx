@@ -22,7 +22,7 @@ export function Search(props: { types: string[]; tags: string[] }) {
 	const { data, error } = useApi<Entry[]>(active ? `/api/search?${query}` : undefined)
 	const results = data ?? []
 	const open = useCallback(
-		(i: number) => results[i] && navigate({ view: 'stream', handle: results[i].stream, seq: results[i].seq }),
+		(i: number) => results[i] && navigate({ view: 'channel', handle: results[i].channel, seq: results[i].seq }),
 		[results],
 	)
 	const [index] = useListNav(results.length, open)
@@ -36,7 +36,7 @@ export function Search(props: { types: string[]; tags: string[] }) {
 	return (
 		<div className="view">
 			<h1>
-				Search <span className="muted">— across every stream, by type and tag</span>
+				Search <span className="muted">— across every channel, by type and tag</span>
 			</h1>
 			<form
 				onSubmit={(e) => {
@@ -81,7 +81,7 @@ export function Search(props: { types: string[]; tags: string[] }) {
 					<p className="muted">{results.length} entries</p>
 					{results.length === 0 ? <Empty what="entries match" /> : null}
 					{results.map((e, i) => (
-						<EntryLine key={e.id} entry={e} selected={i === index} showStream />
+						<EntryLine key={e.id} entry={e} selected={i === index} showChannel />
 					))}
 				</>
 			)}

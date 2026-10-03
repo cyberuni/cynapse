@@ -10,7 +10,7 @@ export function registerEntry(program: Command): void {
 	const entry = program.command('entry').description('append and read entries')
 
 	entry
-		.command('append <stream>')
+		.command('append <channel>')
 		.description('append an entry; re-appending the same --id is a no-op')
 		.requiredOption('--type <type>', 'namespaced entry type, such as sdd.decision')
 		.option('--body <text>', 'Markdown body')
@@ -34,12 +34,12 @@ export function registerEntry(program: Command): void {
 					refs: opts.ref,
 					parent: opts.parent,
 				})
-				output(appended, () => `appended ${appended.stream}#${appended.seq}  ${appended.id}`)
+				output(appended, () => `appended ${appended.channel}#${appended.seq}  ${appended.id}`)
 			})
 		})
 
 	entry
-		.command('list <stream>')
+		.command('list <channel>')
 		.description('list entries in seq order')
 		.option('--unread', 'only entries after your cursor that you did not write (needs --as)')
 		.option('--meta-only', 'headers only: no body, no data')

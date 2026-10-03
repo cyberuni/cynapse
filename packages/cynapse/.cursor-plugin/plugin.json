@@ -1,7 +1,7 @@
 {
 	"name": "cynapse",
 	"version": "0.0.0",
-	"description": "A persisted communication network for agents — streams of immutable entries",
+	"description": "A persisted communication network for agents — channels of immutable entries",
 	"author": { "name": "unional" },
 	"homepage": "https://github.com/cyberuni/cynapse",
 	"repository": "https://github.com/cyberuni/cynapse.git",

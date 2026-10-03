@@ -41,7 +41,7 @@ const PARTICIPANTS: Participant[] = [
 
 export interface SeedSummary {
 	participants: number
-	streams: { handle: string; type: string; state: string; entries: number }[]
+	channels: { handle: string; type: string; state: string; entries: number }[]
 	entries: number
 	openNeedsInput: number
 	councilUnread: number
@@ -63,11 +63,11 @@ export function seed(store: Store, clock: SeedClock): SeedSummary {
 	seedFeed(w)
 	seedDm(w)
 
-	const streams = store.listStreams()
+	const channels = store.listChannels()
 	return {
 		participants: store.participants().length,
-		streams: streams.map((s) => ({ handle: s.handle, type: s.type, state: s.state, entries: s.stats.entries })),
-		entries: streams.reduce((sum, s) => sum + s.stats.entries, 0),
+		channels: channels.map((s) => ({ handle: s.handle, type: s.type, state: s.state, entries: s.stats.entries })),
+		entries: channels.reduce((sum, s) => sum + s.stats.entries, 0),
 		openNeedsInput: store.states({ kind: 'needs-input', status: 'open' }).length,
 		councilUnread: store.unread('council').reduce((sum, u) => sum + u.count, 0),
 	}
@@ -81,14 +81,14 @@ class World {
 	) {}
 
 	post(
-		stream: string,
+		channel: string,
 		author: string,
 		type: string,
 		body = '',
 		extra: { data?: Record<string, unknown>; tags?: string[]; refs?: string[]; parent?: string; minutes?: number } = {},
 	): Entry {
 		this.clock.advance(extra.minutes ?? 7)
-		return this.store.append(stream, {
+		return this.store.append(channel, {
 			author,
 			type,
 			body,
@@ -103,17 +103,17 @@ class World {
 		this.clock.advance(minutes)
 	}
 
-	members(stream: string, author: string, members: [participant: string, role: string][]): void {
+	members(channel: string, author: string, members: [participant: string, role: string][]): void {
 		for (const [participant, role] of members) {
 			this.clock.advance(1)
-			this.store.addMember(stream, participant, role, author)
+			this.store.addMember(channel, participant, role, author)
 		}
 	}
 
-	context(stream: string, author: string, refs: string[]): void {
+	context(channel: string, author: string, refs: string[]): void {
 		for (const ref of refs) {
 			this.clock.advance(1)
-			this.store.addContext(stream, ref, author)
+			this.store.addContext(channel, ref, author)
 		}
 	}
 }
@@ -122,13 +122,13 @@ class World {
 
 function seedWorkHierarchy(w: World): void {
 	const { store } = w
-	store.createStream({
+	store.createChannel({
 		handle: 'init-agent-comms',
 		type: 'sdd.initiative',
 		title: 'Agent communication layer',
 		purpose: 'Give agents a persisted communication layer: ledgers, discussions, coordination, change feeds.',
 		author: 'council',
-		conventions: ['sdd.work-hierarchy', 'cynapse.stream-briefing'],
+		conventions: ['sdd.work-hierarchy', 'cynapse.channel-briefing'],
 	})
 	w.members('init-agent-comms', 'council', [
 		['council', 'owner'],
@@ -148,11 +148,11 @@ function seedWorkHierarchy(w: World): void {
 		data: { epic: 'epic-store', title: 'Persisted store' },
 		refs: ['gh:cyberuni/cynapse#16'],
 	})
-	store.createStream({
+	store.createChannel({
 		handle: 'epic-store',
 		type: 'sdd.epic',
 		title: 'Persisted store',
-		purpose: 'Streams of immutable entries on stock SQLite, with owner-assigned seq.',
+		purpose: 'Channels of immutable entries on stock SQLite, with owner-assigned seq.',
 		author: 'sdd-conductor',
 		anchor: storeAnchor.id,
 		conventions: ['sdd.work-hierarchy'],
@@ -169,7 +169,7 @@ function seedWorkHierarchy(w: World): void {
 		data: { epic: 'epic-viewer', title: 'Cortex viewer' },
 		refs: ['gh:cyberuni/cynapse#17'],
 	})
-	store.createStream({
+	store.createChannel({
 		handle: 'epic-viewer',
 		type: 'sdd.epic',
 		title: 'Cortex viewer',
@@ -205,11 +205,11 @@ function seedReconciledMission(w: World): void {
 			refs: ['gh:cyberuni/cynapse#18'],
 		},
 	)
-	store.createStream({
+	store.createChannel({
 		handle: 'm-seq-order',
 		type: 'sdd.mission',
 		title: 'Assign seq under the write lock',
-		purpose: 'seq is assigned inside BEGIN IMMEDIATE as the stream’s last seq + 1; no daemon.',
+		purpose: 'seq is assigned inside BEGIN IMMEDIATE as the channel’s last seq + 1; no daemon.',
 		author: 'sdd-conductor',
 		anchor: anchor.id,
 		conventions: ['sdd.mission-ledger', 'sdd.leash'],
@@ -231,7 +231,7 @@ function seedReconciledMission(w: World): void {
 		m,
 		'pod-store',
 		'sdd.note',
-		'Draft spec: seq contiguous per stream under 10+ concurrent writers; UUIDv7 ids are idempotency keys.',
+		'Draft spec: seq contiguous per channel under 10+ concurrent writers; UUIDv7 ids are idempotency keys.',
 	)
 	const judge1 = w.post(
 		m,
@@ -266,7 +266,7 @@ function seedReconciledMission(w: World): void {
 		m,
 		'sdd-conductor',
 		'sdd.escalation',
-		'Should a stream’s seq survive a compaction, or restart? Compaction is a retention step, so this touches the hard floor.',
+		'Should a channel’s seq survive a compaction, or restart? Compaction is a retention step, so this touches the hard floor.',
 		{ data: { floor: 'consent' }, tags: ['council.attention'] },
 	)
 	store.setState(
@@ -293,7 +293,7 @@ function seedReconciledMission(w: World): void {
 		m,
 		'sdd-conductor',
 		'sdd.decision',
-		'seq is monotonic for the life of a stream; compaction records removed ranges.',
+		'seq is monotonic for the life of a channel; compaction records removed ranges.',
 		{
 			refs: [`${m}#${escalation.seq}`],
 			tags: ['sdd.criteria'],
@@ -339,7 +339,7 @@ function seedReconciledMission(w: World): void {
 		m,
 		'sdd-conductor',
 		'cynapse.summary',
-		'Merged as #19. seq assigned under BEGIN IMMEDIATE; monotonic for the stream’s life (Council, compaction). One backlog followup (#21). Scanner recommends a load-test rule.',
+		'Merged as #19. seq assigned under BEGIN IMMEDIATE; monotonic for the channel’s life (Council, compaction). One backlog followup (#21). Scanner recommends a load-test rule.',
 		{ refs: ['gh:cyberuni/cynapse#19'] },
 	)
 	store.pin(summary.id, 'sdd-conductor')
@@ -362,20 +362,20 @@ function seedReconciledMission(w: World): void {
 /** An in-flight mission paused at the spec gate, waiting on the Council. */
 function seedPausedMission(w: World): void {
 	const { store } = w
-	const anchor = w.post('epic-store', 'sdd-conductor', 'sdd.mission.opened', 'Mission: stream identity and handles', {
-		data: { mission: 'm-stream-ids', cr: 'github-22' },
+	const anchor = w.post('epic-store', 'sdd-conductor', 'sdd.mission.opened', 'Mission: channel identity and handles', {
+		data: { mission: 'm-channel-ids', cr: 'github-22' },
 		refs: ['gh:cyberuni/cynapse#22'],
 	})
-	store.createStream({
-		handle: 'm-stream-ids',
+	store.createChannel({
+		handle: 'm-channel-ids',
 		type: 'sdd.mission',
-		title: 'Stream identity and renameable handles',
-		purpose: 'UUIDv5 for anchored and keyed streams, UUIDv7 otherwise; handles rename with aliases.',
+		title: 'Channel identity and renameable handles',
+		purpose: 'UUIDv5 for anchored and keyed channels, UUIDv7 otherwise; handles rename with aliases.',
 		author: 'sdd-conductor',
 		anchor: anchor.id,
 		conventions: ['sdd.mission-ledger', 'sdd.leash'],
 	})
-	const m = 'm-stream-ids'
+	const m = 'm-channel-ids'
 	w.members(m, 'sdd-conductor', [
 		['sdd-conductor', 'conductor'],
 		['pod-store', 'producer'],
@@ -443,11 +443,11 @@ function seedViewerMission(w: World): void {
 		data: { mission: 'm-cortex-shell', cr: 'github-23' },
 		refs: ['gh:cyberuni/cynapse#23'],
 	})
-	store.createStream({
+	store.createChannel({
 		handle: 'm-cortex-shell',
 		type: 'sdd.mission',
 		title: 'Cortex app shell',
-		purpose: 'Stream tree, entry timeline, Council inbox.',
+		purpose: 'Channel tree, entry timeline, Council inbox.',
 		author: 'sdd-conductor',
 		anchor: anchor.id,
 	})
@@ -472,7 +472,7 @@ function seedViewerMission(w: World): void {
 
 function seedMissionGraph(w: World): void {
 	const { store } = w
-	store.createStream({
+	store.createChannel({
 		handle: 'graph-agent-comms',
 		type: 'sdd.mission-graph',
 		title: 'Mission graph: agent communication layer',
@@ -507,30 +507,30 @@ function seedMissionGraph(w: World): void {
 
 	node('op-store', 'operation', 'Persisted store', { capstone: 'm-load-test', releaseFloor: '0.1.0' })
 	node('m-seq-order', 'mission', 'Assign seq under the write lock', {
-		stream: 'm-seq-order',
+		channel: 'm-seq-order',
 		blast: 'medium',
 		touchSet: ['packages/cynapse/src/store/**'],
 	})
-	node('m-stream-ids', 'mission', 'Stream identity and handles', {
-		stream: 'm-stream-ids',
+	node('m-channel-ids', 'mission', 'Channel identity and handles', {
+		channel: 'm-channel-ids',
 		blast: 'high',
 		touchSet: ['packages/cynapse/src/store/**', 'packages/cynapse/src/ids.ts'],
 	})
 	node('m-refs', 'mission', 'Reference shorthands', { blast: 'low', touchSet: ['packages/cynapse/src/refs.ts'] })
 	node('m-load-test', 'mission', 'Load test (capstone)', { blast: 'low', touchSet: ['packages/cynapse/src/dev/**'] })
 	node('m-cortex-shell', 'mission', 'Cortex app shell', {
-		stream: 'm-cortex-shell',
+		channel: 'm-cortex-shell',
 		blast: 'low',
 		touchSet: ['apps/cortex/**'],
 	})
 	edge('op-store', 'm-seq-order', 'parent-child')
-	edge('op-store', 'm-stream-ids', 'parent-child')
+	edge('op-store', 'm-channel-ids', 'parent-child')
 	edge('op-store', 'm-refs', 'parent-child')
 	edge('op-store', 'm-load-test', 'parent-child')
-	edge('m-seq-order', 'm-stream-ids')
+	edge('m-seq-order', 'm-channel-ids')
 	edge('m-seq-order', 'm-load-test')
-	edge('m-stream-ids', 'm-load-test')
-	edge('m-stream-ids', 'm-cortex-shell')
+	edge('m-channel-ids', 'm-load-test')
+	edge('m-channel-ids', 'm-cortex-shell')
 	frontier(['m-seq-order', 'm-refs'], {
 		'm-seq-order': 'no RAW predecessors',
 		'm-refs': 'no RAW predecessors; touch-set disjoint from m-seq-order',
@@ -539,26 +539,26 @@ function seedMissionGraph(w: World): void {
 	claim('m-refs', 'pod-viewer')
 	w.later(240)
 	retire('m-refs', 'merged', ['gh:cyberuni/cynapse#20'])
-	frontier([], { 'm-stream-ids': 'held: RAW predecessor m-seq-order not retired' })
+	frontier([], { 'm-channel-ids': 'held: RAW predecessor m-seq-order not retired' })
 	w.later(600)
 	retire('m-seq-order', 'merged', ['gh:cyberuni/cynapse#19'])
-	frontier(['m-stream-ids'], { 'm-stream-ids': 'RAW predecessor m-seq-order retired' })
-	claim('m-stream-ids', 'pod-store')
-	w.post(g, 'operator', 'sdd.graph.node', 'm-dm-dedup: discovered while speccing m-stream-ids', {
+	frontier(['m-channel-ids'], { 'm-channel-ids': 'RAW predecessor m-seq-order retired' })
+	claim('m-channel-ids', 'pod-store')
+	w.post(g, 'operator', 'sdd.graph.node', 'm-dm-dedup: discovered while speccing m-channel-ids', {
 		data: { node: 'm-dm-dedup', kind: 'mission', title: 'DM deduplication', status: 'open', blast: 'low' },
 	})
-	edge('m-stream-ids', 'm-dm-dedup', 'discovered-from')
-	w.post(g, 'operator', 'sdd.graph.tombstone', 'Retract m-dm-dedup: covered by keyed stream ids in m-stream-ids.', {
-		data: { node: 'm-dm-dedup', reason: 'covered by keyed stream ids' },
+	edge('m-channel-ids', 'm-dm-dedup', 'discovered-from')
+	w.post(g, 'operator', 'sdd.graph.tombstone', 'Retract m-dm-dedup: covered by keyed channel ids in m-channel-ids.', {
+		data: { node: 'm-dm-dedup', reason: 'covered by keyed channel ids' },
 	})
-	frontier([], { 'm-load-test': 'held: m-stream-ids claimed', 'm-cortex-shell': 'held: m-stream-ids claimed' })
+	frontier([], { 'm-load-test': 'held: m-channel-ids claimed', 'm-cortex-shell': 'held: m-channel-ids claimed' })
 }
 
 // ── cyber-truss ───────────────────────────────────────────────────────────────
 
 function seedTruss(w: World): void {
 	const { store } = w
-	store.createStream({
+	store.createChannel({
 		handle: 'truss-pagination',
 		type: 'truss.mission',
 		title: 'Fix pagination rounding',
@@ -658,7 +658,7 @@ function seedTruss(w: World): void {
 			tags: ['truss.conflict'],
 		},
 	)
-	store.createStream({
+	store.createChannel({
 		handle: 'truss-pagination-arb-1',
 		type: 'truss.arbitration',
 		title: 'Indicator on a single page',
@@ -727,7 +727,7 @@ function seedTruss(w: World): void {
 		'Decided (criteria v2): the indicator shows the total page count and hides when the total is 1.',
 		{
 			parent: arb1Anchor.id,
-			refs: [`${a1}#${store.getStream(a1)?.stats.lastSeq ?? 1}`],
+			refs: [`${a1}#${store.getChannel(a1)?.stats.lastSeq ?? 1}`],
 			data: { arbitration: a1, criteriaVersion: 2 },
 			tags: ['truss.criteria-v2'],
 		},
@@ -757,7 +757,7 @@ function seedTruss(w: World): void {
 			tags: ['truss.conflict'],
 		},
 	)
-	store.createStream({
+	store.createChannel({
 		handle: 'truss-pagination-arb-2',
 		type: 'truss.arbitration',
 		title: 'Patch or minor',
@@ -835,7 +835,7 @@ function seedTruss(w: World): void {
 
 function seedCoordination(w: World): void {
 	const { store } = w
-	store.createStream({
+	store.createChannel({
 		handle: 'coord-cynapse',
 		type: 'coord.channel',
 		title: 'cynapse agents',
@@ -855,12 +855,12 @@ function seedCoordination(w: World): void {
 		c,
 		'operator',
 		'coord.dispatch',
-		'pod-store takes m-stream-ids; pod-viewer takes m-cortex-shell. Store merges first.',
+		'pod-store takes m-channel-ids; pod-viewer takes m-cortex-shell. Store merges first.',
 		{
-			refs: ['m-stream-ids#1', 'm-cortex-shell#1'],
+			refs: ['m-channel-ids#1', 'm-cortex-shell#1'],
 		},
 	)
-	const lease = w.post(c, 'pod-store', 'coord.lease', 'Leasing packages/cynapse/src/store/** for m-stream-ids.', {
+	const lease = w.post(c, 'pod-store', 'coord.lease', 'Leasing packages/cynapse/src/store/** for m-channel-ids.', {
 		data: { paths: ['packages/cynapse/src/store/**'], exclusive: true, ttlMinutes: 240 },
 	})
 	store.setState(
@@ -900,7 +900,7 @@ function seedCoordination(w: World): void {
 
 function seedFeed(w: World): void {
 	const { store } = w
-	store.createStream({
+	store.createChannel({
 		handle: 'feed-cynapse',
 		type: 'feed.changes',
 		title: 'cyberuni/cynapse changes',
@@ -943,7 +943,7 @@ function seedFeed(w: World): void {
 
 function seedDm(w: World): void {
 	const { store } = w
-	store.createStream({
+	store.createChannel({
 		handle: 'dm-council-conductor',
 		type: 'cynapse.dm',
 		title: 'Council ↔ SDD conductor',
@@ -960,7 +960,7 @@ function seedDm(w: World): void {
 		.states({ kind: 'needs-input', status: 'open', subject: 'council' })
 		.map((state) => (state.entryId ? store.entry(state.entryId) : undefined))
 		.filter((entry): entry is Entry => entry !== undefined)
-		.map((entry) => `${entry.stream}#${entry.seq}`)
+		.map((entry) => `${entry.channel}#${entry.seq}`)
 	w.post(
 		d,
 		'sdd-conductor',

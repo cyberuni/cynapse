@@ -6,7 +6,7 @@ import { triage } from './triage.ts'
 describe('answer', () => {
 	it('replies to the asking entry and resolves the record', () => {
 		const store = createFixtureStore()
-		const entry = answer(store, { stream: 'arb-auth-expiry', key: 'escalation', body: '15 minutes.' })
+		const entry = answer(store, { channel: 'arb-auth-expiry', key: 'escalation', body: '15 minutes.' })
 		expect(entry).toMatchObject({ type: 'council.answer', author: 'council', parentSeq: 5 })
 		expect(triage(store, 'council').needsInput.map((n) => n.handle)).toEqual(['m-token-refresh'])
 	})
@@ -14,7 +14,7 @@ describe('answer', () => {
 	it('records a picked option as the choice', () => {
 		const store = createFixtureStore()
 		const entry = answer(store, {
-			stream: 'arb-auth-expiry',
+			channel: 'arb-auth-expiry',
 			key: 'escalation',
 			body: '15 minutes',
 			choice: '15 minutes',
@@ -24,15 +24,15 @@ describe('answer', () => {
 
 	it('refuses a record that is not open for the Council', () => {
 		const store = createFixtureStore()
-		expect(() => answer(store, { stream: 'm-login', key: 'nope', body: 'x' })).toThrow(/no open needs-input/)
+		expect(() => answer(store, { channel: 'm-login', key: 'nope', body: 'x' })).toThrow(/no open needs-input/)
 	})
 })
 
 describe('ruleOnDecision', () => {
-	it('ratifies a decision as a reply in its stream', () => {
+	it('ratifies a decision as a reply in its channel', () => {
 		const store = createFixtureStore()
 		const entry = ruleOnDecision(store, { ref: 'truss-auth#5', ruling: 'ratify' })
-		expect(entry).toMatchObject({ type: 'truss.ratify', stream: 'truss-auth', parentSeq: 5, author: 'council' })
+		expect(entry).toMatchObject({ type: 'truss.ratify', channel: 'truss-auth', parentSeq: 5, author: 'council' })
 	})
 
 	it('overrides a decision with the Council outcome', () => {
@@ -79,7 +79,7 @@ describe('ruleOnDecision', () => {
 })
 
 describe('rulings', () => {
-	it('maps each ruled decision in a stream to its ruling', () => {
+	it('maps each ruled decision in a channel to its ruling', () => {
 		const store = createFixtureStore()
 		const ruling = ruleOnDecision(store, { ref: 'truss-auth#5', ruling: 'override', body: 'Exempt legacy.' })
 		expect(rulings(store, 'truss-auth')).toEqual({

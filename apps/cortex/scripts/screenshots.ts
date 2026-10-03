@@ -4,31 +4,31 @@
 import { mkdir } from 'node:fs/promises'
 import { chromium } from 'playwright'
 
-type Stream = { handle: string; type: string; state: string; parent?: { seq: number; streamId: string }; id: string }
-type Entry = { stream: string; seq: number; parentSeq?: number; type: string }
+type Channel = { handle: string; type: string; state: string; parent?: { seq: number; channelId: string }; id: string }
+type Entry = { channel: string; seq: number; parentSeq?: number; type: string }
 
 const base = process.argv[2] ?? 'http://127.0.0.1:5173'
 const out = new URL('../screenshots/', import.meta.url).pathname
 const get = async <T>(path: string): Promise<T> => (await fetch(`${base}${path}`)).json() as Promise<T>
 
-const streams = await get<Stream[]>('/api/streams')
-const byId = new Map(streams.map((s) => [s.id, s]))
+const channels = await get<Channel[]>('/api/channels')
+const byId = new Map(channels.map((s) => [s.id, s]))
 const decisions = await get<Entry[]>('/api/search?types=truss.decision,sdd.decision')
 const arbitrated = decisions.find((d) => d.type === 'truss.decision' && d.parentSeq) ?? decisions[0]
 const child =
-	streams.find((s) => s.type.endsWith('.arbitration') && s.state !== 'closed' && s.parent) ??
-	streams.find((s) => s.parent)
-const parent = child?.parent ? byId.get(child.parent.streamId) : undefined
-const reconciled = streams.find((s) => s.state === 'reconciled')
-const graph = streams.find((s) => s.type === 'sdd.mission-graph')
+	channels.find((s) => s.type.endsWith('.arbitration') && s.state !== 'closed' && s.parent) ??
+	channels.find((s) => s.parent)
+const parent = child?.parent ? byId.get(child.parent.channelId) : undefined
+const reconciled = channels.find((s) => s.state === 'reconciled')
+const graph = channels.find((s) => s.type === 'sdd.mission-graph')
 
 const shots: [name: string, path: string | undefined, keys?: string[]][] = [
 	['triage', '/'],
 	['hierarchy', '/tree'],
-	['stream-timeline', parent && child?.parent && `/s/${parent.handle}#${child.parent.seq}`, ['o']],
-	['stream-side-by-side', parent && child?.parent && `/s/${parent.handle}?side=${child.handle}#${child.parent.seq}`],
-	['stream-distilled', reconciled && `/s/${reconciled.handle}`],
-	['provenance', arbitrated && `/p/${arbitrated.stream}/${arbitrated.seq}`],
+	['channel-timeline', parent && child?.parent && `/s/${parent.handle}#${child.parent.seq}`, ['o']],
+	['channel-side-by-side', parent && child?.parent && `/s/${parent.handle}?side=${child.handle}#${child.parent.seq}`],
+	['channel-distilled', reconciled && `/s/${reconciled.handle}`],
+	['provenance', arbitrated && `/p/${arbitrated.channel}/${arbitrated.seq}`],
 	['mission-graph', graph && `/g/${graph.handle}`],
 	['search', '/search?types=truss.decision,sdd.decision'],
 	['keyboard-help', '/', ['?']],

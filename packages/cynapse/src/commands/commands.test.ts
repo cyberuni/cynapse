@@ -34,12 +34,12 @@ async function json<T = any>(...args: string[]): Promise<T> {
 	return JSON.parse(await cli('--json', ...args)) as T
 }
 
-describe('cynapse stream', () => {
-	it('creates a stream and shows the briefing in one call', async () => {
+describe('cynapse channel', () => {
+	it('creates a channel and shows the briefing in one call', async () => {
 		await cli(
 			'--as',
 			'alice',
-			'stream',
+			'channel',
 			'create',
 			'auth',
 			'--type',
@@ -55,8 +55,8 @@ describe('cynapse stream', () => {
 			'--convention',
 			'sdd.ledger',
 		)
-		const brief = await json('--as', 'bob', 'stream', 'show', 'auth')
-		expect(brief.stream).toMatchObject({
+		const brief = await json('--as', 'bob', 'channel', 'show', 'auth')
+		expect(brief.channel).toMatchObject({
 			handle: 'auth',
 			purpose: 'ship login',
 			members: [{ participant: 'bob', role: 'reviewer', cursor: 0 }],
@@ -64,27 +64,27 @@ describe('cynapse stream', () => {
 			conventions: ['sdd.ledger'],
 			stats: { unread: 3 },
 		})
-		expect(await cli('stream', 'show', 'auth')).toContain(
+		expect(await cli('channel', 'show', 'auth')).toContain(
 			'context: [cyberuni/cynapse#12](https://github.com/cyberuni/cynapse/issues/12)',
 		)
 	})
 
 	it('lists and draws the tree of anchored children', async () => {
-		await cli('--as', 'a', 'stream', 'create', 'epic', '--type', 'sdd.epic', '--title', 'Epic')
+		await cli('--as', 'a', 'channel', 'create', 'epic', '--type', 'sdd.epic', '--title', 'Epic')
 		await cli('--as', 'a', 'entry', 'append', 'epic', '--type', 'sdd.mission.opened', '--body', 'm1')
-		await cli('--as', 'a', 'stream', 'create', 'm1', '--type', 'sdd.mission', '--title', 'M1', '--anchor', 'epic#2')
-		expect(await cli('stream', 'tree')).toMatch(/^epic .*\n {2}m1 /)
-		expect((await json('stream', 'list', '--parent', 'epic')).items.map((s: any) => s.handle)).toEqual(['m1'])
+		await cli('--as', 'a', 'channel', 'create', 'm1', '--type', 'sdd.mission', '--title', 'M1', '--anchor', 'epic#2')
+		expect(await cli('channel', 'tree')).toMatch(/^epic .*\n {2}m1 /)
+		expect((await json('channel', 'list', '--parent', 'epic')).items.map((s: any) => s.handle)).toEqual(['m1'])
 	})
 
 	it('names what was empty', async () => {
-		expect(await cli('stream', 'list')).toBe('0 streams found')
+		expect(await cli('channel', 'list')).toBe('0 channels found')
 	})
 })
 
 describe('cynapse entry', () => {
 	beforeEach(async () => {
-		await cli('--as', 'alice', 'stream', 'create', 'auth', '--type', 'sdd.mission', '--title', 'Add auth')
+		await cli('--as', 'alice', 'channel', 'create', 'auth', '--type', 'sdd.mission', '--title', 'Add auth')
 	})
 
 	it('appends and shows an entry by its short reference, rendering refs', async () => {
@@ -137,14 +137,14 @@ describe('cynapse entry', () => {
 		vi.unstubAllEnvs()
 	})
 
-	it('fails with a named error for an unknown stream', async () => {
-		await expect(cli('entry', 'list', 'nope')).rejects.toThrow('no stream found for "nope"')
+	it('fails with a named error for an unknown channel', async () => {
+		await expect(cli('entry', 'list', 'nope')).rejects.toThrow('no channel found for "nope"')
 	})
 })
 
 describe('cynapse state', () => {
 	it('sets, lists and resolves a needs-input record, and sets the lifecycle', async () => {
-		await cli('--as', 'a', 'stream', 'create', 'arb', '--type', 'truss.arbitration', '--title', 'Arb')
+		await cli('--as', 'a', 'channel', 'create', 'arb', '--type', 'truss.arbitration', '--title', 'Arb')
 		await cli(
 			'--as',
 			'a',
@@ -163,6 +163,6 @@ describe('cynapse state', () => {
 		await cli('--as', 'council', 'state', 'set', 'arb', 'escalation', '--kind', 'needs-input', '--status', 'resolved')
 		expect(await cli('state', 'list', '--status', 'open')).toBe('0 state records found')
 		await cli('--as', 'a', 'state', 'lifecycle', 'arb', 'reconciled')
-		expect((await json('stream', 'show', 'arb')).stream.state).toBe('reconciled')
+		expect((await json('channel', 'show', 'arb')).channel.state).toBe('reconciled')
 	})
 })

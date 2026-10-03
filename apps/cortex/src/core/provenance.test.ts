@@ -13,7 +13,7 @@ describe('provenance', () => {
 			'truss.answer.agree',
 			'truss.answer.yield',
 		])
-		expect(trail?.contributions.map((e) => `${e.stream}#${e.seq}`)).toEqual(['truss-auth#1', 'truss-auth#2'])
+		expect(trail?.contributions.map((e) => `${e.channel}#${e.seq}`)).toEqual(['truss-auth#1', 'truss-auth#2'])
 	})
 
 	it('follows contribution ids in the anchor payload and skips meta entries', () => {
@@ -33,7 +33,7 @@ describe('provenance', () => {
 			refs: ['arb-auth-rotation#4'],
 		})
 		const trail = provenance(store, `truss-auth#${decision.seq}`)
-		expect(trail?.contributions.map((e) => `${e.stream}#${e.seq}`)).toEqual(['truss-auth#3'])
+		expect(trail?.contributions.map((e) => `${e.channel}#${e.seq}`)).toEqual(['truss-auth#3'])
 		expect(trail?.idRefs).toEqual({ [contribution?.id ?? '']: 'truss-auth#3' })
 	})
 

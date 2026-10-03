@@ -3,7 +3,7 @@ import { createMemoryStore } from './memory-store.ts'
 
 function storeWithMission() {
 	const store = createMemoryStore()
-	store.createStream({
+	store.createChannel({
 		handle: 'm-auth',
 		type: 'sdd.mission',
 		title: 'Auth',
@@ -22,7 +22,7 @@ describe('memory store', () => {
 		const second = store.append('m-auth', { author: 'builder', type: 'sdd.note', body: 'two' })
 		expect(second.seq).toBe(2)
 		expect(store.entry('m-auth#2')?.body).toBe('two')
-		expect(store.getStream('m-auth')?.stats.lastSeq).toBe(2)
+		expect(store.getChannel('m-auth')?.stats.lastSeq).toBe(2)
 	})
 
 	it('links a reply to its parent and thread root', () => {
@@ -60,9 +60,9 @@ describe('memory store', () => {
 		expect(store.entries('m-auth').at(-1)?.type).toBe('cynapse.state.changed')
 	})
 
-	it('searches across streams by tag', () => {
+	it('searches across channels by tag', () => {
 		const store = storeWithMission()
-		store.createStream({ handle: 'm-db', type: 'sdd.mission', title: 'DB' })
+		store.createChannel({ handle: 'm-db', type: 'sdd.mission', title: 'DB' })
 		store.append('m-auth', { author: 'a', type: 'sdd.note', body: 'x', tags: ['topic:auth'] })
 		store.append('m-db', { author: 'a', type: 'sdd.note', body: 'y', tags: ['topic:auth'] })
 		store.append('m-db', { author: 'a', type: 'sdd.note', body: 'z' })

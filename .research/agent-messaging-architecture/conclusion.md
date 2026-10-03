@@ -2,7 +2,7 @@
 
 ## Last updated
 
-September 2026 (round 9)
+October 2026 (round 10)
 
 ## Question
 
@@ -43,9 +43,9 @@ reference. Inside cynapse a reference is stored as a shorthand (`gh:cyberuni/cyn
 When posted out, it renders as a Markdown link or a bare URL, whichever the platform
 supports.
 
-### The core: streams of immutable entries
+### The core: channels of immutable entries
 
-A **stream** is an ordered, append-only sequence of **entries**, and each stream has one
+A **channel** is an ordered, append-only sequence of **entries**, and each channel has one
 owner of its order. Every system that scaled chose this over per-recipient copies: Slack,
 Discord, Telegram, Matrix and Kafka (LG04–LG08). Email threading shows how copies fail
 (LG01–LG03). mcp_agent_mail stores the same split, one shared message row plus a row per
@@ -54,7 +54,7 @@ recipient for read and ack state (PR10, PR16).
 - **Entry identity.** The writer mints a UUIDv7. Its first 48 bits are a Unix millisecond
   timestamp (RFC 9562), so it sorts by creation time. It is the entry's global identity and
   its idempotency key.
-- **`seq`.** A per-stream integer assigned by the stream's order owner. It is *arrival*
+- **`seq`.** A per-channel integer assigned by the channel's order owner. It is *arrival*
   order, not creation order. It is needed because:
   - an offline writer's entries carry old timestamps and would otherwise land behind
     readers' cursors;
@@ -75,20 +75,20 @@ recipient for read and ack state (PR10, PR16).
   added later is itself a label entry, and the current set of tags is computed from those
   entries.
 
-### Streams: identity, types, links, metadata
+### Channels: identity, types, links, metadata
 
 - **Identity.** A UUID that never changes, plus a readable handle that can be renamed.
   Old handles stay as aliases.
-  - A stream branched from an anchor entry gets `UUIDv5(anchor id)`.
-  - A stream with a natural key, such as a DM's set of participants, gets
+  - A channel branched from an anchor entry gets `UUIDv5(anchor id)`.
+  - A channel with a natural key, such as a DM's set of participants, gets
     `UUIDv5(canonical key)`.
   - Anything else gets a UUIDv7.
 
-  Deriving the ID means two agents opening the same stream at once end up in one stream.
+  Deriving the ID means two agents opening the same channel at once end up in one channel.
 - **Types are namespaced and defined by consumers,** such as `sdd.mission` or
   `truss.arbitration`. cynapse defines only generic traits: membership (open or fixed),
   retention, lifecycle states, whether members are woken, and the default view.
-- **Child streams branch from an anchor entry in the parent.** For example, the parent
+- **Child channels branch from an anchor entry in the parent.** For example, the parent
   gets an entry saying "arbitration needed" with a summary, and the child's parent is that
   entry. The branch point then sits in the parent's order. The outcome is written back to
   the parent as an entry that references the anchor. This follows Discord threads started
@@ -102,7 +102,7 @@ recipient for read and ack state (PR10, PR16).
   - the names of the conventions that apply;
   - stats.
 
-  Every metadata change is also written as an entry in the stream.
+  Every metadata change is also written as an entry in the channel.
 
 ### State, views, and lifecycle
 
@@ -110,13 +110,13 @@ recipient for read and ack state (PR10, PR16).
   lifecycle states such as `reconciled`. Every transition is also logged as an entry
   (LG17, LG18). Leases copy mcp_agent_mail's design: TTL, exclusive flag, path patterns,
   `released_ts`, and repair of orphaned leases (PR12).
-- **Views** are saved filters. A distilled ledger is a view over the raw stream, and
+- **Views** are saved filters. A distilled ledger is a view over the raw channel, and
   marking it `reconciled` is a state change, not a deletion. Removing raw entries
-  physically is an optional retention step. If it is ever taken, the stream records the
+  physically is an optional retention step. If it is ever taken, the channel records the
   ranges it compacted, so readers can tell a gap they have not received from a range
   removed on purpose.
 - **Summary entries** let a late joiner or a restarted session start from a checkpoint.
-  Summarizing reconciled streams (beads' `bd compact`, PR08) fits here.
+  Summarizing reconciled channels (beads' `bd compact`, PR08) fits here.
 
 ### Using the system: routing, conventions, stamps
 
@@ -140,7 +140,7 @@ recipient for read and ack state (PR10, PR16).
 - **Solo:** stock SQLite in WAL mode, embedded. Never a modified SQLite: the corruption in
   mcp_agent_mail_rust came from its custom engine, and stock SQLite backups of the same
   data verified clean (PR14, LC09). Load-test with 10 or more concurrent writers.
-- **Multi-machine, team, enterprise:** a hub that owns `seq`, with the stream as the unit of
+- **Multi-machine, team, enterprise:** a hub that owns `seq`, with the channel as the unit of
   partitioning, sync and access control (SY21, SY22). The data model maps onto NATS
   JetStream (SY08–SY10). Dolt is a second candidate: it syncs through the existing git
   remote with no hub to run (LC09), but its merge without a leader conflicts with
@@ -149,9 +149,9 @@ recipient for read and ack state (PR10, PR16).
   coordination, combat logs) lives in the database outside any repository, and agents read
   it through the CLI's budget flags, never through file search. Only a distilled result
   reaches the repository, as an intended artifact: an ADR through the `decision-record`
-  route, or one summary per reconciled stream. This rests on hypothesis HY01, which is not
+  route, or one summary per reconciled channel. This rests on hypothesis HY01, which is not
   yet tested (see "What should be checked again later"). SDD's raw combat log
-  (`.agents/plans/*.log.jsonl`) is a candidate to move onto a cynapse stream.
+  (`.agents/plans/*.log.jsonl`) is a candidate to move onto a cynapse channel.
 - **External platforms are routing destinations, not backends.** That includes Slack,
   Linear, Asana, GitHub and beads (BK09, BK12, BK16).
 - **Don't sync through JSONL committed to git.** Beads tried it and moved to Dolt
@@ -164,35 +164,35 @@ recipient for read and ack state (PR10, PR16).
 | Term | Meaning |
 | --- | --- |
 | participant | anything that reads or writes: an agent, a person, a service |
-| stream | an ordered, append-only sequence of entries with one owner of its order |
-| entry | one immutable item in a stream: a message, an event, an answer |
-| type | namespaced and defined by consumers, for both streams and entries |
+| channel | an ordered, append-only sequence of entries with one owner of its order |
+| entry | one immutable item in a channel: a message, an event, an answer |
+| type | namespaced and defined by consumers, for both channels and entries |
 | tag | a namespaced label; one added later arrives as an entry |
-| anchor | the entry in a parent stream that a child stream branches from |
+| anchor | the entry in a parent channel that a child channel branches from |
 | view | a saved filter over entries, such as "distilled" |
-| state | a mutable record on a stream or entry, with its transitions logged |
-| cursor | a reader's position in a stream (its read or unread boundary) |
+| state | a mutable record on a channel or entry, with its transitions logged |
+| cursor | a reader's position in a channel (its read or unread boundary) |
 
 Examples of how consumers map onto these terms, not part of the core:
 
 - **SDD:** a *mission* (one request, such as a feature or a bug fix) is an `sdd.mission`
-  stream. Its raw ledger is every entry, and its distilled ledger is a view plus the state
+  channel. Its raw ledger is every entry, and its distilled ledger is a view plus the state
   `reconciled`.
 - **cyber-truss:** a *workflow* is the creation and propagation of changes across artifact
   sets. *Arbitration* is how workflow agents discuss until they reach consensus. It is a
-  `truss.arbitration` child stream, anchored at a `truss.arbitration-needed` entry in the
-  mission stream. The members are the electorate, and the answers (`agree`, `disagree`,
+  `truss.arbitration` child channel, anchored at a `truss.arbitration-needed` entry in the
+  mission channel. The members are the electorate, and the answers (`agree`, `disagree`,
   `uncontested/yield`, `request-recess`) are typed entries. The pending answers are state,
-  and the decision is written back into the mission stream (LC08).
+  and the decision is written back into the mission channel (LC08).
 
 ### Shape
 
 ```
-stream { id (UUIDv5 from an anchor or key | UUIDv7), handle (+aliases), type, title,
+channel { id (UUIDv5 from an anchor or key | UUIDv7), handle (+aliases), type, title,
          purpose, members[{participant, role, cursor}], context[refs], parent (anchor entry),
          traits {membership, retention, wake, default view}, state, pinned[], conventions[] }
 
-entry  { id (UUIDv7, writer), stream, seq (owner), author, type, tags[], parent?, root?,
+entry  { id (UUIDv7, writer), channel, seq (owner), author, type, tags[], parent?, root?,
          refs[] (shorthands), body }
 ```
 
@@ -201,9 +201,9 @@ entry  { id (UUIDv7, writer), stream, seq (owner), author, type, tags[], parent?
 | Decision | Cost to change later |
 | --- | --- |
 | UUIDv7 entry IDs minted by the writer | **high** |
-| `seq` per stream, owner-assigned (arrival order) | **high** |
-| Entries immutable; a stream is the unit of partitioning, sync and access control | **high** |
-| Stream IDs are UUIDs (v5 derived or v7); handles are separate and can be renamed | **high** |
+| `seq` per channel, owner-assigned (arrival order) | **high** |
+| Entries immutable; a channel is the unit of partitioning, sync and access control | **high** |
+| Channel IDs are UUIDs (v5 derived or v7); handles are separate and can be renamed | **high** |
 | Children attach through an anchor entry | medium-high |
 | Namespaced types defined by consumers, generic traits | medium |
 | The reference shorthand format and how it renders | medium |
@@ -219,14 +219,14 @@ Every read command supports unread-only, metadata-only, and start-from-latest-su
 
 ## Confidence
 
-- **High:** the stream-of-entries core, UUIDv7 entry IDs plus owner-assigned `seq`, and
+- **High:** the channel-of-entries core, UUIDv7 entry IDs plus owner-assigned `seq`, and
   shared rows plus per-reader state. Several independent systems converge on these, and
   mcp_agent_mail confirms the row split.
 - **High:** routing out to the systems of record, and plugin-prefixed conventions. The
   collision was tested directly.
 - **High:** SQLite's write transaction as the local order owner on one machine. The load
   test held with up to 32 concurrent writers (LC10).
-- **Medium:** the hub technology (NATS or Dolt), and summarization on reconciled streams.
+- **Medium:** the hub technology (NATS or Dolt), and summarization on reconciled channels.
 
 ## Strongest supporting evidence
 
@@ -250,7 +250,7 @@ Every read command supports unread-only, metadata-only, and start-from-latest-su
 
 ## What is not supported
 
-- That any existing tool or platform provides the full model (streams, `seq`, cursors, a
+- That any existing tool or platform provides the full model (channels, `seq`, cursors, a
   typed ledger, anchors) off the shelf.
 - Beads or Dolt as cynapse's backend today.
 - That NATS leaf nodes buffer writes durably while offline.

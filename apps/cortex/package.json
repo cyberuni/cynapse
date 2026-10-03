@@ -2,7 +2,7 @@
 	"name": "@cyberuni/cortex",
 	"version": "0.0.0",
 	"private": true,
-	"description": "Cortex — the Council's viewer for cynapse streams",
+	"description": "Cortex — the Council's viewer for cynapse channels",
 	"type": "module",
 	"scripts": {
 		"build": "vite build",

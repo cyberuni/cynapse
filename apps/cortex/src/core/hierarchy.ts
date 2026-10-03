@@ -1,12 +1,12 @@
-// Streams as a tree, nested through their anchors: initiative → epic → mission, and a
+// Channels as a tree, nested through their anchors: initiative → epic → mission, and a
 // truss mission → its arbitrations. Each node rolls up its subtree.
-import type { Store, Stream } from './model.ts'
+import type { Channel, Store } from './model.ts'
 
 type Rollup = {
 	unread: number
 	needsInput: number
 	pendingAnswers: number
-	/** Count of streams in the subtree per lifecycle state. */
+	/** Count of channels in the subtree per lifecycle state. */
 	lifecycle: Record<string, number>
 }
 
@@ -15,7 +15,7 @@ export type TreeNode = {
 	title: string
 	type: string
 	state: string
-	/** `handle#seq` of the anchor in the parent stream. */
+	/** `handle#seq` of the anchor in the parent channel. */
 	anchor?: string
 	unread: number
 	needsInput: number
@@ -25,22 +25,22 @@ export type TreeNode = {
 }
 
 export function hierarchy(store: Store, participant: string): TreeNode[] {
-	const streams = store.listStreams()
-	const byId = new Map(streams.map((s) => [s.id, s]))
-	const unread = new Map(store.unread(participant).map((u) => [u.streamId, u.count]))
+	const channels = store.listChannels()
+	const byId = new Map(channels.map((s) => [s.id, s]))
+	const unread = new Map(store.unread(participant).map((u) => [u.channelId, u.count]))
 	const open = store.states({ status: 'open' })
-	const countOpen = (stream: Stream, kind: string, subject?: string) =>
-		open.filter((r) => r.streamId === stream.id && r.kind === kind && (!subject || r.subject === subject)).length
+	const countOpen = (channel: Channel, kind: string, subject?: string) =>
+		open.filter((r) => r.channelId === channel.id && r.kind === kind && (!subject || r.subject === subject)).length
 
-	const build = (stream: Stream): TreeNode => {
-		const children = streams.filter((s) => s.parent?.streamId === stream.id).map(build)
-		const parent = stream.parent && byId.get(stream.parent.streamId)
+	const build = (channel: Channel): TreeNode => {
+		const children = channels.filter((s) => s.parent?.channelId === channel.id).map(build)
+		const parent = channel.parent && byId.get(channel.parent.channelId)
 		const own = {
-			unread: unread.get(stream.id) ?? 0,
-			needsInput: countOpen(stream, 'needs-input', participant),
-			pendingAnswers: countOpen(stream, 'pending-answers'),
+			unread: unread.get(channel.id) ?? 0,
+			needsInput: countOpen(channel, 'needs-input', participant),
+			pendingAnswers: countOpen(channel, 'pending-answers'),
 		}
-		const rollup: Rollup = { ...own, lifecycle: { [stream.state]: 1 } }
+		const rollup: Rollup = { ...own, lifecycle: { [channel.state]: 1 } }
 		for (const child of children) {
 			rollup.unread += child.rollup.unread
 			rollup.needsInput += child.rollup.needsInput
@@ -50,16 +50,16 @@ export function hierarchy(store: Store, participant: string): TreeNode[] {
 			}
 		}
 		return {
-			handle: stream.handle,
-			title: stream.title,
-			type: stream.type,
-			state: stream.state,
-			anchor: parent && stream.parent ? `${parent.handle}#${stream.parent.seq}` : undefined,
+			handle: channel.handle,
+			title: channel.title,
+			type: channel.type,
+			state: channel.state,
+			anchor: parent && channel.parent ? `${parent.handle}#${channel.parent.seq}` : undefined,
 			...own,
 			children,
 			rollup,
 		}
 	}
 
-	return streams.filter((s) => !s.parent || !byId.has(s.parent.streamId)).map(build)
+	return channels.filter((s) => !s.parent || !byId.has(s.parent.channelId)).map(build)
 }

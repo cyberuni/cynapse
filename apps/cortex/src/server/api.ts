@@ -27,35 +27,35 @@ export function createApi(store: Store, options: { participant?: string; port?: 
 	app.get('/tree', (c) => c.json(hierarchy(store, participant)))
 	app.get('/waits', (c) => c.json(waits(store)))
 
-	app.get('/streams', (c) => c.json(store.listStreams({ type: c.req.query('type') || undefined })))
+	app.get('/channels', (c) => c.json(store.listChannels({ type: c.req.query('type') || undefined })))
 
-	app.get('/streams/:handle', (c) => {
-		const stream = store.getStream(c.req.param('handle'))
-		if (!stream) return c.json({ error: `unknown stream: ${c.req.param('handle')}` }, 404)
-		const parent = stream.parent && store.getStream(stream.parent.streamId)
+	app.get('/channels/:handle', (c) => {
+		const channel = store.getChannel(c.req.param('handle'))
+		if (!channel) return c.json({ error: `unknown channel: ${c.req.param('handle')}` }, 404)
+		const parent = channel.parent && store.getChannel(channel.parent.channelId)
 		return c.json({
-			stream,
-			anchor: parent && stream.parent ? `${parent.handle}#${stream.parent.seq}` : undefined,
-			members: members(store, stream.id),
-			waits: waits(store, stream.id),
-			children: store.children(stream.id).map((s) => ({
+			channel,
+			anchor: parent && channel.parent ? `${parent.handle}#${channel.parent.seq}` : undefined,
+			members: members(store, channel.id),
+			waits: waits(store, channel.id),
+			children: store.children(channel.id).map((s) => ({
 				handle: s.handle,
 				title: s.title,
 				type: s.type,
 				state: s.state,
 				anchorSeq: s.parent?.seq,
 			})),
-			pinned: stream.pinned.flatMap((seq) => store.entry(`${stream.handle}#${seq}`) ?? []),
-			views: store.views(stream.id).map((v) => v.name),
-			states: store.states({ stream: stream.id }),
-			rulings: rulings(store, stream.id),
-			idRefs: payloadIdRefs(store, store.entries(stream.id)),
+			pinned: channel.pinned.flatMap((seq) => store.entry(`${channel.handle}#${seq}`) ?? []),
+			views: store.views(channel.id).map((v) => v.name),
+			states: store.states({ channel: channel.id }),
+			rulings: rulings(store, channel.id),
+			idRefs: payloadIdRefs(store, store.entries(channel.id)),
 		})
 	})
 
-	app.get('/streams/:handle/entries', (c) => {
+	app.get('/channels/:handle/entries', (c) => {
 		const handle = c.req.param('handle')
-		if (!store.getStream(handle)) return c.json({ error: `unknown stream: ${handle}` }, 404)
+		if (!store.getChannel(handle)) return c.json({ error: `unknown channel: ${handle}` }, 404)
 		return c.json(
 			store.entries(handle, {
 				view: c.req.query('view') || undefined,
@@ -70,7 +70,7 @@ export function createApi(store: Store, options: { participant?: string; port?: 
 			store.search({
 				types: list(c.req.query('types')),
 				tags: list(c.req.query('tags')),
-				streams: list(c.req.query('streams')),
+				channels: list(c.req.query('channels')),
 			}),
 		),
 	)
@@ -90,19 +90,19 @@ export function createApi(store: Store, options: { participant?: string; port?: 
 
 	app.get('/graph/:handle', (c) => {
 		const handle = c.req.param('handle')
-		if (!store.getStream(handle)) return c.json({ error: `unknown stream: ${handle}` }, 404)
+		if (!store.getChannel(handle)) return c.json({ error: `unknown channel: ${handle}` }, 404)
 		const at = c.req.query('at')
 		return c.json(foldGraph(store.entries(handle), at ? Number(at) : undefined))
 	})
 
-	app.post('/streams/:handle/read', async (c) => {
+	app.post('/channels/:handle/read', async (c) => {
 		const body = await c.req.json<{ seq?: number }>().catch(() => ({}) as { seq?: number })
 		store.markRead(c.req.param('handle'), participant, body.seq)
 		return c.json({ ok: true })
 	})
 
 	app.post('/answer', async (c) => {
-		const body = await c.req.json<{ stream: string; key: string; body: string }>()
+		const body = await c.req.json<{ channel: string; key: string; body: string }>()
 		return c.json(answer(store, body))
 	})
 

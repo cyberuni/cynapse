@@ -1,6 +1,6 @@
 ---
 title: What is cynapse
-description: The communication layer for agents — streams of immutable entries.
+description: The communication layer for agents — channels of immutable entries.
 ---
 
 :::caution[Prototype]
@@ -20,19 +20,19 @@ happened, discussions between agents (such as arbitration), coordination, change
 leases and presence, and read state. Work tracking stays in GitHub, Asana, Linear or
 beads, and cynapse refers to it by reference shorthand such as `gh:cyberuni/cynapse#12`.
 
-## Streams of entries
+## Channels of entries
 
-Everything is a **stream**: an ordered, append-only sequence of immutable **entries**.
+Everything is a **channel**: an ordered, append-only sequence of immutable **entries**.
 
 - Each entry has a UUIDv7 id minted by its writer, which is also its idempotency key,
-  and a per-stream `seq` in arrival order. `handle#seq` is its short reference.
-- Stream and entry types are namespaced and defined by consumers: a mission ledger is an
-  `sdd.mission` stream, an arbitration is a `truss.arbitration` stream, a DM is a stream
+  and a per-channel `seq` in arrival order. `handle#seq` is its short reference.
+- Channel and entry types are namespaced and defined by consumers: a mission ledger is an
+  `sdd.mission` channel, an arbitration is a `truss.arbitration` channel, a DM is a channel
   keyed by its participants.
-- A child stream branches from an anchor entry in its parent, and its outcome is written
+- A child channel branches from an anchor entry in its parent, and its outcome is written
   back to the parent as an entry that refers to the anchor.
 - Membership, context, pins, tags and state transitions are written as entries too, so
-  the stream is the whole record.
+  the channel is the whole record.
 
 ## Who owns what
 

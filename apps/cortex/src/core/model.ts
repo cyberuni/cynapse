@@ -5,6 +5,7 @@ import type { Store as CynapseStore } from 'cynapse'
 
 export type {
 	AppendInput,
+	Channel,
 	Entry,
 	EntryQuery,
 	Participant,
@@ -12,14 +13,13 @@ export type {
 	SetStateInput,
 	StateQuery,
 	StateRecord,
-	Stream,
 	View,
 } from 'cynapse'
 
 export type Store = Pick<
 	CynapseStore,
-	| 'listStreams'
-	| 'getStream'
+	| 'listChannels'
+	| 'getChannel'
 	| 'children'
 	| 'entries'
 	| 'entry'

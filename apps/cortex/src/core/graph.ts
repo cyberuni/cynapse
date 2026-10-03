@@ -1,4 +1,4 @@
-// Folds an `sdd.mission-graph` stream into a DAG at any point in its history.
+// Folds an `sdd.mission-graph` channel into a DAG at any point in its history.
 import type { Entry } from './model.ts'
 
 /** `open` is for nodes that are not dispatched themselves, such as an operation. */
@@ -9,8 +9,8 @@ export type GraphNode = {
 	/** `mission` or `operation`. */
 	kind: string
 	title: string
-	/** The node's own stream, when it has one. */
-	stream?: string
+	/** The node's own channel, when it has one. */
+	channel?: string
 	status: NodeStatus
 	by?: string
 	/** Retirement outcome, or the tombstone reason. */
@@ -59,7 +59,7 @@ export function foldGraph(entries: Entry[], uptoSeq = Number.POSITIVE_INFINITY):
 						id,
 						kind,
 						title: str(data.title) ?? id,
-						stream: str(data.stream),
+						channel: str(data.channel),
 						blast: str(data.blast),
 						status: kind === 'mission' ? 'blocked' : 'open',
 						layer: 0,

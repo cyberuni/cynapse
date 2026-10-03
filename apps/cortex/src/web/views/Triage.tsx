@@ -6,12 +6,12 @@ import type { Route } from '../route.ts'
 
 type Item = { key: string; route: Route }
 
-export function AnswerBox(props: { stream: string; stateKey: string; options?: string[]; onDone: () => void }) {
+export function AnswerBox(props: { channel: string; stateKey: string; options?: string[]; onDone: () => void }) {
 	const [body, setBody] = useState('')
 	const [error, setError] = useState<string>()
 	const submit = async (choice?: string) => {
 		try {
-			await post('/api/answer', { stream: props.stream, key: props.stateKey, body: body.trim() || choice, choice })
+			await post('/api/answer', { channel: props.channel, key: props.stateKey, body: body.trim() || choice, choice })
 			props.onDone()
 		} catch (err) {
 			setError((err as Error).message)
@@ -63,13 +63,16 @@ export function Triage() {
 				? [
 						...data.needsInput.map((n) => ({
 							key: `n:${n.handle}:${n.key}`,
-							route: { view: 'stream', handle: n.handle, seq: n.seq } as Route,
+							route: { view: 'channel', handle: n.handle, seq: n.seq } as Route,
 						})),
 						...data.arbitrations.map((a) => ({
 							key: `a:${a.handle}`,
-							route: { view: 'stream', handle: a.handle } as Route,
+							route: { view: 'channel', handle: a.handle } as Route,
 						})),
-						...data.unread.map((u) => ({ key: `u:${u.handle}`, route: { view: 'stream', handle: u.handle } as Route })),
+						...data.unread.map((u) => ({
+							key: `u:${u.handle}`,
+							route: { view: 'channel', handle: u.handle } as Route,
+						})),
 					]
 				: [],
 		[data],
@@ -102,7 +105,7 @@ export function Triage() {
 					return (
 						<div key={key} className="card alert" data-selected={selected === key}>
 							<div className="entry-head">
-								<Link className="seq" to={{ view: 'stream', handle: n.handle, seq: n.seq }}>
+								<Link className="seq" to={{ view: 'channel', handle: n.handle, seq: n.seq }}>
 									{n.handle}#{n.seq}
 								</Link>
 								<span className="author">{n.author}</span>
@@ -125,7 +128,7 @@ export function Triage() {
 							) : null}
 							{answering === key ? (
 								<AnswerBox
-									stream={n.handle}
+									channel={n.handle}
 									stateKey={n.key}
 									options={n.options}
 									onDone={() => setAnswering(undefined)}
@@ -146,7 +149,7 @@ export function Triage() {
 				{data.arbitrations.map((a) => (
 					<div key={a.handle} className="card" data-selected={selected === `a:${a.handle}`}>
 						<div className="entry-head">
-							<Link className="seq" to={{ view: 'stream', handle: a.handle }}>
+							<Link className="seq" to={{ view: 'channel', handle: a.handle }}>
 								{a.handle}
 							</Link>
 							<span className="grow">{a.title}</span>
@@ -178,11 +181,11 @@ export function Triage() {
 
 			<section>
 				<h2>Unread</h2>
-				{data.unread.length === 0 ? <Empty what="unread streams" /> : null}
+				{data.unread.length === 0 ? <Empty what="unread channels" /> : null}
 				<div className="table">
 					{data.unread.map((u) => (
 						<div key={u.handle} className="tr" data-selected={selected === `u:${u.handle}`}>
-							<Link className="seq" to={{ view: 'stream', handle: u.handle }}>
+							<Link className="seq" to={{ view: 'channel', handle: u.handle }}>
 								{u.handle}
 							</Link>
 							<span className="grow">{u.title}</span>

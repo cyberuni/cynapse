@@ -5,9 +5,9 @@ describe('parseRoute', () => {
 	it('parses every view', () => {
 		expect(parseRoute('/', '', '')).toEqual({ view: 'triage' })
 		expect(parseRoute('/tree', '', '')).toEqual({ view: 'tree' })
-		expect(parseRoute('/s/m-login', '', '#3')).toEqual({ view: 'stream', handle: 'm-login', seq: 3 })
+		expect(parseRoute('/s/m-login', '', '#3')).toEqual({ view: 'channel', handle: 'm-login', seq: 3 })
 		expect(parseRoute('/s/truss-auth', '?side=arb-auth-expiry', '')).toEqual({
-			view: 'stream',
+			view: 'channel',
 			handle: 'truss-auth',
 			side: 'arb-auth-expiry',
 		})
@@ -28,8 +28,8 @@ describe('parseRoute', () => {
 describe('routeHref', () => {
 	it('round-trips through parseRoute', () => {
 		const routes = [
-			{ view: 'stream', handle: 'm-login', seq: 3 },
-			{ view: 'stream', handle: 'truss-auth', side: 'arb-auth-expiry' },
+			{ view: 'channel', handle: 'm-login', seq: 3 },
+			{ view: 'channel', handle: 'truss-auth', side: 'arb-auth-expiry' },
 			{ view: 'graph', handle: 'graph-identity', at: 9 },
 			{ view: 'search', types: ['sdd.decision'], tags: [] },
 		] satisfies Route[]

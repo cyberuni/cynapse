@@ -39,7 +39,7 @@ describe('triage', () => {
 		expect(escalation).toMatchObject({ question: 'Token expiry?', options: ['15 minutes', '60 minutes'] })
 	})
 
-	it('counts unread per stream, most unread first', () => {
+	it('counts unread per channel, most unread first', () => {
 		const result = triage(createFixtureStore(), 'council')
 		const counts = result.unread.map((u) => u.count)
 		expect(counts).toEqual([...counts].sort((a, b) => b - a))

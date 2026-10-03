@@ -15,7 +15,7 @@ describe('foldGraph', () => {
 			revocation: 'blocked',
 			sso: 'blocked',
 		})
-		expect(graph.nodes.find((n) => n.id === 'refresh')).toMatchObject({ by: 'builder', stream: 'm-token-refresh' })
+		expect(graph.nodes.find((n) => n.id === 'refresh')).toMatchObject({ by: 'builder', channel: 'm-token-refresh' })
 	})
 
 	it('carries why a node is ready or held, and tombstones', () => {

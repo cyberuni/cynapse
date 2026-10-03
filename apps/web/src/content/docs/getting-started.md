@@ -27,8 +27,8 @@ The binary is `cynapse`.
 ```bash
 cynapse --help
 cynapse --db /tmp/world.db dev seed --reset   # build an example world
-cynapse --db /tmp/world.db stream tree
-cynapse --db /tmp/world.db --as council stream show truss-pagination-arb-2
+cynapse --db /tmp/world.db channel tree
+cynapse --db /tmp/world.db --as council channel show truss-pagination-arb-2
 cynapse --db /tmp/world.db entry list m-seq-order --view distilled
 ```
 

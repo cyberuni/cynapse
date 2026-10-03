@@ -3,7 +3,7 @@
  *
  * Entries are shared rows; read state (cursors) is a row per reader. `entry_tags`,
  * `members`, `context`, `pins`, `states` and `views` are current-state tables folded from
- * entries in the same transaction that writes the entry, so the stream stays the record.
+ * entries in the same transaction that writes the entry, so the channel stays the record.
  */
 export const SCHEMA = `
 CREATE TABLE IF NOT EXISTS participants (
@@ -12,29 +12,29 @@ CREATE TABLE IF NOT EXISTS participants (
 	name TEXT NOT NULL
 ) STRICT;
 
-CREATE TABLE IF NOT EXISTS streams (
+CREATE TABLE IF NOT EXISTS channels (
 	id TEXT PRIMARY KEY,
 	handle TEXT NOT NULL UNIQUE,
 	type TEXT NOT NULL,
 	title TEXT NOT NULL,
 	purpose TEXT,
-	parent_stream TEXT REFERENCES streams (id),
+	parent_channel TEXT REFERENCES channels (id),
 	parent_entry TEXT,
 	traits TEXT NOT NULL,
 	state TEXT NOT NULL,
 	conventions TEXT NOT NULL,
 	created_at TEXT NOT NULL
 ) STRICT;
-CREATE INDEX IF NOT EXISTS streams_parent ON streams (parent_stream);
+CREATE INDEX IF NOT EXISTS channels_parent ON channels (parent_channel);
 
-CREATE TABLE IF NOT EXISTS stream_handles (
+CREATE TABLE IF NOT EXISTS channel_handles (
 	handle TEXT PRIMARY KEY,
-	stream TEXT NOT NULL REFERENCES streams (id)
+	channel TEXT NOT NULL REFERENCES channels (id)
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS entries (
 	id TEXT PRIMARY KEY,
-	stream TEXT NOT NULL REFERENCES streams (id),
+	channel TEXT NOT NULL REFERENCES channels (id),
 	seq INTEGER NOT NULL,
 	author TEXT NOT NULL,
 	type TEXT NOT NULL,
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS entries (
 	body TEXT NOT NULL,
 	data TEXT,
 	recorded_at TEXT NOT NULL,
-	UNIQUE (stream, seq)
+	UNIQUE (channel, seq)
 ) STRICT;
 CREATE INDEX IF NOT EXISTS entries_type ON entries (type);
 CREATE INDEX IF NOT EXISTS entries_root ON entries (root);
@@ -59,34 +59,34 @@ CREATE TABLE IF NOT EXISTS entry_tags (
 CREATE INDEX IF NOT EXISTS entry_tags_tag ON entry_tags (tag);
 
 CREATE TABLE IF NOT EXISTS members (
-	stream TEXT NOT NULL REFERENCES streams (id),
+	channel TEXT NOT NULL REFERENCES channels (id),
 	participant TEXT NOT NULL,
 	role TEXT NOT NULL,
-	PRIMARY KEY (stream, participant)
+	PRIMARY KEY (channel, participant)
 ) STRICT;
 CREATE INDEX IF NOT EXISTS members_participant ON members (participant);
 
 CREATE TABLE IF NOT EXISTS cursors (
-	stream TEXT NOT NULL REFERENCES streams (id),
+	channel TEXT NOT NULL REFERENCES channels (id),
 	participant TEXT NOT NULL,
 	seq INTEGER NOT NULL,
-	PRIMARY KEY (stream, participant)
+	PRIMARY KEY (channel, participant)
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS context (
-	stream TEXT NOT NULL REFERENCES streams (id),
+	channel TEXT NOT NULL REFERENCES channels (id),
 	ref TEXT NOT NULL,
-	PRIMARY KEY (stream, ref)
+	PRIMARY KEY (channel, ref)
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS pins (
-	stream TEXT NOT NULL REFERENCES streams (id),
+	channel TEXT NOT NULL REFERENCES channels (id),
 	entry TEXT NOT NULL REFERENCES entries (id),
-	PRIMARY KEY (stream, entry)
+	PRIMARY KEY (channel, entry)
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS states (
-	stream TEXT NOT NULL REFERENCES streams (id),
+	channel TEXT NOT NULL REFERENCES channels (id),
 	key TEXT NOT NULL,
 	kind TEXT NOT NULL,
 	status TEXT NOT NULL,
@@ -95,13 +95,13 @@ CREATE TABLE IF NOT EXISTS states (
 	value TEXT,
 	seq INTEGER NOT NULL,
 	updated_at TEXT NOT NULL,
-	PRIMARY KEY (stream, key)
+	PRIMARY KEY (channel, key)
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS views (
-	stream TEXT NOT NULL REFERENCES streams (id),
+	channel TEXT NOT NULL REFERENCES channels (id),
 	name TEXT NOT NULL,
 	filter TEXT NOT NULL,
-	PRIMARY KEY (stream, name)
+	PRIMARY KEY (channel, name)
 ) STRICT;
 `

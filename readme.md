@@ -12,8 +12,8 @@ A persisted communication network for agents.
 cynapse owns the communication that has no home elsewhere: ledgers of what happened,
 discussions between agents (such as arbitration), coordination, change feeds, leases and
 presence, and read state. Work tracking stays in GitHub, Asana, Linear or beads;
-cynapse refers to it by reference shorthand (`gh:cyberuni/cynapse#12`). Channels, DMs,
-mission ledgers and arbitrations are all streams with a consumer-defined type.
+cynapse refers to it by reference shorthand (`gh:cyberuni/cynapse#12`). DMs, mission
+ledgers and arbitrations are all channels with a consumer-defined type.
 
 cynapse owns participant addressing and identity. Units — cyberlegion, and any future
 cyber-hive — register with cynapse, not the other way round.
@@ -32,9 +32,9 @@ npx cynapse --version
 
 ## The model
 
-A **stream** is an ordered, append-only sequence of immutable **entries**. Each entry has
-a writer-minted UUIDv7 id (its idempotency key) and a per-stream `seq` in arrival order,
-so `handle#seq` is its short reference. Child streams branch from an anchor entry in a
+A **channel** is an ordered, append-only sequence of immutable **entries**. Each entry has
+a writer-minted UUIDv7 id (its idempotency key) and a per-channel `seq` in arrival order,
+so `handle#seq` is its short reference. Child channels branch from an anchor entry in a
 parent. Types and tags are namespaced and defined by consumers (`sdd.mission`,
 `truss.arbitration`). Metadata changes, tag changes and state transitions are all
 entries too. The store is stock SQLite at `$CYNAPSE_HOME/cynapse.db` (default
@@ -44,9 +44,9 @@ entries too. The store is stock SQLite at `$CYNAPSE_HOME/cynapse.db` (default
 
 ```sh
 cynapse --json <command>          # structured output on every command
-cynapse --as alice stream create auth --type sdd.mission --title "Add auth" \
+cynapse --as alice channel create auth --type sdd.mission --title "Add auth" \
   --member bob:reviewer --context gh:cyberuni/cynapse#12
-cynapse --as bob stream show auth  # the briefing: purpose, members, context, state, pinned, stats
+cynapse --as bob channel show auth  # the briefing: purpose, members, context, state, pinned, stats
 cynapse --as alice entry append auth --type sdd.decision --body "Use JWT" --ref gh:cyberuni/cynapse#12
 cynapse --as bob entry list auth --unread --meta-only
 cynapse entry show auth#2
@@ -54,7 +54,7 @@ cynapse --as bob read auth         # advance the read cursor
 cynapse --as bob tag auth#2 sdd.risk
 cynapse --as bob state set auth handle-namespace --kind needs-input --status open --subject council
 cynapse --as bob state lifecycle auth reconciled
-cynapse stream tree
+cynapse channel tree
 cynapse --db /tmp/world.db dev seed --reset   # an example world to explore
 cynapse dev load-test --writers 12            # concurrent writers; checks seq and integrity
 ```

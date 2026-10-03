@@ -34,7 +34,7 @@ export function Tree() {
 	const { data, error } = useApi<TreeNode[]>('/api/tree')
 	const [collapsed, setCollapsed] = useState(new Set<string>())
 	const rows = useMemo(() => (data ? flatten(data, collapsed) : []), [data, collapsed])
-	const open = useCallback((i: number) => rows[i] && navigate({ view: 'stream', handle: rows[i].node.handle }), [rows])
+	const open = useCallback((i: number) => rows[i] && navigate({ view: 'channel', handle: rows[i].node.handle }), [rows])
 	const [index] = useListNav(rows.length, open)
 	const toggle = useCallback((handle: string, to?: boolean) => {
 		setCollapsed((prev) => {
@@ -62,7 +62,7 @@ export function Tree() {
 	return (
 		<div className="view">
 			<h1>
-				Hierarchy <span className="muted">— streams nested through their anchors</span>
+				Hierarchy <span className="muted">— channels nested through their anchors</span>
 			</h1>
 			<div className="tree">
 				{rows.map(({ node, depth }, i) => (
@@ -82,7 +82,7 @@ export function Tree() {
 							{node.children.length ? (collapsed.has(node.handle) ? '▸' : '▾') : '·'}
 						</button>
 						<TypeChip type={node.type} />
-						<Link className="seq" to={{ view: 'stream', handle: node.handle }}>
+						<Link className="seq" to={{ view: 'channel', handle: node.handle }}>
 							{node.handle}
 						</Link>
 						<span className="grow">{node.title}</span>

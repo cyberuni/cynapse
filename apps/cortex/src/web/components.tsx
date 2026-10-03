@@ -101,17 +101,17 @@ export function time(iso: string) {
 export function EntryLine(props: {
 	entry: Entry
 	selected?: boolean
-	showStream?: boolean
+	showChannel?: boolean
 	/** Entry ids in the payload to render as `handle#seq` links. */
 	idRefs?: Record<string, string>
 	children?: ReactNode
 }) {
 	const { entry } = props
 	return (
-		<div className="entry" data-selected={props.selected} id={`e-${entry.stream}-${entry.seq}`}>
+		<div className="entry" data-selected={props.selected} id={`e-${entry.channel}-${entry.seq}`}>
 			<div className="entry-head">
-				<Link className="seq" to={{ view: 'stream', handle: entry.stream, seq: entry.seq }}>
-					{props.showStream ? `${entry.stream}#${entry.seq}` : `#${entry.seq}`}
+				<Link className="seq" to={{ view: 'channel', handle: entry.channel, seq: entry.seq }}>
+					{props.showChannel ? `${entry.channel}#${entry.seq}` : `#${entry.seq}`}
 				</Link>
 				<span className="author">{entry.author}</span>
 				<TypeChip type={entry.type} />

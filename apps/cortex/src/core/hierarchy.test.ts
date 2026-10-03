@@ -12,7 +12,7 @@ const find = (nodes: TreeNode[], handle: string): TreeNode | undefined => {
 }
 
 describe('hierarchy', () => {
-	it('nests streams under the stream their anchor sits in', () => {
+	it('nests channels under the channel their anchor sits in', () => {
 		const tree = hierarchy(createFixtureStore(), 'council')
 		const initiative = find(tree, 'init-identity')
 		expect(initiative?.children.map((c) => c.handle)).toEqual(['epic-auth', 'epic-audit'])
@@ -30,7 +30,7 @@ describe('hierarchy', () => {
 		expect(epic?.rollup.lifecycle).toEqual({ active: 2, reconciled: 1 })
 	})
 
-	it('keeps streams without an anchor as roots', () => {
+	it('keeps channels without an anchor as roots', () => {
 		const roots = hierarchy(createFixtureStore(), 'council').map((n) => n.handle)
 		expect(roots).toEqual(expect.arrayContaining(['init-identity', 'truss-auth', 'coord', 'changes']))
 		expect(roots).not.toContain('arb-auth-expiry')

@@ -3,6 +3,7 @@
 // `src/server/store.test.ts` covers the real library on the real seed.
 import type {
 	AppendInput,
+	Channel,
 	Entry,
 	EntryQuery,
 	Participant,
@@ -11,16 +12,15 @@ import type {
 	StateQuery,
 	StateRecord,
 	Store,
-	Stream,
 	View,
 } from './model.ts'
 
-type StreamInput = {
+type ChannelInput = {
 	handle: string
 	type: string
 	title: string
 	purpose?: string
-	/** `handle#seq` of the anchor entry in the parent stream. */
+	/** `handle#seq` of the anchor entry in the parent channel. */
 	anchor?: string
 	members?: { participant: string; role: string }[]
 	context?: string[]
@@ -29,8 +29,8 @@ type StreamInput = {
 }
 
 export type MemoryStore = Store & {
-	createStream(input: StreamInput): Stream
-	defineView(ref: string, view: Omit<View, 'streamId'>): void
+	createChannel(input: ChannelInput): Channel
+	defineView(ref: string, view: Omit<View, 'channelId'>): void
 	pin(ref: string, seq: number): void
 	addParticipant(participant: Participant): void
 	setLifecycle(ref: string, state: string, author: string): void
@@ -39,7 +39,7 @@ export type MemoryStore = Store & {
 export function createMemoryStore(options: { now?: () => Date } = {}): MemoryStore {
 	let clock = options.now ?? (() => new Date())
 	let counter = 0
-	const streams: Stream[] = []
+	const channels: Channel[] = []
 	const entries = new Map<string, Entry[]>()
 	const states: StateRecord[] = []
 	const views: View[] = []
@@ -52,20 +52,20 @@ export function createMemoryStore(options: { now?: () => Date } = {}): MemorySto
 		return d.toISOString()
 	}
 
-	function getStream(ref: string) {
-		return streams.find((s) => s.id === ref || s.handle === ref || s.aliases.includes(ref))
+	function getChannel(ref: string) {
+		return channels.find((s) => s.id === ref || s.handle === ref || s.aliases.includes(ref))
 	}
-	function mustStream(ref: string) {
-		const stream = getStream(ref)
-		if (!stream) throw new Error(`unknown stream: ${ref}`)
-		return stream
+	function mustChannel(ref: string) {
+		const channel = getChannel(ref)
+		if (!channel) throw new Error(`unknown channel: ${ref}`)
+		return channel
 	}
 	function entry(ref: string): Entry | undefined {
 		const hash = ref.lastIndexOf('#')
 		if (hash > 0) {
-			const stream = getStream(ref.slice(0, hash))
+			const channel = getChannel(ref.slice(0, hash))
 			const seq = Number(ref.slice(hash + 1))
-			return stream && entries.get(stream.id)?.find((e) => e.seq === seq)
+			return channel && entries.get(channel.id)?.find((e) => e.seq === seq)
 		}
 		for (const list of entries.values()) {
 			const found = list.find((e) => e.id === ref)
@@ -82,18 +82,18 @@ export function createMemoryStore(options: { now?: () => Date } = {}): MemorySto
 	}
 
 	const store: MemoryStore = {
-		createStream(input) {
+		createChannel(input) {
 			const anchor = input.anchor ? entry(input.anchor) : undefined
 			if (input.anchor && !anchor) throw new Error(`unknown anchor: ${input.anchor}`)
 			const createdAt = now()
-			const stream: Stream = {
+			const channel: Channel = {
 				id: nextId(),
 				handle: input.handle,
 				aliases: [],
 				type: input.type,
 				title: input.title,
 				purpose: input.purpose,
-				parent: anchor ? { streamId: anchor.streamId, entryId: anchor.id, seq: anchor.seq } : undefined,
+				parent: anchor ? { channelId: anchor.channelId, entryId: anchor.id, seq: anchor.seq } : undefined,
 				members: (input.members ?? []).map((m) => ({ ...m, cursor: 0 })),
 				context: input.context ?? [],
 				traits: { membership: 'open', wake: true },
@@ -103,46 +103,46 @@ export function createMemoryStore(options: { now?: () => Date } = {}): MemorySto
 				stats: { entries: 0, lastSeq: 0 },
 				createdAt,
 			}
-			streams.push(stream)
-			entries.set(stream.id, [])
-			return stream
+			channels.push(channel)
+			entries.set(channel.id, [])
+			return channel
 		},
 		defineView(ref, view) {
-			views.push({ ...view, streamId: mustStream(ref).id })
+			views.push({ ...view, channelId: mustChannel(ref).id })
 		},
 		pin(ref, seq) {
-			mustStream(ref).pinned.push(seq)
+			mustChannel(ref).pinned.push(seq)
 		},
 		setLifecycle(ref, state, author) {
-			const stream = mustStream(ref)
+			const channel = mustChannel(ref)
 			store.append(ref, {
 				author,
 				type: 'cynapse.state.changed',
 				body: `lifecycle → ${state}`,
 				data: { lifecycle: state },
 			})
-			stream.state = state
+			channel.state = state
 		},
 		addParticipant(participant) {
 			participants.push(participant)
 		},
-		listStreams(query = {}) {
-			return streams.filter(
+		listChannels(query = {}) {
+			return channels.filter(
 				(s) =>
 					(!query.type || s.type === query.type) &&
 					(!query.state || s.state === query.state) &&
-					(!query.parent || s.parent?.streamId === getStream(query.parent)?.id),
+					(!query.parent || s.parent?.channelId === getChannel(query.parent)?.id),
 			)
 		},
-		getStream,
+		getChannel,
 		children(ref) {
-			const id = mustStream(ref).id
-			return streams.filter((s) => s.parent?.streamId === id)
+			const id = mustChannel(ref).id
+			return channels.filter((s) => s.parent?.channelId === id)
 		},
 		entries(ref, query: EntryQuery = {}) {
-			const stream = mustStream(ref)
-			const view = query.view ? views.find((v) => v.streamId === stream.id && v.name === query.view) : undefined
-			let list = (entries.get(stream.id) ?? []).filter(
+			const channel = mustChannel(ref)
+			const view = query.view ? views.find((v) => v.channelId === channel.id && v.name === query.view) : undefined
+			let list = (entries.get(channel.id) ?? []).filter(
 				(e) => e.seq > (query.afterSeq ?? 0) && matches(e, query) && (!view || matches(e, view.filter)),
 			)
 			if (query.limit !== undefined) list = list.slice(0, query.limit)
@@ -150,39 +150,39 @@ export function createMemoryStore(options: { now?: () => Date } = {}): MemorySto
 		},
 		entry,
 		search(query: SearchQuery) {
-			const ids = query.streams?.map((s) => mustStream(s).id)
-			return streams
+			const ids = query.channels?.map((s) => mustChannel(s).id)
+			return channels
 				.filter((s) => !ids || ids.includes(s.id))
 				.flatMap((s) => (entries.get(s.id) ?? []).filter((e) => matches(e, query)))
 		},
 		states(query: StateQuery = {}) {
-			const streamId = query.stream ? mustStream(query.stream).id : undefined
+			const channelId = query.channel ? mustChannel(query.channel).id : undefined
 			return states.filter(
 				(r) =>
-					(!streamId || r.streamId === streamId) &&
+					(!channelId || r.channelId === channelId) &&
 					(!query.kind || r.kind === query.kind) &&
 					(!query.status || r.status === query.status) &&
 					(!query.subject || r.subject === query.subject),
 			)
 		},
 		unread(participant) {
-			return streams.flatMap((s) => {
+			return channels.flatMap((s) => {
 				const member = s.members.find((m) => m.participant === participant)
 				if (!member) return []
 				const count = (entries.get(s.id) ?? []).filter((e) => e.seq > member.cursor && e.author !== participant).length
-				return count ? [{ streamId: s.id, handle: s.handle, count }] : []
+				return count ? [{ channelId: s.id, handle: s.handle, count }] : []
 			})
 		},
 		views(ref) {
-			const id = mustStream(ref).id
-			return views.filter((v) => v.streamId === id)
+			const id = mustChannel(ref).id
+			return views.filter((v) => v.channelId === id)
 		},
 		participants() {
 			return participants
 		},
 		append(ref, input: AppendInput) {
-			const stream = mustStream(ref)
-			const list = entries.get(stream.id) ?? []
+			const channel = mustChannel(ref)
+			const list = entries.get(channel.id) ?? []
 			const existing = input.id ? list.find((e) => e.id === input.id) : undefined
 			if (existing) return existing
 			const parent = input.parent ? entry(input.parent) : undefined
@@ -190,9 +190,9 @@ export function createMemoryStore(options: { now?: () => Date } = {}): MemorySto
 			const at = now()
 			const created: Entry = {
 				id: input.id ?? nextId(),
-				streamId: stream.id,
-				stream: stream.handle,
-				seq: stream.stats.lastSeq + 1,
+				channelId: channel.id,
+				channel: channel.handle,
+				seq: channel.stats.lastSeq + 1,
 				author: input.author,
 				type: input.type,
 				tags: input.tags ?? [],
@@ -207,28 +207,28 @@ export function createMemoryStore(options: { now?: () => Date } = {}): MemorySto
 				recordedAt: at,
 			}
 			list.push(created)
-			stream.stats = { entries: list.length, lastSeq: created.seq, lastAt: at }
+			channel.stats = { entries: list.length, lastSeq: created.seq, lastAt: at }
 			return created
 		},
 		markRead(ref, participant, seq) {
-			const stream = mustStream(ref)
-			const target = Math.min(seq ?? stream.stats.lastSeq, stream.stats.lastSeq)
-			const member = stream.members.find((m) => m.participant === participant)
+			const channel = mustChannel(ref)
+			const target = Math.min(seq ?? channel.stats.lastSeq, channel.stats.lastSeq)
+			const member = channel.members.find((m) => m.participant === participant)
 			if (!member) return { participant, role: '', cursor: target }
 			// Like cynapse, a cursor only moves forward.
 			member.cursor = Math.max(member.cursor, target)
 			return member
 		},
 		setState(ref, input: SetStateInput, author) {
-			const stream = mustStream(ref)
+			const channel = mustChannel(ref)
 			const logged = store.append(ref, {
 				author,
 				type: 'cynapse.state.changed',
 				body: `${input.kind} ${input.key} → ${input.status}`,
 				data: { ...input },
 			})
-			const record: StateRecord = { ...input, streamId: stream.id, seq: logged.seq, updatedAt: logged.createdAt }
-			const index = states.findIndex((r) => r.streamId === stream.id && r.key === input.key)
+			const record: StateRecord = { ...input, channelId: channel.id, seq: logged.seq, updatedAt: logged.createdAt }
+			const index = states.findIndex((r) => r.channelId === channel.id && r.key === input.key)
 			if (index >= 0) states[index] = record
 			else states.push(record)
 			return record
