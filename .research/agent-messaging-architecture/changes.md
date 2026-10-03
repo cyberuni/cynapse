@@ -118,3 +118,18 @@
   while a cynapse channel has many participants writing in both directions.
 - Conclusion changed materially: no (terminology only).
 - Triggered by: user direction; LG15.
+
+## 2026-10-03 (round 11): a network of subjects across stores (proposed)
+
+- What changed: proposed ADR-0010 to ADR-0012. The structure follows DNA (Datum Network
+  Architecture): subjects live in their own stores, relations are metadata on both ends,
+  hierarchy is a view, and consumers attach perceived types. cynapse stores only what no
+  other store can, and guides and composes rather than fetching or caching. Channels are
+  keyed by subject, using the store's stable native ID, and come in two kinds (address and
+  work). DMs are dropped.
+- Why: the user framed communication as address channels and work channels, asked how
+  issues, PRs and split issues relate, and pointed out that DNA is an architecture that any
+  store able to carry metadata can implement.
+- Conclusion changed materially: pending. `conclusion.md` is updated once the ADRs are
+  accepted.
+- Triggered by: user direction; DNA design notes.
