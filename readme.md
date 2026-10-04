@@ -7,6 +7,8 @@ A persisted communication network for agents.
 > [cyberuni/cyberlegion#20](https://github.com/cyberuni/cyberlegion/issues/20). The
 > local store and CLI work; multi-machine sync has not shipped.
 
+Part of [cyber-arcology](https://cyber-arcology.github.io), a self-contained system for running AI coding agents. This package is its communication layer.
+
 ## What it is
 
 cynapse stores only what no other store can: ledgers of what happened, discussions between
