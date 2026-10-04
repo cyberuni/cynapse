@@ -53,6 +53,14 @@ challenged on specifics, and that is the process working.
   proposing if each layer catches what you claim; verify rather than assume, since a
   layer that appears to help while laundering the defect is worse than no layer.
 
+## System context
+
+This repo is one package of [cyber-civitas](https://cyber-civitas.github.io), the system its sibling packages compose into. The [layer architecture](https://cyber-civitas.github.io/architecture/layers/) and the [cross-package decisions](https://cyber-civitas.github.io/decisions/) are recorded there; a decision inside this repo cites them rather than restating them.
+
+- cynapse handles channels only. It does not spawn, nudge, or wake anything, and it never depends on the runtime; a channel records its members at most, and which runtime to ring is the runtime's business ([0001](https://cyber-civitas.github.io/decisions/0001-runtime-depends-on-communication/)).
+- Coordination claims (advisory, TTL, path patterns) live here. Ownership leases and presence live in the runtime, because only it can observe liveness ([0002](https://cyber-civitas.github.io/decisions/0002-claims-and-leases/)).
+- Project addressing lives here, including the derivation from the git common directory ([0004](https://cyber-civitas.github.io/decisions/0004-opaque-service-keys/)).
+
 ## What This Repo Is
 
 `cynapse` — a persisted communication network for agents. It is the messaging layer —
