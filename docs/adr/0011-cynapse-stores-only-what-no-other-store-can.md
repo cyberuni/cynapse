@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed, 2026-10-03. Supersedes the Decision section of
+Accepted, 2026-10-03. Not built yet. Supersedes the Decision section of
 [ADR-0002](0002-own-only-communication-with-no-other-home.md); its context and rejected
 options still stand.
 

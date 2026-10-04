@@ -2,7 +2,7 @@
 
 ## Last updated
 
-October 2026 (round 10)
+October 2026 (round 11)
 
 ## Question
 
@@ -22,26 +22,63 @@ The earlier sub-questions each have a round in changes.md:
 6. Multi-machine sync.
 7. Collaboration use cases.
 8. Comparison with beads and agent mail.
+9. How work items in several stores relate, and what cynapse keeps of them.
 
 ## Verdict
 
-### Scope: cynapse owns only communication that has no home elsewhere
+### Scope: cynapse stores only what no other store can; it guides and composes
 
-cynapse owns:
+Each fact has one home. Work tracking stays where it lives: GitHub issues, PRs,
+discussions and org projects, or Asana, Linear, or beads. cynapse's own store holds only
+what no external store can, or what an external store lacks the capability for:
 
-- ledgers of what happened;
-- discussions between agents, such as arbitration;
-- coordination;
-- change feeds;
+- channels: ordered, immutable entries with `seq`, such as ledgers, discussions between
+  agents (arbitration) and coordination;
 - leases and presence;
 - read state.
 
-Work tracking stays where it lives: GitHub issues, PRs, discussions and org projects, or
-Asana, Linear, or beads. Agents use those services directly through their own CLIs or MCP
-servers, and cynapse neither wraps nor indexes them. Messages refer to those systems by
-reference. Inside cynapse a reference is stored as a shorthand (`gh:cyberuni/cynapse#12`).
-When posted out, it renders as a Markdown link or a bare URL, whichever the platform
-supports.
+Consumers (users, agents, custom UIs such as Cortex) talk to external stores directly.
+cynapse holds no credentials for them, never calls them, and neither records nor caches
+their changes. Instead it:
+
+- **guides:** it tells a consumer what to fetch and how to read it, aiming at one call per
+  store that returns a subject's native ID, metadata and relations. The timeline is a
+  follow-up call that pages; no store returns a complete history in one call (LC13).
+- **composes:** a consumer passes fetched data to cynapse and gets a structured result
+  back. A change feed across stores is composed when it is read and never stored.
+
+Messages refer to outside things by reference. Inside cynapse a reference is stored as a
+shorthand (`gh:cyberuni/cynapse#12`). When posted out, it renders as a Markdown link or a
+bare URL, whichever the platform supports.
+
+### Structure: a network of subjects across stores
+
+The structure follows DNA (Datum Network Architecture), an architecture any store that
+can carry metadata can implement.
+
+- **Subjects** are what a conversation can be about: an issue, a PR, a task, a
+  repository, a participant, a mission. Each lives in the store that owns it.
+- **A relation is metadata on both ends** (frontmatter, labels, custom fields), a doubly
+  linked list. A reader treats a relation as present if either end records it, since the
+  two writes are not atomic and either end can be edited from outside.
+- **Hierarchy is a view, not identity.** Parent and child are relations.
+- **A subject's type comes from its store; consumers attach perceived types.** SDD sees a
+  `gh.issue` as an `sdd.mission`.
+
+### Write-back
+
+A consumer writes back to the subject's store only what changes the subject for that
+store's readers, never the conversation:
+
+1. A scope decision updates the description, plus a comment saying what changed, because
+   a body edit leaves no timeline event (LC13).
+2. A state record maps to a label or field, removed when the state clears.
+3. A lifecycle milestone gets one summary comment: a PR opened, an escalation to a human,
+   or the channel being reconciled.
+4. A relation is written as metadata on the subjects.
+
+The triggers are store-plugin conventions. Each write-back is linked both ways: a
+`cynapse.published` entry in the channel, and a stamp on what was written.
 
 ### The core: channels of immutable entries
 
@@ -77,18 +114,36 @@ recipient for read and ack state (PR10, PR16).
 
 ### Channels: identity, types, links, metadata
 
+- **Two kinds, both keyed by subject.**
+  - An **address channel** is keyed by something that can receive messages: a
+    participant, a repository, a project, a folder. Its owner is the subject's owner.
+  - A **work channel** is keyed by a unit of work: an issue, a PR, a task, a mission. It
+    has members but no single owner.
+
+  There is no DM. Telling a participant something means posting to their address
+  channel.
 - **Identity.** A UUID that never changes, plus a readable handle that can be renamed.
   Old handles stay as aliases.
+  - A channel keyed by a subject gets `UUIDv5(the subject's native ID)`: GitHub's
+    `node_id`, Asana's `gid`, Linear's UUID, or an address cynapse registers for a
+    folder. The key has no type in it, so every consumer working on a subject meets in
+    one channel.
+  - A move gives the subject a new native ID (a GitHub transfer does, LC12). The new ID
+    becomes an alias key of the same channel. The move is detected by resolving an old
+    handle, which still leads to the moved subject.
   - A channel branched from an anchor entry gets `UUIDv5(anchor id)`.
-  - A channel with a natural key, such as a DM's set of participants, gets
-    `UUIDv5(canonical key)`.
   - Anything else gets a UUIDv7.
 
   Deriving the ID means two agents opening the same channel at once end up in one channel.
-- **Types are namespaced and defined by consumers,** such as `sdd.mission` or
-  `truss.arbitration`. cynapse defines only generic traits: membership (open or fixed),
-  retention, lifecycle states, whether members are woken, and the default view.
-- **Child channels branch from an anchor entry in the parent.** For example, the parent
+- **Each work item has its own channel.** A PR's channel is not a child of its issue's.
+  Relations between work items are relations, not channel structure.
+- **Types.** A channel keyed by an outside subject takes its type from the subject's
+  store, and consumers attach perceived types. A channel native to cynapse, such as an
+  arbitration, takes its type from the consumer that creates it (`truss.arbitration`).
+  cynapse defines only generic traits: membership (open or fixed), retention, lifecycle
+  states, whether members are woken, and the default view.
+- **Child channels branch from an anchor entry in the parent.** Anchors are only for
+  branching a conversation; they form a tree inside cynapse. For example, the parent
   gets an entry saying "arbitration needed" with a summary, and the child's parent is that
   entry. The branch point then sits in the parent's order. The outcome is written back to
   the parent as an entry that references the anchor. This follows Discord threads started
@@ -152,8 +207,9 @@ recipient for read and ack state (PR10, PR16).
   route, or one summary per reconciled channel. This rests on hypothesis HY01, which is not
   yet tested (see "What should be checked again later"). SDD's raw combat log
   (`.agents/plans/*.log.jsonl`) is a candidate to move onto a cynapse channel.
-- **External platforms are routing destinations, not backends.** That includes Slack,
-  Linear, Asana, GitHub and beads (BK09, BK12, BK16).
+- **External platforms hold subjects and relations, not channels.** That includes Slack,
+  Linear, Asana, GitHub and beads (BK09, BK12, BK16). Their comments and stories can be
+  edited and deleted and have no order owner, so channels stay in cynapse's store.
 - **Don't sync through JSONL committed to git.** Beads tried it and moved to Dolt
   (PR03–PR05).
 
@@ -166,7 +222,10 @@ recipient for read and ack state (PR10, PR16).
 | participant | anything that reads or writes: an agent, a person, a service |
 | channel | an ordered, append-only sequence of entries with one owner of its order |
 | entry | one immutable item in a channel: a message, an event, an answer |
-| type | namespaced and defined by consumers, for both channels and entries |
+| subject | what a conversation is about, living in the store that owns it |
+| relation | metadata on both subjects it links; present if either end records it |
+| type | namespaced; a subject's comes from its store, a cynapse-native channel's or an entry's from its consumer |
+| perceived type | a consumer's role for a subject, such as `sdd.mission` on a `gh.issue` |
 | tag | a namespaced label; one added later arrives as an entry |
 | anchor | the entry in a parent channel that a child channel branches from |
 | view | a saved filter over entries, such as "distilled" |
@@ -175,20 +234,27 @@ recipient for read and ack state (PR10, PR16).
 
 Examples of how consumers map onto these terms, not part of the core:
 
-- **SDD:** a *mission* (one request, such as a feature or a bug fix) is an `sdd.mission`
-  channel. Its raw ledger is every entry, and its distilled ledger is a view plus the state
+- **SDD:** a *mission* (one request, such as a feature or a bug fix) is a work channel. On
+  an issue it is the issue's channel with the perceived type `sdd.mission`; without one it
+  is a cynapse-native `sdd.mission` channel. Its raw ledger is every entry, and its distilled ledger is a view plus the state
   `reconciled`.
 - **cyber-truss:** a *workflow* is the creation and propagation of changes across artifact
   sets. *Arbitration* is how workflow agents discuss until they reach consensus. It is a
   `truss.arbitration` child channel, anchored at a `truss.arbitration-needed` entry in the
   mission channel. The members are the electorate, and the answers (`agree`, `disagree`,
   `uncontested/yield`, `request-recess`) are typed entries. The pending answers are state,
-  and the decision is written back into the mission channel (LC08).
+  and the decision is written back into the mission channel (LC08). Arbitrations are
+  short-lived and stay in cynapse's store. If one stalls (cyber-truss decides what counts
+  as a stall), the stall is written back to the work channel as an outcome entry that
+  references the anchor, with a `needs-input` state record. The decider named by the
+  consumer's convention gets the ask in their address channel, with a summary and a link,
+  not the transcript. Their decision entry clears the state and closes the arbitration.
 
 ### Shape
 
 ```
-channel { id (UUIDv5 from an anchor or key | UUIDv7), handle (+aliases), type, title,
+channel { id (UUIDv5 from an anchor or subject ID | UUIDv7), keys (+aliases after a move),
+         handle (+aliases), type, perceived types[], title,
          purpose, members[{participant, role, cursor}], context[refs], parent (anchor entry),
          traits {membership, retention, wake, default view}, state, pinned[], conventions[] }
 
@@ -204,6 +270,11 @@ entry  { id (UUIDv7, writer), channel, seq (owner), author, type, tags[], parent
 | `seq` per channel, owner-assigned (arrival order) | **high** |
 | Entries immutable; a channel is the unit of partitioning, sync and access control | **high** |
 | Channel IDs are UUIDs (v5 derived or v7); handles are separate and can be renamed | **high** |
+| Channels keyed by the subject's native ID, with no type in the key | **high** |
+| cynapse holds no credentials and never calls an external store | **high** |
+| Relations as metadata on the subjects; hierarchy kept out of identity | medium-high |
+| The `cynapse.published` entry shape | medium |
+| Write-back triggers, relation names, whether DMs return | low |
 | Children attach through an anchor entry | medium-high |
 | Namespaced types defined by consumers, generic traits | medium |
 | The reference shorthand format and how it renders | medium |
@@ -226,6 +297,10 @@ Every read command supports unread-only, metadata-only, and start-from-latest-su
   collision was tested directly.
 - **High:** SQLite's write transaction as the local order owner on one machine. The load
   test held with up to 32 concurrent writers (LC10).
+- **High:** that GitHub's native ID changes when an issue is transferred, so moves need
+  alias keys. It was tested directly (LC12).
+- **Medium:** one call per store for a subject's ID, metadata and relations. GitHub was
+  run; GitLab, Linear and Asana are from documentation only (LC13).
 - **Medium:** the hub technology (NATS or Dolt), and summarization on reconciled channels.
 
 ## Strongest supporting evidence
@@ -236,6 +311,7 @@ Every read command supports unread-only, metadata-only, and start-from-latest-su
 - The cyber-truss arbitration requirements (wake, hold the wait, escalate, write the
   decision to the run record): LC08.
 - The reference collision, tested: LC07.
+- The GitHub transfer test: LC12. The one-call check across stores: LC13.
 
 ## Strongest weakening or contradictory evidence
 
@@ -262,6 +338,8 @@ Every read command supports unread-only, metadata-only, and start-from-latest-su
 - HY01, the claim that messages stored in a repository hurt agent sessions (one anecdote,
   LC11; not measured).
 - GitHub sub-issues (from memory).
+- GitLab, Linear and Asana single-call queries, and their ID stability across moves
+  (documentation cited from memory, LC13).
 - Everything about Reddit (secondary sources only).
 
 ## What should be checked again later
@@ -272,3 +350,7 @@ Every read command supports unread-only, metadata-only, and start-from-latest-su
   `seq`.
 - Whether cyber-truss arbitration ever spans more than one mission.
 - The migration path for universal-plugin's unprefixed reference names.
+- Run the GitLab, Linear and Asana one-call queries for real (LC13), and recheck Asana once
+  cyberuni/cyber-asana#235 lands.
+- How often a subject moves before anyone resolves an old handle, which leaves two
+  channels for one subject until they are linked.

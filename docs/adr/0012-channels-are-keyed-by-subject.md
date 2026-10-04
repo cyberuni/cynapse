@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed, 2026-10-03. Amends [ADR-0004](0004-stream-identity-handles-and-anchors.md).
+Accepted, 2026-10-03. Not built yet. Amends [ADR-0004](0004-stream-identity-handles-and-anchors.md).
 
 ## Context
 

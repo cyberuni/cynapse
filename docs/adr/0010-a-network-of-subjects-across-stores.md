@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed, 2026-10-03. Amends [ADR-0005](0005-consumer-defined-types-tags-and-traits.md).
+Accepted, 2026-10-03. Not built yet. Amends [ADR-0005](0005-consumer-defined-types-tags-and-traits.md).
 
 ## Context
 

@@ -119,7 +119,7 @@
 - Conclusion changed materially: no (terminology only).
 - Triggered by: user direction; LG15.
 
-## 2026-10-03 (round 11): a network of subjects across stores (proposed)
+## 2026-10-03 (round 11): a network of subjects across stores
 
 - What changed: proposed ADR-0010 to ADR-0012. The structure follows DNA (Datum Network
   Architecture): subjects live in their own stores, relations are metadata on both ends,
@@ -130,6 +130,7 @@
 - Why: the user framed communication as address channels and work channels, asked how
   issues, PRs and split issues relate, and pointed out that DNA is an architecture that any
   store able to carry metadata can implement.
-- Conclusion changed materially: pending. `conclusion.md` is updated once the ADRs are
-  accepted.
+- Conclusion changed materially: yes. The ADRs were accepted the same day. Also added
+  the one-call guidance goal (LC13), alias keys for moved subjects (LC12), write-back
+  triggers, and how a stalled arbitration escalates.
 - Triggered by: user direction; DNA design notes.

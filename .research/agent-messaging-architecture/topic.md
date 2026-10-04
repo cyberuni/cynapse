@@ -37,20 +37,19 @@ Slack and Discord, TR01–TR16 for Telegram and Reddit.
 
 ## Open questions
 
-- The kind taxonomy for routing: which kinds cynapse owns (channel types) and which route out.
-- A load test of stock SQLite in WAL mode with 10 or more concurrent writers assigning `seq`.
-- Dolt as a sync layer that needs no hub, alongside owner-assigned `seq`.
+Answered since this list was first written: the routing kinds (ADR-0008), the load test
+with 10 or more writers (ADR-0007, LC10), cyber-truss as the first external namespace
+(ADR-0005), and whether a DM can gain members (there is no DM, ADR-0012).
 
-- Does cyber-truss's run ledger settle on addressed contributions? If so, it is the first
-  external entry-type namespace.
-- Do NATS leaf nodes buffer offline writes durably?
-- What is the federation story if collaboration across organizations enters scope?
-
-- Should a cynapse DM be able to gain members, or does a new participant set mean a new
-  DM?
-- The notification defaults on each platform (unverified).
-- Discord's DM delivery path.
-- Whether Reddit chat now runs on Matrix (unverified).
+- HY01: run the two-copy test before SDD's combat log moves onto a cynapse channel.
+- Whether a cyber-truss arbitration can span more than one mission. Anchors form a tree, so
+  that would need more than one parent.
+- The migration path for universal-plugin's unprefixed reference names.
+- Run the GitLab, Linear and Asana one-call queries for real (LC13).
+- Multi-machine sync, once the hub work starts: Dolt with no hub alongside owner-assigned
+  `seq`, and whether NATS leaf nodes buffer offline writes durably.
+- Federation across organizations, if that comes into scope. The channel is already the
+  unit of partitioning and access control.
 
 ## Sources consulted
 

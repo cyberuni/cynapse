@@ -18,6 +18,6 @@ A decision is changed by a new record that supersedes the old one, never by rewr
 | [0007](0007-stock-sqlite-outside-the-repository.md) | Stock SQLite outside the repository; the write transaction orders |
 | [0008](0008-routing-conventions-and-init-cynapse.md) | Routing kinds, prefixed conventions, and `init-cynapse` |
 | [0009](0009-call-the-stream-a-channel.md) | Call the stream a channel |
-| [0010](0010-a-network-of-subjects-across-stores.md) | A network of subjects across stores (proposed) |
-| [0011](0011-cynapse-stores-only-what-no-other-store-can.md) | cynapse stores only what no other store can; it guides and composes (proposed) |
-| [0012](0012-channels-are-keyed-by-subject.md) | Channels are keyed by subject: address and work channels (proposed) |
+| [0010](0010-a-network-of-subjects-across-stores.md) | A network of subjects across stores |
+| [0011](0011-cynapse-stores-only-what-no-other-store-can.md) | cynapse stores only what no other store can; it guides and composes |
+| [0012](0012-channels-are-keyed-by-subject.md) | Channels are keyed by subject: address and work channels |
