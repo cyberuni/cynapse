@@ -55,11 +55,11 @@ challenged on specifics, and that is the process working.
 
 ## System context
 
-This repo is one package of [cyber-arcology](https://cyber-arcology.github.io), the system its sibling packages compose into. The [layer architecture](https://cyber-arcology.github.io/architecture/layers/) and the [cross-package decisions](https://cyber-arcology.github.io/decisions/) are recorded there; a decision inside this repo cites them rather than restating them.
+This repo is one package of [cyber-civitas](https://cyber-civitas.github.io), the system its sibling packages compose into. The [layer architecture](https://cyber-civitas.github.io/architecture/layers/) and the [cross-package decisions](https://cyber-civitas.github.io/decisions/) are recorded there; a decision inside this repo cites them rather than restating them.
 
-- cynapse handles channels only. It does not spawn, nudge, or wake anything, and it never depends on the runtime; a channel records its members at most, and which runtime to ring is the runtime's business ([0001](https://cyber-arcology.github.io/decisions/0001-runtime-depends-on-communication/)).
-- Coordination claims (advisory, TTL, path patterns) live here. Ownership leases and presence live in the runtime, because only it can observe liveness ([0002](https://cyber-arcology.github.io/decisions/0002-claims-and-leases/)).
-- Project addressing lives here, including the derivation from the git common directory ([0004](https://cyber-arcology.github.io/decisions/0004-opaque-service-keys/)).
+- cynapse handles channels only. It does not spawn, nudge, or wake anything, and it never depends on the runtime; a channel records its members at most, and which runtime to ring is the runtime's business ([0001](https://cyber-civitas.github.io/decisions/0001-runtime-depends-on-communication/)).
+- Coordination claims (advisory, TTL, path patterns) live here. Ownership leases and presence live in the runtime, because only it can observe liveness ([0002](https://cyber-civitas.github.io/decisions/0002-claims-and-leases/)).
+- Project addressing lives here, including the derivation from the git common directory ([0004](https://cyber-civitas.github.io/decisions/0004-opaque-service-keys/)).
 
 ## What This Repo Is
 
