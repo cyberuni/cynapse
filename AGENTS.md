@@ -105,8 +105,8 @@ implementation (`node:sqlite`, WAL, `seq` assigned under `BEGIN IMMEDIATE`, no d
 and CLI commands for channels, entries, read cursors, tags and state records.
 ADR-0010 to ADR-0012 (subjects across stores, guide and compose, channels keyed by
 subject) are accepted but not built yet. `cynapse dev seed` builds an example world and
-`cynapse dev load-test` checks `seq` under concurrent writer processes. Sync, the hub, `init-cynapse`, and skills have not
-shipped yet.
+`cynapse dev load-test` checks `seq` under concurrent writer processes. Sync, the hub,
+`init-cynapse`, and skills have not shipped yet.
 
 ### Plugin layout
 

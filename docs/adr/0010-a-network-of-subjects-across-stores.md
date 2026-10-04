@@ -14,7 +14,7 @@ from one channel to another ([ADR-0004](0004-stream-identity-handles-and-anchors
 Anchors form a tree, but issues and PRs form a graph: one PR can close several issues, and
 one issue can take several PRs.
 
-[DNA (Datum Network Architecture)](https://github.com/unional/dna) describes this shape.
+[DNA (Datum Network Architecture)](https://github.com/cyberuni/dna) describes this shape.
 Each datum holds information about itself only. Relations are first-class. Hierarchy is
 metadata seen from one viewpoint, never part of identity. A datum's type comes from its
 owner, while each consumer may perceive it as something else. DNA is an architecture, not
@@ -67,5 +67,5 @@ metadata.
 ## Related
 
 - [ADR-0012](0012-channels-are-keyed-by-subject.md): channels keyed by subject.
-- DNA: `internal/datum.md`, `internal/datumType.md`, `internal/designConsideration.md`.
+- DNA: [`spec.md`](https://github.com/cyberuni/dna/blob/main/spec.md), and the 2014 notes it grew from at tag [`2014`](https://github.com/cyberuni/dna/tree/2014/internal) (`datum.md`, `datumType.md`, `designConsideration.md`).
 - Research round 11 in `changes.md`.
