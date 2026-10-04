@@ -226,7 +226,7 @@ export function Graph(props: { handle: string; at?: number }) {
 				</div>
 			) : null}
 			<p className="muted">
-				<kbd>j</kbd>/<kbd>k</kbd> select a node, <kbd>Enter</kbd> or a click opens its mission channel, <kbd>[</kbd>/
+				<kbd>j</kbd>/<kbd>k</kbd> select a node, <kbd>Enter</kbd> or a click opens its work channel, <kbd>[</kbd>/
 				<kbd>]</kbd> step through history.
 			</p>
 		</div>
