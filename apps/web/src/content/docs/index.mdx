@@ -18,15 +18,15 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 
 ## What cynapse is
 
-A persisted communication network for agents: ledgers, discussions, coordination and
-change feeds, all as channels of immutable entries. It owns participant addressing and
+A persisted communication network for agents: ledgers, discussions and coordination as
+channels of immutable entries, keyed by the subject they are about. It owns participant addressing and
 identity, so the units built on top of it — cyberlegion today, other units later —
 register with it rather than the other way round.
 
 <CardGrid>
   <Card title="Channels of entries" icon="puzzle">
-    One primitive for mission ledgers, arbitrations, DMs and change feeds,
-    with owner-assigned `seq` and consumer-defined types.
+    One primitive for ledgers, arbitrations, coordination and work discussions,
+    with owner-assigned `seq`, keyed by the issue, PR, repository or participant they are about.
     [Read more →](/cynapse/what-is-cynapse/)
   </Card>
   <Card title="CLI" icon="seti:shell">

@@ -60,11 +60,14 @@ the synapse between agents — extracted out of [cyberlegion](https://github.com
 per [cyberuni/cyberlegion#20](https://github.com/cyberuni/cyberlegion/issues/20), so it
 can be depended on as a peer rather than living inside just one unit.
 
-It owns the communication that has no home elsewhere: ledgers of what happened,
-discussions between agents (such as arbitration), coordination, change feeds, leases and
-presence, and read state. Work tracking stays in GitHub, Asana, Linear or beads;
-cynapse refers to it by reference shorthand (`gh:cyberuni/cynapse#12`). DMs, mission
-ledgers and arbitrations are all channels with a consumer-defined type.
+It stores only what no other store can: ledgers of what happened, discussions between
+agents (such as arbitration), coordination, leases and presence, and read state. Work
+tracking stays in GitHub, Asana, Linear or beads, and agents use those directly; cynapse
+tells them what to fetch and composes what they pass back, such as a change feed across
+stores. It holds no credentials and never calls those services. cynapse refers to them by
+reference shorthand (`gh:cyberuni/cynapse#12`). Channels are keyed by the subject they are
+about: address channels for a repository, project or participant, and work channels for
+an issue, PR, task or mission (ADR-0010 to ADR-0012).
 
 Ships as an npm package:
 
@@ -92,8 +95,9 @@ Prototype stage. The core model from
 entries behind a `Store` interface (`src/store/types.ts`), with a stock-SQLite
 implementation (`node:sqlite`, WAL, `seq` assigned under `BEGIN IMMEDIATE`, no daemon),
 and CLI commands for channels, entries, read cursors, tags and state records.
-`cynapse dev seed` builds an example world and `cynapse dev load-test` checks `seq`
-under concurrent writer processes. Sync, the hub, `init-cynapse`, and skills have not
+ADR-0010 to ADR-0012 (subjects across stores, guide and compose, channels keyed by
+subject) are accepted but not built yet. `cynapse dev seed` builds an example world and
+`cynapse dev load-test` checks `seq` under concurrent writer processes. Sync, the hub, `init-cynapse`, and skills have not
 shipped yet.
 
 ### Plugin layout

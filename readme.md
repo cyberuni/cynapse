@@ -9,11 +9,14 @@ A persisted communication network for agents.
 
 ## What it is
 
-cynapse owns the communication that has no home elsewhere: ledgers of what happened,
-discussions between agents (such as arbitration), coordination, change feeds, leases and
-presence, and read state. Work tracking stays in GitHub, Asana, Linear or beads;
-cynapse refers to it by reference shorthand (`gh:cyberuni/cynapse#12`). DMs, mission
-ledgers and arbitrations are all channels with a consumer-defined type.
+cynapse stores only what no other store can: ledgers of what happened, discussions between
+agents (such as arbitration), coordination, leases and presence, and read state. Work
+tracking stays in GitHub, Asana, Linear or beads, and agents use those directly; cynapse
+tells them what to fetch and composes what they pass back, such as a change feed across
+stores. It holds no credentials and never calls those services. cynapse refers to them by
+reference shorthand (`gh:cyberuni/cynapse#12`). Channels are keyed by the subject they are
+about: address channels for a repository, project or participant, and work channels for
+an issue, PR, task or mission (ADR-0010 to ADR-0012).
 
 cynapse owns participant addressing and identity. Units — cyberlegion, and any future
 cyber-hive — register with cynapse, not the other way round.
