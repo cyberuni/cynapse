@@ -31,7 +31,14 @@ export function createProgram(version: string = readPackageVersion()): Command {
 	// Commander's default is to print and call process.exit itself. Turning both off
 	// routes an unknown flag or subcommand through the same top-level catch as every
 	// other failure, so exit codes are decided in one place.
+	//
+	// A command group run with no subcommand is a usage error too: Commander has already
+	// printed the group's help to stderr and reports it as `commander.help` with a non-zero
+	// exit code, unlike `--help`, which exits 0.
 	program.exitOverride((error: CommanderError) => {
+		if (error.code === 'commander.help' && error.exitCode !== 0) {
+			throw new CynapseError('missing subcommand; see the usage above', { exitCode: EXIT_USAGE })
+		}
 		if (
 			error.code === 'commander.version' ||
 			error.code === 'commander.help' ||
@@ -41,7 +48,9 @@ export function createProgram(version: string = readPackageVersion()): Command {
 		}
 		throw new CynapseError(error.message, { exitCode: EXIT_USAGE, cause: error })
 	})
-	program.configureOutput({ writeErr: () => {} })
+	// Commander's own error lines are silenced because the top-level catch renders them;
+	// help still reaches stderr, so a bare command group shows its usage.
+	program.configureOutput({ outputError: () => {} })
 
 	registerChannel(program)
 	registerEntry(program)
