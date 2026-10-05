@@ -725,6 +725,7 @@ export class SqliteStore implements Store {
 	}
 
 	#appendIn(channelId: string, input: AppendInput): Entry {
+		this.#guardReservedTags(channelId, input.tags ?? [], input.author)
 		if (input.id) {
 			if (!isUuid(input.id)) throw new CynapseError(`entry id "${input.id}" is not a UUID`)
 			const existing = this.#findEntryRow(input.id)
@@ -801,9 +802,33 @@ export class SqliteStore implements Store {
 	 * A tag added or removed later is a `cynapse.label` entry. The `entry_tags` table is
 	 * the current set folded from those entries, kept up to date in the same transaction.
 	 */
+	/**
+	 * Handled is defined on address channels only, and only their owner may set or clear
+	 * it, so an observer or sender can never take a message out of the owner's unhandled
+	 * set (ADR-0013, needs 5 and 6). Adding it at append time counts as adding it.
+	 */
+	#guardReservedTags(channelId: string, tags: string[], author: string): void {
+		if (!tags.includes(HANDLED_TAG)) return
+		const row = this.#get<{ kind: ChannelKind; owner: string | null }>(
+			'SELECT kind, owner FROM channels WHERE id = ?',
+			channelId,
+		) as { kind: ChannelKind; owner: string | null }
+		if (row.kind !== 'address') {
+			throw new CynapseError(`${HANDLED_TAG} is defined on address channels only; this is a work channel`, {
+				code: 'not_address',
+			})
+		}
+		if (row.owner !== author) {
+			throw new CynapseError(`only the channel's owner, ${row.owner}, may add or remove ${HANDLED_TAG}`, {
+				code: 'not_owner',
+			})
+		}
+	}
+
 	#label(entryRef: string, add: string[], remove: string[], author: string): Entry {
 		return this.#writeEntry(() => {
 			const target = this.#requireEntryRow(entryRef)
+			this.#guardReservedTags(target.channel, [...add, ...remove], author)
 			for (const tag of add) this.#run('INSERT OR IGNORE INTO entry_tags (entry, tag) VALUES (?, ?)', target.id, tag)
 			for (const tag of remove) this.#run('DELETE FROM entry_tags WHERE entry = ? AND tag = ?', target.id, tag)
 			return this.#appendIn(target.channel, {
@@ -1120,6 +1145,9 @@ function applyFilter(filter: ViewFilter, where: string[], params: SQLInputValue[
 		params.push(...filter.excludeAuthors)
 	}
 }
+
+/** The reserved tag that marks an entry on an address channel as handled by its owner. */
+export const HANDLED_TAG = 'cynapse.handled'
 
 /** Tags as a set, in a stable order, so the same tags given in another order compare equal. */
 function normalizeTags(tags: string[] = []): string[] {

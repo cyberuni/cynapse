@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { CynapseError } from '../cli-error.js'
 import { uuidv5, uuidv7 } from '../ids.js'
 import { openStore } from './open.js'
+import { HANDLED_TAG } from './sqlite.js'
 import type { AppendInput, Store } from './types.js'
 
 let store: Store
@@ -203,13 +204,14 @@ describe('entries', () => {
 		store.append('auth', { author: 'alice', type: 'note', body: 'handled', tags: ['sdd.risk'] })
 		store.append('auth', { author: 'bob', type: 'note', body: 'open' })
 		store.append('auth', { author: 'carol', type: 'note', body: 'later handled' })
-		store.addTags('auth#4', ['cynapse.handled'], 'alice')
-		store.append('auth', { author: 'carol', type: 'note', body: 'reopened', tags: ['cynapse.handled'] })
-		store.removeTags('auth#6', ['cynapse.handled'], 'alice')
+		store.addTags('auth#4', ['x.done'], 'alice')
+		store.append('auth', { author: 'carol', type: 'note', body: 'reopened', tags: ['x.done'] })
+		store.removeTags('auth#6', ['x.done'], 'alice')
 		const notes = { types: ['note'] }
-		expect(
-			store.entries('auth', { ...notes, excludeTags: ['cynapse.handled', 'sdd.risk'] }).map((e) => e.body),
-		).toEqual(['open', 'reopened'])
+		expect(store.entries('auth', { ...notes, excludeTags: ['x.done', 'sdd.risk'] }).map((e) => e.body)).toEqual([
+			'open',
+			'reopened',
+		])
 		expect(store.entries('auth', { ...notes, excludeAuthors: ['alice', 'carol'] }).map((e) => e.body)).toEqual(['open'])
 		expect(store.search({ ...notes, excludeAuthors: ['bob'], excludeTags: ['sdd.risk'] }).map((e) => e.body)).toEqual([
 			'later handled',
@@ -302,6 +304,75 @@ describe('entries', () => {
 		store.append('a', { author: 'x', type: 'sdd.gate', data: { verdict: 'approve' } })
 		store.append('b', { author: 'x', type: 'sdd.gate', data: { verdict: 'reject' } })
 		expect(store.search({ types: ['sdd.*'] }).map((e) => e.channel)).toEqual(['a', 'b'])
+	})
+})
+
+describe('cynapse.handled', () => {
+	function inbox() {
+		store.registerAddress({ handle: 'bob-inbox', type: 'cynapse.address', title: 'Bob', author: 'bob', owner: 'bob' })
+		store.addMember('bob-inbox', 'carol', 'member', 'bob')
+		return store.append('bob-inbox', { author: 'alice', type: 'note', body: 'q?' })
+	}
+
+	function labels(ref: string) {
+		return store.entries(ref, { types: ['cynapse.label'] })
+	}
+
+	it('lets the owner of an address channel add and remove it, each written as a label entry', () => {
+		const message = inbox()
+		store.addTags(message.id, [HANDLED_TAG], 'bob')
+		expect(store.entries('bob-inbox', { excludeTags: [HANDLED_TAG], types: ['note'] })).toEqual([])
+		store.removeTags(message.id, [HANDLED_TAG], 'bob')
+		expect(store.entry(message.id)?.tags).toEqual([])
+		expect(labels('bob-inbox').map((e) => e.data)).toEqual([
+			{ target: message.id, add: [HANDLED_TAG] },
+			{ target: message.id, remove: [HANDLED_TAG] },
+		])
+	})
+
+	it.each([
+		['a member who is not the owner', 'carol'],
+		['an observer who is not a member', 'dave'],
+	])('rejects %s, writing no label entry', (_, who) => {
+		const message = inbox()
+		expect(captureError(() => store.addTags(message.id, [HANDLED_TAG], who))).toMatchObject({
+			code: 'not_owner',
+			exitCode: 1,
+		})
+		store.addTags(message.id, [HANDLED_TAG], 'bob')
+		expect(captureError(() => store.removeTags(message.id, [HANDLED_TAG], who))).toMatchObject({ code: 'not_owner' })
+		expect(store.entry(message.id)?.tags).toEqual([HANDLED_TAG])
+		expect(labels('bob-inbox')).toHaveLength(1)
+	})
+
+	it('rejects a sender appending an entry already marked handled', () => {
+		inbox()
+		expect(
+			captureError(() => store.append('bob-inbox', { author: 'alice', type: 'note', tags: [HANDLED_TAG] })),
+		).toMatchObject({ code: 'not_owner' })
+		expect(store.append('bob-inbox', { author: 'bob', type: 'note', tags: [HANDLED_TAG] }).tags).toEqual([HANDLED_TAG])
+	})
+
+	it('rejects it on a work channel, which has no owner', () => {
+		mission()
+		store.addMember('auth', 'alice', 'owner', 'alice')
+		const entry = store.append('auth', { author: 'alice', type: 'note' })
+		const error = captureError(() => store.addTags(entry.id, [HANDLED_TAG], 'alice'))
+		expect(error).toMatchObject({ code: 'not_address', exitCode: 1 })
+		expect(error.message).toContain('address channels')
+		expect(captureError(() => store.removeTags(entry.id, [HANDLED_TAG], 'alice'))).toMatchObject({
+			code: 'not_address',
+		})
+		expect(
+			captureError(() => store.append('auth', { author: 'alice', type: 'note', tags: [HANDLED_TAG] })),
+		).toMatchObject({ code: 'not_address' })
+		expect(labels('auth')).toEqual([])
+	})
+
+	it('leaves other tags open to anyone', () => {
+		const message = inbox()
+		store.addTags(message.id, ['sdd.risk'], 'dave')
+		expect(store.entry(message.id)?.tags).toEqual(['sdd.risk'])
 	})
 })
 
