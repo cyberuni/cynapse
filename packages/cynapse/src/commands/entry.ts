@@ -2,7 +2,7 @@ import type { Command } from 'commander'
 import { CynapseError, EXIT_USAGE } from '../cli-error.js'
 import { output, printEmpty } from '../output.js'
 import { renderRef } from '../refs.js'
-import type { EntryQuery } from '../store/types.js'
+import type { AppendInput, EntryQuery } from '../store/types.js'
 import { actor, collect, parseInteger, parseJson, readBodyFile, withStore } from './context.js'
 import { entryDetail, entryLine } from './render.js'
 import { waitForReply } from './wait.js'
@@ -10,34 +10,33 @@ import { waitForReply } from './wait.js'
 export function registerEntry(program: Command): void {
 	const entry = program.command('entry').description('append and read entries')
 
-	entry
-		.command('append <channel>')
-		.description('append an entry; re-appending the same --id is a no-op')
-		.requiredOption('--type <type>', 'namespaced entry type, such as sdd.decision')
-		.option('--body <text>', 'Markdown body')
-		.option('--body-file <path>', 'read the body from a file, or - for stdin')
-		.option('--data <json>', 'typed payload as a JSON object')
-		.option('--tag <tag>', 'namespaced tag (repeatable)', collect)
-		.option('--ref <ref>', 'reference shorthand such as gh:org/repo#12 or handle#seq (repeatable)', collect)
-		.option('--parent <entry>', 'the entry this replies to (id or handle#seq)')
-		.option('--id <uuid>', 'the entry id (UUIDv7); minted when absent')
-		.action(async (ref: string, opts, command: Command) => {
-			const author = actor(command)
-			const body = opts.bodyFile ? readBodyFile(opts.bodyFile) : opts.body
-			await withStore(command, (store) => {
-				const appended = store.append(ref, {
-					id: opts.id,
-					author,
-					type: opts.type,
-					body,
-					data: opts.data ? parseJson(opts.data, '--data') : undefined,
-					tags: opts.tag,
-					refs: opts.ref,
-					parent: opts.parent,
-				})
-				output(appended, () => `appended ${appended.channel}#${appended.seq}  ${appended.id}`)
-			})
+	appendOptions(
+		entry.command('append <channel>').description('append an entry; re-appending the same --id is a no-op'),
+	).action(async (ref: string, opts, command: Command) => {
+		const input = appendInput(opts, command)
+		await withStore(command, (store) => {
+			const appended = store.append(ref, input)
+			output(appended, () => `appended ${appended.channel}#${appended.seq}  ${appended.id}`)
 		})
+	})
+
+	appendOptions(
+		entry
+			.command('send <name>')
+			.description(
+				"append to a participant's address channel, resolving the exact name among live participants; never creates one",
+			),
+	).action(async (name: string, opts, command: Command) => {
+		const input = appendInput(opts, command)
+		await withStore(command, (store) => {
+			const { participant, channel } = store.resolveAddress(name)
+			if (!channel) {
+				throw new CynapseError(`participant ${participant.id} was never registered, so it has no address channel`)
+			}
+			const sent = store.append(channel.id, input)
+			output(sent, () => `sent ${sent.channel}#${sent.seq}  ${sent.id}`)
+		})
+	})
 
 	entry
 		.command('list <channel>')
@@ -104,4 +103,31 @@ export function registerEntry(program: Command): void {
 				output(reply, () => entryDetail(reply))
 			})
 		})
+}
+
+/** The options `entry append` and `entry send` share. */
+function appendOptions(command: Command): Command {
+	return command
+		.requiredOption('--type <type>', 'namespaced entry type, such as sdd.decision')
+		.option('--body <text>', 'Markdown body')
+		.option('--body-file <path>', 'read the body from a file, or - for stdin')
+		.option('--data <json>', 'typed payload as a JSON object')
+		.option('--tag <tag>', 'namespaced tag (repeatable)', collect)
+		.option('--ref <ref>', 'reference shorthand such as gh:org/repo#12 or handle#seq (repeatable)', collect)
+		.option('--parent <entry>', 'the entry this replies to (id or handle#seq)')
+		.option('--id <uuid>', 'the entry id (UUIDv7); minted when absent')
+}
+
+function appendInput(opts: Record<string, string | string[] | undefined>, command: Command): AppendInput {
+	const author = actor(command)
+	return {
+		id: opts.id as string | undefined,
+		author,
+		type: opts.type as string,
+		body: opts.bodyFile ? readBodyFile(opts.bodyFile as string) : (opts.body as string | undefined),
+		data: opts.data ? parseJson(opts.data as string, '--data') : undefined,
+		tags: opts.tag as string[] | undefined,
+		refs: opts.ref as string[] | undefined,
+		parent: opts.parent as string | undefined,
+	}
 }

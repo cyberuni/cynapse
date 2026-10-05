@@ -3,7 +3,15 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { channelIdOf } from '../channel-key.js'
-import { CynapseError, EXIT_TIMEOUT, EXIT_USAGE } from '../cli-error.js'
+import {
+	CynapseError,
+	EXIT_AMBIGUOUS_ADDRESS,
+	EXIT_TIMEOUT,
+	EXIT_UNKNOWN_ADDRESS,
+	EXIT_USAGE,
+	renderCliError,
+} from '../cli-error.js'
+import { uuidv5 } from '../ids.js'
 import { setOutputFormat } from '../output.js'
 import { createProgram } from '../program.js'
 
@@ -397,5 +405,143 @@ describe('cynapse changes', () => {
 
 	it('fails with a coded error for a token it cannot read', async () => {
 		await expect(cli('changes', '--since', 'nope')).rejects.toMatchObject({ code: 'invalid_token' })
+	})
+})
+
+describe('cynapse participant', () => {
+	const unit = uuidv5('cyberlegion:unit/1')
+
+	beforeEach(async () => {
+		await cli('participant', 'register', 'cyberlegion:unit/1', '--kind', 'service', '--name', 'cyberlegion', '--self')
+	})
+
+	function register(key: string, name: string, kind = 'agent') {
+		return json('--as', unit, 'participant', 'register', key, '--kind', kind, '--name', name)
+	}
+
+	it('registers a participant with its address channel, as the acting unit', async () => {
+		const registered = await register('cyberlegion:role/reviewer', 'reviewer')
+		expect(registered).toMatchObject({
+			participant: {
+				id: uuidv5('cyberlegion:role/reviewer'),
+				kind: 'agent',
+				name: 'reviewer',
+				status: 'live',
+				registeredBy: unit,
+			},
+			channel: { handle: 'reviewer', kind: 'address', owner: uuidv5('cyberlegion:role/reviewer') },
+		})
+		expect(
+			await cli(
+				'--as',
+				unit,
+				'participant',
+				'register',
+				'cyberlegion:role/reviewer',
+				'--kind',
+				'agent',
+				'--name',
+				'reviewer',
+			),
+		).toContain('reviewer')
+	})
+
+	it('resolves a name, and lists, retires and renames', async () => {
+		const { participant } = await register('cyberlegion:role/reviewer', 'reviewer')
+		expect(await json('participant', 'resolve', 'reviewer')).toMatchObject({ participant: { id: participant.id } })
+
+		await cli('--as', unit, 'participant', 'rename', participant.id, 'critic')
+		expect(await json('participant', 'resolve', 'reviewer')).toMatchObject({ participant: { name: 'critic' } })
+
+		await cli('--as', unit, 'participant', 'retire', participant.id)
+		expect(await json('participant', 'list', '--status', 'retired')).toMatchObject({
+			count: 1,
+			items: [{ id: participant.id, status: 'retired' }],
+		})
+		expect(await json('participant', 'list', '--registered-by', unit, '--status', 'live')).toMatchObject({
+			count: 1,
+			items: [{ id: unit }],
+		})
+		expect(await cli('participant', 'list', '--status', 'retired')).toContain(
+			`${participant.id}  agent  critic  retired`,
+		)
+	})
+
+	it('fails an ambiguous name with its exit code and every candidate, in text and --json', async () => {
+		const first = await register('cyberlegion:role/reviewer', 'reviewer')
+		const second = await register('other:role/reviewer', 'reviewer', 'human')
+
+		const error = await cli('participant', 'resolve', 'reviewer').catch((e: unknown) => e)
+		expect(error).toMatchObject({ code: 'ambiguous_address', exitCode: EXIT_AMBIGUOUS_ADDRESS })
+		const text = renderCliError(error)
+		const rendered = JSON.parse(renderCliError(error, 'json'))
+		for (const { participant } of [first, second]) {
+			expect(text).toContain(participant.id)
+			expect(rendered.error.candidates).toContainEqual({
+				id: participant.id,
+				kind: participant.kind,
+				name: 'reviewer',
+				registeredBy: unit,
+			})
+		}
+		expect(await json('participant', 'resolve', 'reviewer', '--kind', 'human')).toMatchObject({
+			participant: { id: second.participant.id },
+		})
+	})
+
+	it('fails an unknown name with its exit code', async () => {
+		await expect(cli('participant', 'resolve', 'nobody')).rejects.toMatchObject({
+			code: 'unknown_address',
+			exitCode: EXIT_UNKNOWN_ADDRESS,
+		})
+	})
+
+	it('rejects an unknown kind or status as a usage error', async () => {
+		await expect(register('cyberlegion:role/x', 'x', 'robot')).rejects.toMatchObject({ exitCode: EXIT_USAGE })
+		await expect(cli('participant', 'list', '--status', 'gone')).rejects.toMatchObject({ exitCode: EXIT_USAGE })
+		await expect(cli('participant', 'resolve', 'x', '--kind', 'robot')).rejects.toMatchObject({ exitCode: EXIT_USAGE })
+	})
+})
+
+describe('cynapse entry send', () => {
+	const unit = uuidv5('cyberlegion:unit/1')
+
+	beforeEach(async () => {
+		await cli('participant', 'register', 'cyberlegion:unit/1', '--kind', 'service', '--name', 'cyberlegion', '--self')
+		await cli(
+			'--as',
+			unit,
+			'participant',
+			'register',
+			'cyberlegion:role/reviewer',
+			'--kind',
+			'agent',
+			'--name',
+			'reviewer',
+		)
+	})
+
+	it("appends to the addressee's address channel, resolved by name", async () => {
+		const sent = await json('--as', 'alice', 'entry', 'send', 'reviewer', '--type', 'note', '--body', 'please review')
+		expect(sent).toMatchObject({ channel: 'reviewer', author: 'alice', body: 'please review' })
+		expect(await cli('--as', 'alice', 'entry', 'send', 'reviewer', '--type', 'note', '--body', 'again')).toMatch(
+			/^sent reviewer#\d+/,
+		)
+	})
+
+	it('never creates the addressee: a typo fails with unknown_address and adds no participant', async () => {
+		const before = await json('participant', 'list')
+		await expect(
+			cli('--as', 'alice', 'entry', 'send', 'reviwer', '--type', 'note', '--body', 'hi'),
+		).rejects.toMatchObject({ code: 'unknown_address', exitCode: EXIT_UNKNOWN_ADDRESS })
+		expect((await json('participant', 'list')).items.map((p: { id: string }) => p.id)).not.toContain('reviwer')
+		expect((await json('participant', 'list')).count).toBe(before.count)
+	})
+
+	it('does not send to a retired participant', async () => {
+		await cli('--as', unit, 'participant', 'retire', uuidv5('cyberlegion:role/reviewer'))
+		await expect(cli('--as', 'alice', 'entry', 'send', 'reviewer', '--type', 'note')).rejects.toMatchObject({
+			code: 'unknown_address',
+		})
 	})
 })

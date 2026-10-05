@@ -33,7 +33,7 @@ Whoever joins the work later reads the whole exchange in one place.
 ## Addressing by name
 
 A runtime registers each participant with a key such as `cyberlegion:role/reviewer`
-([Participants](/cynapse/concepts/participants/#registration-planned)).
+([Participants](/cynapse/concepts/participants/#registration)).
 `resolveAddress('reviewer')` matches the name exactly against live participants and their
 address channels' handles:
 

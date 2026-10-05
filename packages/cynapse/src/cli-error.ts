@@ -9,18 +9,31 @@ export const EXIT_FAILURE = 1
 export const EXIT_USAGE = 2
 /** `entry wait` ran out of time with no reply; waiting again may still get one. */
 export const EXIT_TIMEOUT = 3
+/**
+ * A name resolved to more than one live participant (`ambiguous_address`). The error lists
+ * every candidate; pass a more specific name, an id, or narrow by kind.
+ */
+export const EXIT_AMBIGUOUS_ADDRESS = 4
+/** A name resolved to no live participant (`unknown_address`); check the name or register it. */
+export const EXIT_UNKNOWN_ADDRESS = 5
 
 /** A failure the CLI raised deliberately, with an exit code a caller can branch on. */
 export class CynapseError extends Error {
 	readonly exitCode: number
 	/** A stable, machine-readable reason, such as `id_conflict`, for callers that branch on more than the exit code. */
 	readonly code?: string
+	/** Structured facts a caller acts on, such as an ambiguous address's `candidates`; rendered under `--json`. */
+	readonly details?: Record<string, unknown>
 
-	constructor(message: string, options: { exitCode?: number; cause?: unknown; code?: string } = {}) {
+	constructor(
+		message: string,
+		options: { exitCode?: number; cause?: unknown; code?: string; details?: Record<string, unknown> } = {},
+	) {
 		super(message, { cause: options.cause })
 		this.name = 'CynapseError'
 		this.exitCode = options.exitCode ?? EXIT_FAILURE
 		if (options.code) this.code = options.code
+		if (options.details) this.details = options.details
 	}
 }
 
@@ -42,13 +55,14 @@ export function exitCodeFor(error: unknown): number {
 /**
  * What the CLI prints to stdout on failure, no stack. Agents read stdout, not stderr, so
  * an error goes where the data would have (axi principle 6): `error: <message>` in text,
- * `{ "error": { code, message } }` under `--json`, formatted like any other output so a
+ * `{ "error": { code, message, ...details } }` under `--json`, formatted like any other output so a
  * caller branches on the code, not prose. The cause is appended when it adds information.
  */
 export function renderCliError(error: unknown, format: OutputFormat = 'text'): string {
 	const message = describe(error)
+	const details = error instanceof CynapseError ? error.details : undefined
 	return format === 'json'
-		? JSON.stringify({ error: { code: errorCodeFor(error), message } }, null, 2)
+		? JSON.stringify({ error: { code: errorCodeFor(error), message, ...details } }, null, 2)
 		: `error: ${message}`
 }
 

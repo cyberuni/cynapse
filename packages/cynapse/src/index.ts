@@ -1,9 +1,11 @@
 export { channelIdOf, channelKey, type SubjectId } from './channel-key.js'
 export {
 	CynapseError,
+	EXIT_AMBIGUOUS_ADDRESS,
 	EXIT_FAILURE,
 	EXIT_OK,
 	EXIT_TIMEOUT,
+	EXIT_UNKNOWN_ADDRESS,
 	EXIT_USAGE,
 	errorCodeFor,
 	exitCodeFor,

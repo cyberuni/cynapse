@@ -56,7 +56,7 @@ describe('schema version', () => {
 		expect(readVersion(path)).toBe(0)
 
 		const store = new SqliteStore({ path })
-		expect(store.participants()).toEqual([{ id: 'alice', kind: 'human', name: 'Alice' }])
+		expect(store.participants()).toEqual([{ id: 'alice', kind: 'human', name: 'Alice', status: 'live' }])
 		store.close()
 		expect(readVersion(path)).toBe(SCHEMA_VERSION)
 	})
@@ -74,6 +74,25 @@ describe('schema version', () => {
 		const store = new SqliteStore({ path })
 		expect(store.getChannel('auth')).toMatchObject({ kind: 'work', subjects: [] })
 		expect(store.getChannel('auth')?.owner).toBeUndefined()
+		store.close()
+		expect(readVersion(path)).toBe(SCHEMA_VERSION)
+	})
+
+	it('makes every participant from before the registry live, with no key, and keeps it working', () => {
+		const path = join(dir, 'v3-participants.db')
+		const db = new DatabaseSync(path)
+		migrate(db, MIGRATIONS.slice(0, 3))
+		db.exec(`INSERT INTO participants (id, kind, name) VALUES ('alice', 'human', 'Alice'), ('ci', 'service', 'ci')`)
+		db.close()
+
+		const store = new SqliteStore({ path })
+		expect(store.participants()).toEqual([
+			{ id: 'alice', kind: 'human', name: 'Alice', status: 'live' },
+			{ id: 'ci', kind: 'service', name: 'ci', status: 'live' },
+		])
+		expect(store.resolveAddress('Alice').participant.id).toBe('alice')
+		const channel = store.createChannel({ handle: 'auth', type: 'sdd.mission', title: 'Add auth', author: 'alice' })
+		expect(store.append(channel.id, { author: 'alice', type: 'x.note' }).author).toBe('alice')
 		store.close()
 		expect(readVersion(path)).toBe(SCHEMA_VERSION)
 	})

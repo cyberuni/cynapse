@@ -10,6 +10,7 @@ export type {
 	Entry,
 	EntryMatch,
 	EntryQuery,
+	NewParticipant,
 	Participant,
 	SearchQuery,
 	SetStateInput,

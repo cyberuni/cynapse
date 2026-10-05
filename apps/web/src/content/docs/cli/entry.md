@@ -63,6 +63,24 @@ cynapse --as sdd-conductor entry append notes-2 --type demo.note --body "once" \
   --id 01a10a46-3873-70bd-95f6-6cead5578099
 ```
 
+## `cynapse entry send`
+
+Append one entry to a participant's address channel, finding it by name. The name resolves as
+[`participant resolve`](/cynapse/cli/participant/#cynapse-participant-resolve) does: exactly one live
+participant whose id, name, or address handle or alias matches. It takes the same options as
+[`entry append`](#cynapse-entry-append).
+
+Sending never creates the addressee. A name that matches no live participant fails with
+`unknown_address` (exit `5`), so a typo can't mint a participant; one that matches several fails with
+`ambiguous_address` (exit `4`) and lists the candidates. A participant from before the registry has no
+address channel and can't be sent to. Traffic about a work item belongs on that item's work channel,
+with `entry append`; `send` is for direct traffic.
+
+```bash
+cynapse --as sdd-conductor entry send reviewer --type demo.question --body "Is the spec ready?"
+# sent reviewer#3  01a10a46-…
+```
+
 ## `cynapse entry list`
 
 List a channel's entries in `seq` order. Filters combine with AND; the values of one repeatable filter

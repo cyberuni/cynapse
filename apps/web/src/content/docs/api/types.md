@@ -14,12 +14,20 @@ Anything that reads or writes: an agent, a person, a service. See
 ```ts
 type ParticipantKind = 'agent' | 'human' | 'service'
 
+type ParticipantStatus = 'live' | 'retired'
+
 interface Participant {
-  id: string
+  id: string                 // UUIDv5 of `key` when registered
   kind: ParticipantKind
-  name: string
+  name: string               // not unique; resolveAddress matches it among live participants
+  status: ParticipantStatus  // asserted by the registering runtime, never measured
+  key?: string               // the registration key, such as cyberlegion:role/reviewer
+  registeredBy?: string      // the service participant that registered it; itself, for a unit
 }
 ```
+
+A participant from before the registry has no `key`, no `registeredBy` and no address channel. It is
+`live`, and still resolves by name.
 
 ## `Channel`
 
