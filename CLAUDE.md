@@ -95,8 +95,12 @@ Prototype stage. The core model from
 entries behind a `Store` interface (`src/store/types.ts`), with a stock-SQLite
 implementation (`node:sqlite`, WAL, `seq` assigned under `BEGIN IMMEDIATE`, no daemon),
 and CLI commands for channels, entries, read cursors, tags and state records.
-ADR-0010 to ADR-0012 (subjects across stores, guide and compose, channels keyed by
-subject) are accepted but not built yet. `cynapse dev seed` builds an example world and
+ADR-0012 (channels keyed by subject: address and work channels, owners, alias keys) is
+built. ADR-0013 (messaging between participants) is accepted and partly built: schema
+migrations, followed threads, `excludeTags`/`excludeAuthors`, `entry wait` and the change
+token (`cynapse changes`) are in; the participant registry and owner-only `cynapse.handled`
+are not yet. ADR-0010 and ADR-0011 (subjects across stores, guide and compose) are
+accepted but not built yet. `cynapse dev seed` builds an example world and
 `cynapse dev load-test` checks `seq` under concurrent writer processes. Sync, the hub,
 `init-cynapse`, and skills have not shipped yet.
 
