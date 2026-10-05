@@ -1,4 +1,4 @@
-# ADR-0013: Messaging between participants on address channels
+# ADR-0013: Messaging between participants on work and address channels
 
 ## Status
 
@@ -53,11 +53,31 @@ who has read it, what is still waiting. None of it lives in GitHub or Asana. Sev
 ten needs fit the model with small additions to existing parts. Three need new concepts:
 a participant registry with lifecycle (needs 1 and 8), threads a participant follows
 outside their own channels (need 3), and a store-wide change token (need 10). None belongs
-elsewhere, though half of need 9 (resolving a repository's native ID) and all of the waking
-in need 10 stay with the runtime.
+elsewhere, though parts of four stay with the runtime: which session acts as a role
+(need 2), observing whether a session is alive (need 8), resolving a repository's native ID
+(need 9), and all of the waking in need 10. *What stays with the runtime* lists them.
 
-The core rule: **a message to a participant is an entry in that participant's address
-channel.** There is no mailbox, and no DM, as ADR-0012 says.
+The core rule: **a message is an entry in the channel of what it is about.** Traffic about
+a work item goes on that item's work channel. Traffic addressed to a participant goes on
+that participant's address channel. There is no mailbox, and no DM, as ADR-0012 says.
+
+### Where traffic goes
+
+Most of what a runtime sends between sessions is about a work item: a brief, the reports
+on it, the decisions made on it, a notice that trunk moved under it. None of that is
+person-to-person. It goes on the **work channel** keyed by that item (ADR-0012), such as
+the channel of `gh:cyberuni/cynapse#30`. The sender and the recipient are both members, so
+a reply reaches both through their own `unread`, and whoever joins the work later reads the
+whole exchange in one place.
+
+The **address channel** carries what is genuinely direct: a question to a role, mail for a
+durable owner, anything that is not about one work item. The needs below describe the
+address channel where the two differ, and followed threads (need 3) exist only for this
+remaining case.
+
+This is **expensive to unwind.** A conversation stays in the channel where it began
+(ADR-0003), so traffic a runtime has sent to the wrong kind of channel stays there. It has
+to be settled before a runtime writes real mail.
 
 ### The ten needs
 
@@ -83,21 +103,31 @@ addressable in its own right is a participant of its own, registered and retired
 session (need 8). **The cursor belongs to the participant, not to the session.** That
 choice is what lets a role's mail survive its readers.
 
+**Which session acts as the role belongs to the runtime.** "Which session currently acts
+as `reviewer`, and which pane the doorbell rings for it" is a claim, and the last claim
+wins. A claim means something only to whatever runs the panes, so it is runtime state.
+cynapse holds the role's address channel, its mail and its cursor. The runtime may write
+the current claim as a state record on that channel so other readers can see it, but
+cynapse does not define what a claim means, enforce one, or settle two.
+
 **3. Conversations. Fits, plus one new concept: followed threads.** A reply is an entry
 whose `parent` is the message it answers, in the same channel. The whole conversation is
 `entries(channel, { root })`, which any participant who can read the channel can call
-from any session. That works today. The conversation lives in the channel where it began,
-which is the addressee's address channel. It does not alternate between the two parties'
-channels, because a conversation split across two channels can't be read as one, and an
+from any session. That works today. The conversation lives in the channel where it began.
+On a work channel both parties are members, so the reply reaches the asker with nothing
+added. A direct message begins in the addressee's address channel. It does not alternate
+between the two parties' address channels, because a conversation split across two channels can't be read as one, and an
 entry's parent must be in its own channel (ADR-0003).
 
-The gap is the asker. They are not a member of the addressee's channel, so the reply never
+The gap is the asker of a direct message. They are not a member of the addressee's
+address channel, so the reply never
 shows in their `unread`. Making them a member would show them all the addressee's traffic.
 Add **followed threads**: a participant follows every thread they wrote an entry in. The
 fact is derived from the entries, and no table is added. `unread(participant)` also counts
 entries in followed threads, outside channels the participant is a member of, that come
 after the later of their cursor on that channel and their own last entry in the thread.
-The non-member cursor this needs already works.
+The non-member cursor this needs already works. Followed threads are derived and cheap
+to revisit. If most traffic goes on work channels, as it should, they carry little.
 
 **4. Waiting for an answer. Fits. The only new part is the CLI verb.** Waiting is a
 poll of the thread: `entries(channel, { root, afterSeq, excludeAuthors: [waiter] })`
@@ -125,15 +155,15 @@ there. What still needs action on a work channel is already a state record: need
 pending answer. Per-reader handled on a shared channel is not proposed. It comes back only
 when a use case needs it.
 
-**6. Observers don't disturb recipients. Fits for inbound traffic; outbound traffic needs
+**6. Observers don't disturb recipients. Fits for direct traffic; the rest needs
 need 10.** An observer reads the participant's address channel with its own cursor, and
 cursors are per reader, so the owner's unread count doesn't move. `afterSeq` replays from
 any past point. The observer joins with role `observer`, so the briefing shows who is
 watching and the channel appears in the observer's own `unread`. Membership changes
 nothing for the owner. The observer must not add `cynapse.handled`. The store
 enforces this: only the address channel's owner may add or remove that tag. A
-participant's *outbound* traffic is spread across every channel they write to, and
-following it means finding which channels changed. That is the change token from need 10,
+participant's work traffic, and everything they send, is spread across every channel they
+are a member of or write to, and following it means finding which channels changed. That is the change token from need 10,
 followed by `entries(channel, { afterSeq, authors: [participant] })` on each changed
 channel. The observer's position is its set of per-channel cursors, not a single global
 order. ADR-0003 rejected a global order.
@@ -148,26 +178,31 @@ with `kind: human`, with their own address channel, their own cursors, and their
 "owner" of an address channel is per channel, not global.
 
 **8. Registering participants. New concept: participant lifecycle, written as entries.**
-See *Registration surface* below. Liveness is a status the runtime asserts, `live` or
-`retired`, and the resolver ignores retired participants. A retired participant is never
-deleted, because entries name it as their author. This doesn't cover a runtime that
-crashes without retiring its sessions. For that, the runtime reconciles on start, and
-retires what it no longer runs. Presence measured by cynapse, a lease with a TTL that
-lapses without renewal, is the leases design in ADR-0006, and stays deferred until leases
-are built. **This defers a conflict rather than hiding it:** ADR-0006 writes every
-state transition as an entry, and a heartbeat that renews presence every few seconds
-would flood the address channel. When leases land, an ADR has to decide whether renewal
-counts as a transition. The leaning is that it doesn't, in the same way ADR-0006 already
-exempts cursor moves.
+See *Registration surface* below. **Session liveness is asserted by the runtime, never
+measured by cynapse.** It is a status, `live` or `retired`, and the resolver ignores
+retired participants. A retired participant is never deleted, because entries name it as
+their author. A runtime that crashes without retiring its sessions reconciles when it
+starts: it lists what it registered, and retires what it no longer runs. Only the runtime
+can tell whether a session is alive, because only it runs the session.
 
-**9. Project addressing. Fits ADR-0012 directly. The runtime resolves the identity.** A
-repository's address channel is keyed by its store's native ID, such as a GitHub
-repository's `node_id`, and its handle is the readable reference (`gh:cyberuni/cynapse`).
+cynapse does not measure presence with a lease that lapses without renewal. Leases
+(ADR-0006) are for coordination, such as who holds a task, not for whether a session is
+alive. Keeping them apart means no heartbeat renews anything every few seconds, so the
+conflict a heartbeat would raise with ADR-0006, where every state transition is an entry,
+does not arise.
+
+**9. Project addressing. Fits ADR-0012 directly. The runtime resolves the native ID;
+cynapse owns the key built from it.** A repository's address channel is keyed by its
+store's native ID, such as a GitHub repository's `node_id`, and its handle is the readable
+reference (`gh:cyberuni/cynapse`).
 Two checkouts of one repository resolve the same `node_id`, so they derive the same
 `UUIDv5`, and `createChannel` with an existing key is a no-op. The channel's UUID is the
 opaque key other tools use. Resolving the remote to a `node_id` needs the store's API, so
 the runtime does it (`gh repo view --json id`) and passes the ID in, because cynapse never
-calls a store (ADR-0011). A repository with no hosted remote has no native ID, so cynapse
+calls a store (ADR-0011). **The key format is cynapse's.** The runtime passes the store and
+the native ID, and cynapse builds the key string from them, so two runtimes that resolve
+the same ID derive the same key. A runtime never spells the key itself, because a second
+runtime spelling it differently would open a second channel for the same repository. A repository with no hosted remote has no native ID, so cynapse
 registers an address for it, as ADR-0012 does for a folder. The root commit SHA is not
 used as the key. Every fork shares it, so a fork and its upstream would collide in one
 channel.
@@ -220,6 +255,21 @@ The registering unit is itself a participant (`kind: service`). cynapse records 
 registered each participant, and never calls the unit back. The dependency runs one way,
 from the runtime to cynapse.
 
+### What stays with the runtime
+
+cynapse holds the messages, the addresses and the read state. The runtime keeps everything
+that needs a running session or a call to a store:
+
+- **Waking.** The doorbell, on top of cyber-mux, decided from the change token and
+  `ChannelTraits.wake` (need 10).
+- **Session liveness.** Asserting `live` and `retired`, observing whether a session is
+  still running, and reconciling after a crash when the runtime starts (need 8).
+- **Session binding and claims.** Which session acts as which participant, and which pane
+  the doorbell rings, last claim wins (need 2).
+- **Native-ID resolution.** Calling the store to turn a remote into its native ID (need 9).
+- **The migration plan.** When and in what order the runtime moves its own messaging onto
+  cynapse.
+
 ### Integration contract
 
 **Both, with the library as the contract and the CLI as its projection.** A runtime
@@ -254,19 +304,30 @@ These must be published before a runtime depends on cynapse:
 ### Expensive to unwind, cheap to revisit
 
 Expensive to unwind: participant IDs as `UUIDv5(registration key)`, because entry authors
-are written forever. A message to a participant is an entry in their address channel. The
+are written forever. Where traffic goes: work traffic on the work item's channel, direct
+traffic on the addressee's address channel. The key format built from a native ID, because
+channel IDs are written into every entry. The
 cursor belongs to the participant, not to the session. A conversation lives in the channel
-where it began. cynapse never wakes anyone. The library-first contract, once released.
+where it began. cynapse never wakes anyone, and never measures session liveness. The library-first
+contract, once released.
 
 Cheap to revisit: exact matching in `resolveAddress` (prefix matching could be added
-later), which entries count towards followed threads, `cynapse.handled` as a tag rather
-than a state record, the poll interval and how the token is spelled, and whether presence
-leases ever replace the status the runtime asserts.
+later), followed threads and which entries count towards them, `cynapse.handled` as a tag
+rather than a state record, the poll interval and how the token is spelled, and whether
+cynapse shows a runtime's claims as state records.
 
 ## Considered options
 
-- **Messaging on address channels, with a registry, followed threads and a change token
-  (chosen).**
+- **Work traffic on work channels, direct traffic on address channels, with a registry,
+  followed threads and a change token (chosen).**
+- **All traffic on address channels.** Rejected. Most traffic is about a work item, so
+  every reply would cross into the other party's view through followed threads, and the
+  exchange about one item would be scattered across the address channels of everyone
+  involved.
+- **Presence leases with a TTL for session liveness.** Rejected. Leases are for
+  coordination, the runtime is the only one that knows whether its session runs, and a
+  renewal every few seconds would either flood the channel with entries or need an
+  exemption from ADR-0006.
 - **A mailbox separate from channels.** Rejected. ADR-0002 already settled that mail is an
   addressed entry in a channel, and a second structure would need its own cursors, tags
   and history.
@@ -289,9 +350,10 @@ leases ever replace the status the runtime asserts.
 - `unread` gets more expensive, because it adds the followed-thread count. The change
   token keeps the frequent poll cheap, so `unread` is called only after something changed.
 - cyberlegion's messaging can move onto cynapse in stages: register participants first,
-  then send through address channels, then retire its own store. That plan belongs to
-  cyberlegion.
-- The presence-renewal question in need 8 stays open until leases are built.
+  then send through cynapse, work traffic to work channels and direct traffic to address
+  channels, then retire its own store. That plan belongs to cyberlegion.
+- Leases stay a coordination tool. Session liveness never renews anything, so no heartbeat
+  has to be exempted from ADR-0006's rule that every transition is an entry.
 
 ## Related
 
