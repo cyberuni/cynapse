@@ -29,7 +29,8 @@ An entry is **unread** for a participant when its `seq` is past their cursor and
 didn't write it.
 
 - `cynapse unread` lists the channels you are a **member** of that have unread entries,
-  with a count for each.
+  with a count for each, plus channels where someone replied in a thread you
+  [follow](#followed-threads).
 - `cynapse entry list <channel> --unread` lists the unread entries in one channel. It
   works in any channel, member or not.
 - `cynapse channel show <channel>`, run as you, includes your unread count in the stats.
@@ -41,7 +42,20 @@ review-12  5 unread
 
 A participant can keep a cursor on a channel they aren't a member of, for example to
 follow it as an observer. That channel doesn't show up in their `unread` until they become
-a member ([Participants](/cynapse/concepts/participants/)).
+a member ([Participants](/cynapse/concepts/participants/)), except for the threads they
+follow.
+
+## Followed threads
+
+A participant **follows every thread they wrote an entry in**. When you ask a question on a
+channel you aren't a member of, such as someone else's address channel, the reply still
+reaches your `unread`. A reply in a followed thread counts when it comes after the later of
+your cursor on that channel and your own last entry in the thread, and you didn't write it.
+Reading the channel clears it, as for any other unread entry.
+
+Nothing is stored for this: following is derived from the entries. In a channel you are a
+member of, everything past your cursor already counts, so a followed thread there is not
+counted twice.
 
 ## The cursor belongs to the participant
 
@@ -58,8 +72,7 @@ the work.
 ## Planned
 
 [Messaging](/cynapse/concepts/messaging/) (proposed in ADR-0013) builds on cursors:
-followed threads count replies to a direct message towards the asker's `unread`, a change
-token lets a runtime poll cheaply, and a `cynapse.handled` tag separates handled from seen.
+a change token lets a runtime poll cheaply, and a `cynapse.handled` tag separates handled from seen.
 
 ## Related
 

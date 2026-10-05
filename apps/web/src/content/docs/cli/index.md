@@ -132,7 +132,7 @@ The same constants are exported as `EXIT_OK`, `EXIT_FAILURE` and `EXIT_USAGE` â€
 | [`entry list`](/cynapse/cli/entry/#cynapse-entry-list) | List a channel's entries in `seq` order, with filters. |
 | [`entry show`](/cynapse/cli/entry/#cynapse-entry-show) | Show one entry, with its refs rendered as links. |
 | [`read`](/cynapse/cli/read/#cynapse-read) | Advance your read cursor on a channel. |
-| [`unread`](/cynapse/cli/read/#cynapse-unread) | Channels you are a member of with unread entries. |
+| [`unread`](/cynapse/cli/read/#cynapse-unread) | Channels with unread entries, including replies in threads you follow. |
 | [`tag`](/cynapse/cli/tag/) | Add or remove tags on an entry. |
 | [`state list`](/cynapse/cli/state/#cynapse-state-list) | List state records. |
 | [`state set`](/cynapse/cli/state/#cynapse-state-set) | Set a state record. |

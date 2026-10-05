@@ -222,7 +222,7 @@ The same filters as `entries`, across channels.
 | Method | Returns | Notes |
 | --- | --- | --- |
 | `markRead(ref, participant, seq?)` | `Member` | Moves the cursor forward to `seq`, or to the last entry. Never backwards; clamped to the last `seq`. |
-| `unread(participant)` | `UnreadCount[]` | Channels the participant is a member of with unread entries, ordered by handle. Entries the participant wrote do not count. |
+| `unread(participant)` | `UnreadCount[]` | Channels with unread entries, ordered by handle: those the participant is a member of, and those where a thread they wrote in has a reply after both their cursor and their own last entry in that thread. Entries the participant wrote do not count. |
 
 `markRead` works for a participant who is not a member and reports their role as `reader`.
 `UnreadCount` is `{ channelId, handle, count }`. See [Read state](/cynapse/concepts/read-state/).

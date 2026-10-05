@@ -507,6 +507,12 @@ export class SqliteStore implements Store {
 		})
 	}
 
+	/**
+	 * Unread entries in the channels the participant is a member of, plus replies in the
+	 * threads they follow elsewhere. A participant follows every thread they wrote in; in a
+	 * channel they are not a member of, a reply counts when it comes after both their cursor
+	 * there and their own last entry in that thread. Following is derived, never stored.
+	 */
 	unread(participant: string): { channelId: string; handle: string; count: number }[] {
 		return this.#all<{ channelId: string; handle: string; count: number }>(
 			`SELECT s.id AS channelId, s.handle AS handle, COUNT(e.id) AS count
@@ -514,9 +520,23 @@ export class SqliteStore implements Store {
 			JOIN channels s ON s.id = m.channel
 			LEFT JOIN cursors c ON c.channel = m.channel AND c.participant = m.participant
 			JOIN entries e ON e.channel = m.channel AND e.seq > COALESCE(c.seq, 0) AND e.author <> m.participant
-			WHERE m.participant = ?
+			WHERE m.participant = ?1
 			GROUP BY s.id
-			ORDER BY s.handle`,
+			UNION ALL
+			SELECT s.id AS channelId, s.handle AS handle, COUNT(e.id) AS count
+			FROM (
+				SELECT mine.channel, COALESCE(mine.root, mine.id) AS thread, MAX(mine.seq) AS last
+				FROM entries mine
+				WHERE mine.author = ?1
+					AND NOT EXISTS (SELECT 1 FROM members m WHERE m.channel = mine.channel AND m.participant = ?1)
+				GROUP BY mine.channel, thread
+			) f
+			JOIN channels s ON s.id = f.channel
+			LEFT JOIN cursors c ON c.channel = f.channel AND c.participant = ?1
+			JOIN entries e ON e.channel = f.channel AND (e.id = f.thread OR e.root = f.thread)
+				AND e.seq > MAX(f.last, COALESCE(c.seq, 0)) AND e.author <> ?1
+			GROUP BY s.id
+			ORDER BY handle`,
 			participant,
 		)
 	}
