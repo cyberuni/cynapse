@@ -1,6 +1,6 @@
 import type { SubjectId } from '../channel-key.js'
 import { renderRef } from '../refs.js'
-import type { Briefing, Channel, ChannelTree, Entry, StateRecord } from '../store/types.js'
+import type { Briefing, Channel, ChannelTree, Entry, Participant, StateRecord } from '../store/types.js'
 
 /** One line per entry: `auth#3  alice  sdd.decision  [tags]  first line of body`. */
 export function entryLine(entry: Entry): string {
@@ -64,6 +64,12 @@ export function treeLines(trees: ChannelTree[], depth = 0): string[] {
 		`${'  '.repeat(depth)}${channelLine(tree.channel)}`,
 		...treeLines(tree.children, depth + 1),
 	])
+}
+
+/** `<id>  agent  reviewer  live  registered by <unit>`. */
+export function participantLine(participant: Participant): string {
+	const by = participant.registeredBy ? `  registered by ${participant.registeredBy}` : ''
+	return `${participant.id}  ${participant.kind}  ${participant.name}  ${participant.status}${by}`
 }
 
 export function subjectText(subject: SubjectId): string {
