@@ -2,7 +2,14 @@
 
 ## Status
 
-Accepted, 2026-10-03. Not built yet. Amends [ADR-0004](0004-stream-identity-handles-and-anchors.md).
+Accepted, 2026-10-03. Amends [ADR-0004](0004-stream-identity-handles-and-anchors.md).
+
+Built: channel kinds, owners, alias keys, and the key format. A subject's key is
+`subject:<store>:<nativeId>`, and the channel ID is its UUIDv5 in the cynapse namespace.
+The store is named as in reference shorthands (`gh`, `asana`, `linear`; lowercase letters,
+digits, `.` and `-`), and the native ID is kept exactly as the store returns it.
+`channelKey` and `channelIdOf` build it, so callers never spell it. IDs cynapse mints, such
+as a folder's address, use the store `cynapse`.
 
 ## Context
 
