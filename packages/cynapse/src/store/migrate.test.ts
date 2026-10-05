@@ -10,6 +10,7 @@ import { MIGRATIONS, SCHEMA_VERSION } from './schema.js'
 import { SqliteStore } from './sqlite.js'
 
 const migrateModule = new URL('./migrate.ts', import.meta.url).href
+const connectModule = new URL('./connect.ts', import.meta.url).href
 let dir: string
 
 beforeEach(() => {
@@ -199,20 +200,19 @@ describe('migrate', () => {
 })
 
 /**
- * One opener, in its own process: waits for the go file, then migrates with a step that
- * is not idempotent, so a second run of it would leave a second row.
+ * One opener, in its own process: waits for the go file, then connects as the store does
+ * and migrates with a step that is not idempotent, so a second run of it would leave a
+ * second row.
  */
 const opener = `
 import { existsSync } from 'node:fs'
-import { DatabaseSync } from 'node:sqlite'
 const [path, go] = process.argv.slice(1)
 const { migrate } = await import(${JSON.stringify(migrateModule)})
-const db = new DatabaseSync(path)
-db.exec('PRAGMA busy_timeout = 10000')
+const { connect } = await import(${JSON.stringify(connectModule)})
 process.stdout.write('ready\\n')
 const pause = new Int32Array(new SharedArrayBuffer(4))
 while (!existsSync(go)) Atomics.wait(pause, 0, 0, 1)
-db.exec('PRAGMA journal_mode = WAL')
+const db = connect(path)
 const version = migrate(db, [
 	'CREATE TABLE runs (pid INTEGER NOT NULL) STRICT',
 	(handle) => handle.prepare('INSERT INTO runs VALUES (?)').run(process.pid),
@@ -245,7 +245,8 @@ function startOpener(path: string, go: string) {
 			else reject(new Error(`opener exited ${code}: ${`${stdout}\n${stderr}`.trim()}`))
 		})
 	})
-	return { ready, done }
+	// An opener that dies before it is ready fails the test now, not at the timeout.
+	return { ready: Promise.race([ready, done.then(() => {})]), done }
 }
 
 it('migrates once when several processes open a fresh database together', { timeout: 60_000 }, async () => {

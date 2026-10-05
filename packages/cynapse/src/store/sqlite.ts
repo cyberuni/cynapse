@@ -1,10 +1,11 @@
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
-import { DatabaseSync, type SQLInputValue } from 'node:sqlite'
+import type { DatabaseSync, SQLInputValue } from 'node:sqlite'
 import { isDeepStrictEqual } from 'node:util'
 import { channelIdOf, channelKey, type SubjectId } from '../channel-key.js'
 import { CynapseError } from '../cli-error.js'
 import { isUuid, timestampOf, uuidv5, uuidv7 } from '../ids.js'
+import { connect } from './connect.js'
 import { migrate } from './migrate.js'
 import { MIGRATIONS } from './schema.js'
 import type {
@@ -112,12 +113,8 @@ export class SqliteStore implements Store {
 
 	constructor(options: SqliteStoreOptions) {
 		if (options.path !== ':memory:') mkdirSync(dirname(options.path), { recursive: true })
-		this.#db = new DatabaseSync(options.path)
+		this.#db = connect(options.path, { busyTimeoutMs: options.busyTimeoutMs })
 		this.#clock = options.clock ?? Date.now
-		this.#db.exec(`PRAGMA busy_timeout = ${options.busyTimeoutMs ?? 10_000}`)
-		this.#db.exec('PRAGMA journal_mode = WAL')
-		this.#db.exec('PRAGMA synchronous = NORMAL')
-		this.#db.exec('PRAGMA foreign_keys = ON')
 		try {
 			migrate(this.#db, MIGRATIONS)
 		} catch (error) {
