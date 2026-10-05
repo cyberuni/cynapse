@@ -1,5 +1,5 @@
-// The part of the cynapse `Store` that Cortex reads and writes. The types are cynapse's
-// own, so they cannot drift; `Store` narrows to the methods Cortex calls, which is all an
+// The part of the cynapse `Store` that the GUI reads and writes. The types are cynapse's
+// own, so they cannot drift; `Store` narrows to the methods the GUI calls, which is all an
 // in-memory test double has to implement.
 import type { Store as CynapseStore } from 'cynapse'
 

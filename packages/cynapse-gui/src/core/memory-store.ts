@@ -1,5 +1,5 @@
 // An in-memory `Store` that follows the cynapse contract. It backs the unit tests of
-// Cortex's derivations, where a small hand-built world keeps each expectation readable;
+// the GUI's derivations, where a small hand-built world keeps each expectation readable;
 // `src/server/store.test.ts` covers the real library on the real seed.
 import type {
 	AppendInput,

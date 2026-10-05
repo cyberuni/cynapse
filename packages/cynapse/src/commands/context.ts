@@ -14,9 +14,14 @@ function globals(command: Command): GlobalOptions {
 	return command.optsWithGlobals<GlobalOptions>()
 }
 
+/** Opens the store of `--db`. The caller closes it; prefer `withStore` unless the store outlives the action. */
+export function openCommandStore(command: Command): Store {
+	return openStore({ path: globals(command).db })
+}
+
 /** Opens the store for one command and always closes it, even when the command throws. */
 export async function withStore<T>(command: Command, fn: (store: Store) => T | Promise<T>): Promise<T> {
-	const store = openStore({ path: globals(command).db })
+	const store = openCommandStore(command)
 	try {
 		return await fn(store)
 	} finally {

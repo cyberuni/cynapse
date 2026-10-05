@@ -1,6 +1,9 @@
 {
 	"$schema": "https://unpkg.com/knip@6/schema.json",
 	"workspaces": {
+		".": {
+			"ignoreDependencies": ["@cyberuni/cynapse-gui"]
+		},
 		"packages/cynapse": {
 			"project": ["src/**/*.ts"]
 		},
@@ -8,7 +11,7 @@
 			"entry": ["src/**/*.{astro,ts,mdx}"],
 			"project": ["src/**/*.{astro,ts,mdx}"]
 		},
-		"apps/cortex": {
+		"packages/cynapse-gui": {
 			"entry": ["scripts/*.ts"],
 			"project": ["src/**/*.{ts,tsx}", "scripts/*.ts"]
 		}

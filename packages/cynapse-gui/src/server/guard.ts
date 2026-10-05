@@ -1,4 +1,4 @@
-// Cortex writes as the Council, so its API must answer only the Council's own browser
+// The GUI writes as the Council, so its API must answer only the Council's own browser
 // and local agents. Binding to loopback keeps other machines out; this middleware keeps
 // out other web pages in the same browser.
 import type { MiddlewareHandler } from 'hono'
@@ -17,7 +17,7 @@ export function localOnly(options: { port?: number } = {}): MiddlewareHandler {
 		const url = new URL(c.req.url)
 		const portOk = options.port === undefined || url.port === String(options.port)
 		if (!LOOPBACK.has(url.hostname) || !portOk) {
-			return c.json({ error: `host ${url.host} is not this Cortex; use 127.0.0.1 or localhost` }, 403)
+			return c.json({ error: `host ${url.host} is not this cynapse gui; use 127.0.0.1 or localhost` }, 403)
 		}
 		if (c.req.method !== 'GET' && c.req.method !== 'HEAD') {
 			const type = c.req.header('content-type') ?? ''
@@ -26,7 +26,7 @@ export function localOnly(options: { port?: number } = {}): MiddlewareHandler {
 			}
 			const origin = c.req.header('origin')
 			if (origin !== undefined && origin !== url.origin) {
-				return c.json({ error: `origin ${origin} may not write to this Cortex` }, 403)
+				return c.json({ error: `origin ${origin} may not write to this cynapse gui` }, 403)
 			}
 		}
 		await next()

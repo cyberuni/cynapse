@@ -1,4 +1,4 @@
-// Fetching from the Cortex API, plus the navigation primitive the views share.
+// Fetching from the GUI's API, plus the navigation primitive the views share.
 import { useCallback, useEffect, useState } from 'react'
 import { type Route, routeHref } from './route.ts'
 
