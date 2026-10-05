@@ -2,6 +2,7 @@ export {
 	CynapseError,
 	EXIT_FAILURE,
 	EXIT_OK,
+	EXIT_TIMEOUT,
 	EXIT_USAGE,
 	errorCodeFor,
 	exitCodeFor,

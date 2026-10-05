@@ -211,7 +211,9 @@ cynapse channel view <channel> <name> [options]
 | `--type <type>` | Include this entry type, or every type under a prefix with `prefix.*`. Repeatable. |
 | `--exclude-type <type>` | Exclude this type or `prefix.*`. Repeatable. |
 | `--tag <tag>` | Include entries carrying this tag. Repeatable; an entry matches if it has any of them. |
+| `--exclude-tag <tag>` | Exclude entries that carry this tag now. Repeatable. |
 | `--author <participant>` | Include entries by this author. Repeatable. |
+| `--exclude-author <participant>` | Exclude entries by this author. Repeatable. |
 
 **Examples**
 

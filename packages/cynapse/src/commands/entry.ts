@@ -1,10 +1,11 @@
 import type { Command } from 'commander'
-import { CynapseError } from '../cli-error.js'
+import { CynapseError, EXIT_USAGE } from '../cli-error.js'
 import { output, printEmpty } from '../output.js'
 import { renderRef } from '../refs.js'
 import type { EntryQuery } from '../store/types.js'
 import { actor, collect, parseInteger, parseJson, readBodyFile, withStore } from './context.js'
 import { entryDetail, entryLine } from './render.js'
+import { waitForReply } from './wait.js'
 
 export function registerEntry(program: Command): void {
 	const entry = program.command('entry').description('append and read entries')
@@ -47,7 +48,9 @@ export function registerEntry(program: Command): void {
 		.option('--type <type>', 'only this type or prefix.* (repeatable)', collect)
 		.option('--exclude-type <type>', 'exclude this type or prefix.* (repeatable)', collect)
 		.option('--tag <tag>', 'only entries with this tag (repeatable)', collect)
+		.option('--exclude-tag <tag>', 'exclude entries that carry this tag now (repeatable)', collect)
 		.option('--author <participant>', 'only entries by this author (repeatable)', collect)
+		.option('--exclude-author <participant>', 'exclude entries by this author (repeatable)', collect)
 		.option('--view <name>', 'apply a saved view, such as distilled')
 		.option('--root <entry>', 'only this thread')
 		.option('--after <seq>', 'only entries after this seq')
@@ -57,7 +60,9 @@ export function registerEntry(program: Command): void {
 				types: opts.type,
 				excludeTypes: opts.excludeType,
 				tags: opts.tag,
+				excludeTags: opts.excludeTag,
 				authors: opts.author,
+				excludeAuthors: opts.excludeAuthor,
 				view: opts.view,
 				root: opts.root,
 				metaOnly: Boolean(opts.metaOnly),
@@ -81,6 +86,22 @@ export function registerEntry(program: Command): void {
 				const found = store.entry(ref)
 				if (!found) throw new CynapseError(`no entry found for "${ref}"`, { code: 'not_found' })
 				output({ ...found, links: found.refs.map(renderRef) }, () => entryDetail(found))
+			})
+		})
+
+	entry
+		.command('wait <entry>')
+		.description("wait for the first reply in the entry's thread from someone other than you (needs --as)")
+		.requiredOption('--timeout <seconds>', 'give up after this many seconds, exiting 3')
+		.action(async (ref: string, opts, command: Command) => {
+			const waiter = actor(command)
+			const seconds = Number(opts.timeout)
+			if (!Number.isFinite(seconds) || seconds < 0) {
+				throw new CynapseError('--timeout must be a number of seconds', { exitCode: EXIT_USAGE })
+			}
+			await withStore(command, async (store) => {
+				const reply = await waitForReply(store, ref, waiter, { timeoutMs: seconds * 1000 })
+				output(reply, () => entryDetail(reply))
 			})
 		})
 }

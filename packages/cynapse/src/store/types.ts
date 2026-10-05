@@ -121,7 +121,10 @@ export interface ViewFilter {
 	excludeTypes?: string[]
 	/** An entry matches when it carries any of these. */
 	tags?: string[]
+	/** An entry is excluded when it currently carries any of these, such as `cynapse.handled`. */
+	excludeTags?: string[]
 	authors?: string[]
+	excludeAuthors?: string[]
 }
 
 /** A saved filter over a channel's entries, such as `distilled`. */

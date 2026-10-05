@@ -7,6 +7,8 @@ import type { OutputFormat } from './output.js'
 export const EXIT_OK = 0
 export const EXIT_FAILURE = 1
 export const EXIT_USAGE = 2
+/** `entry wait` ran out of time with no reply; waiting again may still get one. */
+export const EXIT_TIMEOUT = 3
 
 /** A failure the CLI raised deliberately, with an exit code a caller can branch on. */
 export class CynapseError extends Error {

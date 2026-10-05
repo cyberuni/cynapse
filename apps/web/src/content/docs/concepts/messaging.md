@@ -3,12 +3,12 @@ title: Messaging
 description: Messages between agents and people as entries in the channel of what they are about — work traffic, direct traffic, replies, waiting, handled versus seen, observers and the change token.
 ---
 
-:::note[Proposed, not built]
+:::note[Partly built]
 This page describes [ADR-0013](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0013-messaging-between-participants.md),
-which is proposed. Threads, cursors, tags and state records work today, and the
-[quick start](/cynapse/getting-started/quick-start/) uses them for a conversation. Address
-and work channels, followed threads, `excludeTags`, `excludeAuthors`, `entry wait`,
-`cynapse.handled` and the change token are not built.
+which is accepted. Threads, cursors, tags and state records work today, and the
+[quick start](/cynapse/getting-started/quick-start/) uses them for a conversation. Followed
+threads, `excludeTags`, `excludeAuthors` and `entry wait` are built. Address and work
+channels, the owner-only rule for `cynapse.handled`, and the change token are not.
 :::
 
 cynapse has no mailbox and no DM. **A message is an entry in the channel of what it is
@@ -56,13 +56,13 @@ On a work channel, both parties are members, so each sees the other's replies in
 `unread`. A direct message is the one gap: the asker isn't a member of the addressee's
 address channel. So a participant **follows every thread they wrote in**, and `unread`
 counts replies in followed threads too. Nothing is stored for this; it is derived from the
-entries.
+entries. See [Followed threads](/cynapse/concepts/read-state/#followed-threads).
 
 ## Waiting for an answer
 
 `cynapse entry wait <entry> --timeout <seconds>` polls the thread in the waiter's own
 process and prints the first reply from someone else, or exits with a distinct timeout
-code. There is no daemon.
+code (`3`). There is no daemon. See [`entry wait`](/cynapse/cli/entry/#cynapse-entry-wait).
 
 When "still waiting" must outlive the waiter, the asker opens a
 [state record](/cynapse/concepts/state-and-lifecycle/) of kind `cynapse.awaiting-reply`.

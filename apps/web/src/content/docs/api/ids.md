@@ -6,7 +6,7 @@ description: UUIDv7 and UUIDv5 helpers, the fixed namespace, and CynapseError wi
 ```ts
 import {
   uuidv7, uuidv5, timestampOf, isUuid, CYNAPSE_NAMESPACE,
-  CynapseError, EXIT_OK, EXIT_FAILURE, EXIT_USAGE, errorCodeFor, exitCodeFor, renderCliError,
+  CynapseError, EXIT_OK, EXIT_FAILURE, EXIT_USAGE, EXIT_TIMEOUT, errorCodeFor, exitCodeFor, renderCliError,
 } from 'cynapse'
 ```
 
@@ -85,6 +85,7 @@ try {
 | `EXIT_OK` | `0` | Success, including `--help` and `--version`. |
 | `EXIT_FAILURE` | `1` | The command ran and failed. |
 | `EXIT_USAGE` | `2` | Usage error: bad flag, bad option value, no participant. |
+| `EXIT_TIMEOUT` | `3` | `entry wait` ran out of time with no reply. Waiting again may still get one. |
 
 The set is small and stable on purpose: anything new needs a reason a caller can act on differently. See
 the [CLI overview](/cynapse/cli/#exit-codes).

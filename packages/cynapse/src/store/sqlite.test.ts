@@ -198,6 +198,93 @@ describe('entries', () => {
 		expect(store.unread('bob')).toEqual([{ channelId: expect.any(String), handle: 'auth', count: 2 }])
 	})
 
+	it('excludes entries by current tag and by author', () => {
+		mission()
+		store.append('auth', { author: 'alice', type: 'note', body: 'handled', tags: ['sdd.risk'] })
+		store.append('auth', { author: 'bob', type: 'note', body: 'open' })
+		store.append('auth', { author: 'carol', type: 'note', body: 'later handled' })
+		store.addTags('auth#4', ['cynapse.handled'], 'alice')
+		store.append('auth', { author: 'carol', type: 'note', body: 'reopened', tags: ['cynapse.handled'] })
+		store.removeTags('auth#6', ['cynapse.handled'], 'alice')
+		const notes = { types: ['note'] }
+		expect(
+			store.entries('auth', { ...notes, excludeTags: ['cynapse.handled', 'sdd.risk'] }).map((e) => e.body),
+		).toEqual(['open', 'reopened'])
+		expect(store.entries('auth', { ...notes, excludeAuthors: ['alice', 'carol'] }).map((e) => e.body)).toEqual(['open'])
+		expect(store.search({ ...notes, excludeAuthors: ['bob'], excludeTags: ['sdd.risk'] }).map((e) => e.body)).toEqual([
+			'later handled',
+			'reopened',
+		])
+	})
+
+	it("combines a view's exclusions with the query's", () => {
+		mission()
+		store.append('auth', { author: 'alice', type: 'note', body: 'a', tags: ['x.done'] })
+		store.append('auth', { author: 'bob', type: 'note', body: 'b' })
+		store.append('auth', { author: 'carol', type: 'note', body: 'c' })
+		store.defineView('auth', 'open', { types: ['note'], excludeTags: ['x.done'] }, 'alice')
+		expect(store.entries('auth', { view: 'open' }).map((e) => e.body)).toEqual(['b', 'c'])
+		expect(store.entries('auth', { view: 'open', excludeAuthors: ['bob'] }).map((e) => e.body)).toEqual(['c'])
+	})
+
+	describe('followed threads', () => {
+		function inbox() {
+			store.createChannel({ handle: 'bob-inbox', type: 'cynapse.address', title: 'Bob', author: 'bob' })
+			store.addMember('bob-inbox', 'bob', 'owner', 'bob')
+		}
+
+		it('counts a reply to the asker on a channel they are not a member of, until they read it', () => {
+			inbox()
+			const question = store.append('bob-inbox', { author: 'alice', type: 'note', body: 'q?' })
+			store.append('bob-inbox', { author: 'carol', type: 'note', body: 'unrelated' })
+			expect(store.unread('alice')).toEqual([])
+			store.append('bob-inbox', { author: 'bob', type: 'note', body: 'a', parent: question.id })
+			expect(store.unread('alice')).toEqual([{ channelId: expect.any(String), handle: 'bob-inbox', count: 1 }])
+			store.markRead('bob-inbox', 'alice')
+			expect(store.unread('alice')).toEqual([])
+		})
+
+		it("counts only replies after the later of the cursor and the follower's own last entry in the thread", () => {
+			inbox()
+			const question = store.append('bob-inbox', { author: 'alice', type: 'note', body: 'q?' })
+			store.append('bob-inbox', { author: 'bob', type: 'note', body: 'a1', parent: question.id })
+			store.append('bob-inbox', { author: 'alice', type: 'note', body: 'follow-up', parent: question.id })
+			store.append('bob-inbox', { author: 'bob', type: 'note', body: 'a2', parent: question.id })
+			store.append('bob-inbox', { author: 'bob', type: 'note', body: 'a3', parent: question.id })
+			expect(store.unread('alice')[0]?.count).toBe(2)
+			store.markRead('bob-inbox', 'alice', store.entries('bob-inbox').find((e) => e.body === 'a2')?.seq)
+			expect(store.unread('alice')[0]?.count).toBe(1)
+		})
+
+		it('follows a thread the participant replied in but did not start', () => {
+			inbox()
+			const root = store.append('bob-inbox', { author: 'carol', type: 'note', body: 'q' })
+			store.append('bob-inbox', { author: 'alice', type: 'note', body: 'me too', parent: root.id })
+			store.append('bob-inbox', { author: 'bob', type: 'note', body: 'a', parent: root.id })
+			expect(store.unread('alice')).toEqual([{ channelId: expect.any(String), handle: 'bob-inbox', count: 1 }])
+		})
+
+		it('does not double-count a thread in a channel the participant is a member of', () => {
+			mission()
+			store.addMember('auth', 'alice', 'owner', 'alice')
+			store.markRead('auth', 'alice')
+			const question = store.append('auth', { author: 'alice', type: 'note', body: 'q?' })
+			store.append('auth', { author: 'bob', type: 'note', body: 'a', parent: question.id })
+			store.append('auth', { author: 'bob', type: 'note', body: 'other' })
+			expect(store.unread('alice')).toEqual([{ channelId: expect.any(String), handle: 'auth', count: 2 }])
+		})
+
+		it('lists member and followed channels together, ordered by handle', () => {
+			inbox()
+			mission()
+			store.addMember('auth', 'alice', 'owner', 'alice')
+			store.append('auth', { author: 'bob', type: 'note', body: 'hi' })
+			const question = store.append('bob-inbox', { author: 'alice', type: 'note', body: 'q?' })
+			store.append('bob-inbox', { author: 'bob', type: 'note', body: 'a', parent: question.id })
+			expect(store.unread('alice').map((u) => u.handle)).toEqual(['auth', 'bob-inbox'])
+		})
+	})
+
 	it('filters through a saved view such as distilled', () => {
 		mission()
 		store.append('auth', { author: 'alice', type: 'note', body: 'chatter' })

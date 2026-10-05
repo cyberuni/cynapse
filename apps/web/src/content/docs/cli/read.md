@@ -44,9 +44,17 @@ cynapse --as council read notes-2 --to 1
 
 ## `cynapse unread`
 
-List the channels you are a member of that have unread entries, with a count each, sorted by handle.
-A channel you have fully read, or one you are not a member of, is not listed. With nothing to report it
-prints `0 unread channels found`.
+List the channels that have unread entries for you, with a count each, sorted by handle. With nothing
+to report it prints `0 unread channels found`.
+
+- In a channel you are a **member** of, every entry past your cursor that you did not write counts.
+- In a channel you are **not** a member of, only replies in threads you **follow** count. You follow
+  every thread you wrote an entry in, so the asker of a question on someone else's channel sees the
+  answer here. A reply counts when it comes after both your cursor on that channel and your own last
+  entry in that thread. `cynapse read` on the channel clears it.
+
+Following is derived from the entries; nothing is stored for it. A channel is listed once, whichever
+way its entries count.
 
 **Usage**
 

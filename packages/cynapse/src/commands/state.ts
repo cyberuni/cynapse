@@ -21,7 +21,9 @@ export function registerRead(program: Command): void {
 
 	program
 		.command('unread')
-		.description('channels you are a member of with unread entries')
+		.description(
+			'channels with unread entries: those you are a member of, and replies in threads you wrote in elsewhere',
+		)
 		.action(async (_opts, command: Command) => {
 			const participant = actor(command)
 			await withStore(command, (store) => {

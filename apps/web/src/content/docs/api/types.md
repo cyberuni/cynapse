@@ -157,7 +157,9 @@ interface ViewFilter {
   types?: string[]        // exact types, or a prefix ending in '.*' ('sdd.*')
   excludeTypes?: string[]
   tags?: string[]         // an entry matches when it carries any of these
+  excludeTags?: string[]  // excluded when it carries any of these now
   authors?: string[]
+  excludeAuthors?: string[]
 }
 
 interface View {
