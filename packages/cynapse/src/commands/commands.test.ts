@@ -235,10 +235,10 @@ describe('cynapse entry', () => {
 		await cli('--as', 'alice', 'entry', 'append', 'auth', '--type', 'note', '--body', 'a')
 		await cli('--as', 'bob', 'entry', 'append', 'auth', '--type', 'note', '--body', 'b')
 		await cli('--as', 'carol', 'entry', 'append', 'auth', '--type', 'note', '--body', 'c')
-		await cli('--as', 'alice', 'tag', 'auth#2', 'cynapse.handled')
+		await cli('--as', 'alice', 'tag', 'auth#2', 'x.done')
 		const bodies = async (...args: string[]) =>
 			(await json('entry', 'list', 'auth', '--type', 'note', ...args)).items.map((e: any) => e.body)
-		expect(await bodies('--exclude-tag', 'cynapse.handled')).toEqual(['b', 'c'])
+		expect(await bodies('--exclude-tag', 'x.done')).toEqual(['b', 'c'])
 		expect(await bodies('--exclude-author', 'alice', '--exclude-author', 'bob')).toEqual(['c'])
 		await cli(
 			'--as',
@@ -248,11 +248,39 @@ describe('cynapse entry', () => {
 			'auth',
 			'open',
 			'--exclude-tag',
-			'cynapse.handled',
+			'x.done',
 			'--exclude-author',
 			'carol',
 		)
 		expect(await bodies('--view', 'open')).toEqual(['b'])
+	})
+
+	it('lets only the owner of an address channel tag an entry cynapse.handled', async () => {
+		await cli(
+			'--as',
+			'bob',
+			'channel',
+			'create',
+			'bob-inbox',
+			'--type',
+			'cynapse.inbox',
+			'--title',
+			'Bob',
+			'--kind',
+			'address',
+			'--owner',
+			'bob',
+		)
+		await cli('--as', 'alice', 'entry', 'append', 'bob-inbox', '--type', 'note', '--body', 'q?')
+		const rejected = await cli('--as', 'alice', 'tag', 'bob-inbox#2', 'cynapse.handled').catch((e: unknown) => e)
+		expect(rejected).toMatchObject({ code: 'not_owner', exitCode: 1 })
+		expect(await cli('--as', 'bob', 'tag', 'bob-inbox#2', 'cynapse.handled')).toBe('bob-inbox#2 tags: cynapse.handled')
+		await expect(cli('--as', 'alice', 'tag', 'bob-inbox#2', '--remove', 'cynapse.handled')).rejects.toMatchObject({
+			code: 'not_owner',
+		})
+		await expect(cli('--as', 'alice', 'tag', 'auth#1', 'cynapse.handled')).rejects.toMatchObject({
+			code: 'not_address',
+		})
 	})
 
 	it('waits for a reply and prints it, or times out with its own exit code', async () => {

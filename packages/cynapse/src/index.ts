@@ -15,6 +15,6 @@ export { getOutputFormat, type OutputFormat, output, printEmpty, setOutputFormat
 export { createProgram } from './program.js'
 export { type RenderedRef, renderRef } from './refs.js'
 export { type OpenStoreOptions, openStore, resolveDbPath } from './store/open.js'
-export { SqliteStore, type SqliteStoreOptions } from './store/sqlite.js'
+export { HANDLED_TAG, SqliteStore, type SqliteStoreOptions } from './store/sqlite.js'
 export type * from './store/types.js'
 export { readPackageVersion } from './version.js'

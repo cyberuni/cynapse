@@ -76,7 +76,8 @@ recording, so it is the tag `cynapse.handled`, added as a `cynapse.label` entry.
 unhandled set is a query with `excludeTags`. Removing the tag reopens the message.
 
 Handled is defined on address channels, where one owner triages the inbox, and only that
-owner may set it. A work channel has members and no owner; what still needs action there is
+owner may add or remove it. The store enforces this: anyone else fails with `not_owner`, and
+the tag on a work channel fails with `not_address`. A work channel has members and no owner; what still needs action there is
 already a state record, such as needs-input.
 
 ## Observers

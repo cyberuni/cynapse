@@ -44,6 +44,16 @@ A later tag doesn't modify the entry. It appends a `cynapse.label` entry, and th
 current tags are folded from its write-time tags and every label entry since. So who
 tagged what, and when, stays in the channel.
 
+### Reserved tags
+
+Tags in the `cynapse.*` namespace are cynapse's, and cynapse enforces who may set them:
+
+| Tag | Meaning | Who may add or remove it |
+| --- | --- | --- |
+| `cynapse.handled` | The owner has dealt with this message ([seen versus handled](/cynapse/concepts/messaging/#seen-versus-handled)) | Only the owner of an address channel, at append time or later. Anyone else fails with `not_owner`; on a work channel it fails with `not_address` |
+
+The library exports the name as `HANDLED_TAG`.
+
 **A decision is its own entry type,** written on purpose, such as `sdd.decision`. It isn't
 inferred from a run of state changes.
 
