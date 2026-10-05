@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed, 2026-10-04. Not built yet. Answers [#30](https://github.com/cyberuni/cynapse/issues/30).
+Accepted, 2026-10-04. Not built yet. Answers [#30](https://github.com/cyberuni/cynapse/issues/30).
 
 ## Context
 
