@@ -119,7 +119,7 @@ A failure that gets its own code later moves out of `failure`; a code above neve
 | Code | Meaning |
 | --- | --- |
 | `0` | Success, including `--help` and `--version`. |
-| `1` | The command ran and failed: no such channel or entry (`not_found`), an id conflict (`id_conflict`), a database newer than this cynapse (`schema_too_new`), a taken handle, a subject key that already keys another channel, `--owner` on a work channel, a failed load test. |
+| `1` | The command ran and failed: no such channel or entry (`not_found`), an id conflict (`id_conflict`), a database newer than this cynapse (`schema_too_new`), `cynapse.handled` by someone other than the address channel's owner (`not_owner`) or on a work channel (`not_address`), a taken handle, a subject key that already keys another channel, `--owner` on a work channel, a failed load test. |
 | `2` | Usage error: unknown flag or subcommand, a command group run without a subcommand (its usage goes to stderr), missing `--as`, an option value that does not parse (`--data`, `--value`, `--after`, `--limit`, `--port`, …), `--membership`, `--kind` or `--status` outside its set, `--store` without `--native-id` (or the reverse), `--kind address` without `--owner`, `tag` with nothing to do, `dev seed --reset` without `--db`. |
 | `3` | Timed out: `entry wait` saw no reply within `--timeout` (`timeout`). |
 | `4` | Ambiguous address: `participant resolve` or `entry send` named more than one live participant (`ambiguous_address`). |

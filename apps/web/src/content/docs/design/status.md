@@ -53,6 +53,6 @@ designed and not yet built. Status as of October 2026.
 | Participant registry, `resolveAddress`, retirement | Built (ADR-0013). `--as` still creates a participant on first use during the prototype | [Participants](/cynapse/concepts/participants/#registration) |
 | Messaging reads: followed threads in `unread`, `excludeTags` and `excludeAuthors`, `entry wait` | Built (ADR-0013) | [Messaging](/cynapse/concepts/messaging/) |
 | The change token, `changes` | Built (ADR-0013) | [Messaging](/cynapse/concepts/messaging/) |
-| Owner-only `cynapse.handled` | Accepted, not built (ADR-0013); being built. Today anyone can add the tag | [Messaging](/cynapse/concepts/messaging/) |
+| Owner-only `cynapse.handled` on address channels | Built (ADR-0013) | [Messaging](/cynapse/concepts/messaging/) |
 | The boundary with a runtime | Accepted (ADR-0013). It says what stays with the runtime, so cynapse has nothing to build for it | [cynapse and the runtime](/cynapse/design/runtime/) |
 | Access control | Planned with the hub. Today `--as` is local trust | [Participants](/cynapse/concepts/participants/#how-a-participant-gets-into-a-channel) |
