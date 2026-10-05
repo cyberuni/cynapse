@@ -1,11 +1,23 @@
+import type { Migration } from './migrate.js'
+
 /**
- * The SQLite schema. Idempotent, so every open can run it.
+ * The SQLite schema, as an ordered list of forward migrations. The database records how
+ * many have run in `PRAGMA user_version`; `migrate` runs the rest when the store opens.
  *
  * Entries are shared rows; read state (cursors) is a row per reader. `entry_tags`,
  * `members`, `context`, `pins`, `states` and `views` are current-state tables folded from
  * entries in the same transaction that writes the entry, so the channel stays the record.
+ *
+ * To change the schema, append a migration; never edit one that has shipped, because
+ * databases already past it will not run it again. A step is SQL, or a function given the
+ * database for work SQL cannot express. Every pending step runs in one transaction, so a
+ * step must not begin or commit its own. Then add a test in `migrate.test.ts` that opens a
+ * database at the previous version, with rows in it, and checks what the step did to them.
  */
-export const SCHEMA = `
+export const MIGRATIONS: readonly Migration[] = [
+	// 1: the schema as it stood before versioning. `IF NOT EXISTS` lets it adopt those
+	// databases, which have these tables at `user_version` 0.
+	`
 CREATE TABLE IF NOT EXISTS participants (
 	id TEXT PRIMARY KEY,
 	kind TEXT NOT NULL,
@@ -104,4 +116,8 @@ CREATE TABLE IF NOT EXISTS views (
 	filter TEXT NOT NULL,
 	PRIMARY KEY (channel, name)
 ) STRICT;
-`
+`,
+]
+
+/** The version a database is at once every migration has run. */
+export const SCHEMA_VERSION = MIGRATIONS.length

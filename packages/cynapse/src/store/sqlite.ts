@@ -4,7 +4,8 @@ import { DatabaseSync, type SQLInputValue } from 'node:sqlite'
 import { isDeepStrictEqual } from 'node:util'
 import { CynapseError } from '../cli-error.js'
 import { isUuid, timestampOf, uuidv5, uuidv7 } from '../ids.js'
-import { SCHEMA } from './schema.js'
+import { migrate } from './migrate.js'
+import { MIGRATIONS } from './schema.js'
 import type {
 	AppendInput,
 	Briefing,
@@ -111,7 +112,12 @@ export class SqliteStore implements Store {
 		this.#db.exec('PRAGMA journal_mode = WAL')
 		this.#db.exec('PRAGMA synchronous = NORMAL')
 		this.#db.exec('PRAGMA foreign_keys = ON')
-		this.#write(() => this.#db.exec(SCHEMA))
+		try {
+			migrate(this.#db, MIGRATIONS)
+		} catch (error) {
+			this.#db.close()
+			throw error
+		}
 	}
 
 	close(): void {
