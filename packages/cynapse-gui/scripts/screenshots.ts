@@ -1,4 +1,4 @@
-// Captures screenshots of every view from a running Cortex: `pnpm cortex screenshots [base-url]`.
+// Captures screenshots of every view from a running GUI: `pnpm gui screenshots [base-url]`.
 // Targets are discovered through the API, so it works on any database. It uses the
 // system Chrome, so no Playwright browser download is needed.
 import { mkdir } from 'node:fs/promises'
@@ -35,7 +35,7 @@ const shots: [name: string, path: string | undefined, keys?: string[]][] = [
 ]
 
 await mkdir(out, { recursive: true })
-const browser = await chromium.launch({ channel: process.env.CORTEX_CHROME_CHANNEL ?? 'chrome' })
+const browser = await chromium.launch({ channel: process.env.CYNAPSE_GUI_CHROME_CHANNEL ?? 'chrome' })
 const page = await browser.newPage({ viewport: { width: 1400, height: 900 } })
 const errors: string[] = []
 page.on('pageerror', (err) => errors.push(err.message))

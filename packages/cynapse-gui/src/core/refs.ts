@@ -1,6 +1,6 @@
 // Reference shorthands rendered as links. External schemes are cynapse's own
 // `renderRef` (browser-safe via `cynapse/refs`); `handle#seq` deep-links to the entry
-// inside Cortex.
+// inside the GUI.
 import { renderRef } from 'cynapse/refs'
 
 export type RefLink = { text: string; href?: string; external?: boolean }

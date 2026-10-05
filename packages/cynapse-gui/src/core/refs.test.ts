@@ -29,7 +29,7 @@ describe('linkRef', () => {
 		expect(linkRef('https://example.com/x').href).toBe('https://example.com/x')
 	})
 
-	it('deep-links an entry shorthand inside Cortex', () => {
+	it('deep-links an entry shorthand inside the GUI', () => {
 		expect(linkRef('m-login#3')).toEqual({ text: 'm-login#3', href: '/s/m-login#3', external: false })
 	})
 

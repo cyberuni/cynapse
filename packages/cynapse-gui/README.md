@@ -1,7 +1,6 @@
-# Cortex
+# cynapse-gui
 
-Cortex is where the Council, the human, sees and navigates what flows through
-cynapse. The cortex is where what crosses the synapses becomes perception.
+The Council's view of cynapse: where the human sees and navigates what flows through it.
 
 It is a local web app: a small JSON API that reads a cynapse SQLite database through
 the `cynapse` library, and a keyboard-driven UI on top of it. It is read-only apart
@@ -10,25 +9,25 @@ from a few Council actions, which are written back as ordinary entries and state
 ## Run it
 
 ```sh
-# From the repository root: seed the example world, then start Cortex on it.
+# From the repository root: seed the example world, then start the GUI on it.
 pnpm seed                 # --reset rebuilds it
-pnpm cortex dev           # http://127.0.0.1:5173
+pnpm gui dev              # http://127.0.0.1:5173
 ```
 
-Both read the same database: `CORTEX_DB`, else cynapse's own path
-(`$CYNAPSE_HOME/cynapse.db`, `~/.cynapse/cynapse.db` by default). `pnpm seed` creates it
-and refuses one that already has channels unless you pass `--reset`. To keep the example
-apart from your own cynapse database, point `CORTEX_DB` elsewhere for both:
-`CORTEX_DB=/tmp/cynapse.db pnpm seed`, then `CORTEX_DB=/tmp/cynapse.db pnpm cortex dev`.
+Both read the same database: `CYNAPSE_GUI_DB`, else cynapse's own path. `pnpm seed`
+creates it and refuses one that already has channels unless you pass `--reset`. To keep
+the example apart from your own cynapse database, point `CYNAPSE_GUI_DB` elsewhere for
+both: `CYNAPSE_GUI_DB=/tmp/cynapse.db pnpm seed`, then
+`CYNAPSE_GUI_DB=/tmp/cynapse.db pnpm gui dev`.
 
-`pnpm cortex build && pnpm cortex start` serves the built UI and the API on one port
-(`PORT`, default 4173). `pnpm cortex screenshots [url]` captures every view from a
-running Cortex with Playwright and the system Chrome.
+`pnpm gui build && pnpm gui start` serves the built UI and the API on one port
+(`PORT`, default 4173). `pnpm gui screenshots [url]` captures every view from a
+running GUI with Playwright and the system Chrome.
 
-Cortex reads and writes as the participant `council`, so it is local only. Both servers
-listen on 127.0.0.1, and the API refuses a Host other than `127.0.0.1` or `localhost`
-on the served port (DNS rebinding), a write that is not `application/json` (a cross-site
-form), and a write whose `Origin` is another site.
+The GUI reads and writes as the participant `council`, so it is local only. It listens
+on 127.0.0.1, and the API refuses a Host other than `127.0.0.1` or `localhost` on the
+served port (DNS rebinding), a write that is not `application/json` (a cross-site form),
+and a write whose `Origin` is another site.
 
 ![Triage](docs/screenshots/triage.png)
 
@@ -40,7 +39,7 @@ More views, captured on the database `cynapse dev seed` produces:
 
 ## Use cases
 
-What the Council wants to see and do, and where Cortex answers it.
+What the Council wants to see and do, and where the GUI answers it.
 
 1. **Triage: what needs my hands.** The landing view (`/`, `g t`). It lists every open
    needs-input and escalation addressed to the Council, with the asking entry, the
@@ -71,7 +70,7 @@ What the Council wants to see and do, and where Cortex answers it.
    arbitration on the electors whose answers are missing.
 8. **References and deep links.** Reference shorthands render as links: `gh:` issues,
    commits, branches, and repos, `npm:`, `asana:`, and plain URLs go out, and
-   `handle#seq` opens the entry in Cortex. Every view has a URL, and every entry is
+   `handle#seq` opens the entry in the GUI. Every view has a URL, and every entry is
    `/s/<handle>#<seq>`; the URL follows the selection.
 9. **Council actions,** written through the store as ordinary entries and state changes:
    - mark a channel read (`r`) — moves the Council's cursor;
@@ -86,18 +85,18 @@ What the Council wants to see and do, and where Cortex answers it.
     channel, `Backspace` goes back, and `?` lists every key.
 
 **Robot mode.** Every view the Council sees is also JSON an agent can read, for example
-`curl 127.0.0.1:5173/api/triage`. The endpoints are in `src/server/api.ts`.
+`curl 127.0.0.1:4173/api/triage`. The endpoints are in `src/server/api.ts`.
 
 ## Layout
 
 ```
 src/core/     pure derivations over a Store: triage, hierarchy, graph, provenance, members, refs, actions
-src/server/   the Hono API, the store choice, and the production server
+src/server/   the Hono API, `start()` (the server `cynapse gui` runs), and the dev store choice
 src/web/      the React UI: routes, keymap, views
 scripts/      screenshot capture
 ```
 
-`src/core/model.ts` names the part of the cynapse `Store` that Cortex uses. The core
+`src/core/model.ts` names the part of the cynapse `Store` that the GUI uses. The core
 derivations are unit-tested against an in-memory store (`memory-store.ts`) holding a
 small world shaped like cynapse's seed (`fixture.ts`); `src/server/store.test.ts` runs the
 API on the real library over a database `seed()` produced.

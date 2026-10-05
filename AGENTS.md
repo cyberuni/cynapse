@@ -140,8 +140,8 @@ pnpm verify                     # lint + build + typecheck + test + knip
 pnpm build                      # compile to dist/
 pnpm cynapse dev --help         # run the CLI from source (tsx)
 pnpm web dev                    # run the docs site locally
-pnpm seed [--reset]             # seed the example world into the database Cortex reads
-pnpm cortex dev                 # run Cortex, the Council's viewer (see apps/cortex/README.md)
+pnpm seed [--reset]             # seed the example world into the database the GUI reads
+pnpm gui dev                    # run the Council's viewer from source (see packages/cynapse-gui/README.md)
 ```
 
 `pnpm cynapse <script>` is the root shortcut for `pnpm run --filter=./packages/cynapse <script>`.
@@ -150,8 +150,8 @@ pnpm cortex dev                 # run Cortex, the Council's viewer (see apps/cor
 
 ```
 packages/cynapse/ the npm package and the plugin root
+packages/cynapse-gui/ the Council's web viewer, started by `cynapse gui`
 apps/web/         Astro + Starlight docs site, deployed to GitHub Pages
-apps/cortex/      Cortex, the Council's web viewer for cynapse channels (private)
 docs/adr/         architecture decision records (see docs/adr/README.md)
 scripts/          repo maintenance scripts
 ```

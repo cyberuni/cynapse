@@ -4,13 +4,13 @@ import { join } from 'node:path'
 import { openStore, SEED_START, SeedClock, seed } from 'cynapse'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createApi } from './api.ts'
-import { openCortexStore } from './store.ts'
+import { openGuiStore } from './store.ts'
 
 let dir: string
 let db: string
 
 beforeAll(() => {
-	dir = mkdtempSync(join(tmpdir(), 'cortex-'))
+	dir = mkdtempSync(join(tmpdir(), 'cynapse-gui-'))
 	db = join(dir, 'cynapse.db')
 	const clock = new SeedClock(SEED_START)
 	const store = openStore({ path: db, clock: clock.now })
@@ -19,20 +19,20 @@ beforeAll(() => {
 })
 afterAll(() => rmSync(dir, { recursive: true, force: true }))
 
-describe('openCortexStore', () => {
-	it('opens the cynapse database named by CORTEX_DB', () => {
-		const { store, label } = openCortexStore({ CORTEX_DB: db })
+describe('openGuiStore', () => {
+	it('opens the cynapse database named by CYNAPSE_GUI_DB', () => {
+		const { store, label } = openGuiStore({ CYNAPSE_GUI_DB: db })
 		expect(label).toBe(db)
 		expect(store.getChannel('graph-agent-comms')?.type).toBe('sdd.mission-graph')
 	})
 
 	it('explains how to get a database when there is none', () => {
-		expect(() => openCortexStore({ CORTEX_DB: join(dir, 'missing.db') })).toThrow(/`pnpm seed`/)
+		expect(() => openGuiStore({ CYNAPSE_GUI_DB: join(dir, 'missing.db') })).toThrow(/`pnpm seed`/)
 	})
 })
 
 describe('the API on the seed database', () => {
-	const api = () => createApi(openCortexStore({ CORTEX_DB: db }).store)
+	const api = () => createApi(openGuiStore({ CYNAPSE_GUI_DB: db }).store)
 	const json = async (path: string) => (await api().request(path)).json()
 
 	it('triages what needs the Council', async () => {

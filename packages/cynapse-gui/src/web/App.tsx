@@ -93,7 +93,7 @@ export function App() {
 	return (
 		<div className="app">
 			<nav className="nav">
-				<span className="brand">◉ Cortex</span>
+				<span className="brand">◉ cynapse</span>
 				<Link to="/" className={route.view === 'triage' ? 'active' : ''}>
 					Triage {hands ? <span className="pill alert">{hands}</span> : null}
 				</Link>

@@ -1,4 +1,4 @@
-// Cortex's HTTP API: JSON over a cynapse store. The UI uses it, and so can an agent —
+// The GUI's HTTP API: JSON over a cynapse store. The UI uses it, and so can an agent —
 // every view the Council sees is one `curl` away ("robot mode").
 import { Hono } from 'hono'
 import { ActionError, answer, ruleOnDecision, rulings } from '../core/actions.ts'
