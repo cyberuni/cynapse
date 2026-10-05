@@ -1,0 +1,120 @@
+---
+title: cynapse and the runtime
+description: Where cynapse stops and a runtime such as cyberlegion starts — who registers participants, where traffic goes, who wakes whom, who decides which session acts as a role.
+---
+
+import MessageFlowDiagram from '../../../components/MessageFlowDiagram.astro'
+
+:::note[Proposed, not built]
+This page describes [ADR-0013](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0013-messaging-between-participants.md),
+which is proposed. Today there is no participant registry, no address or work channel, no
+change token and no `entry wait`.
+:::
+
+A **runtime** launches and manages agent sessions. cyberlegion is the first; any unit that
+runs agents plays the same part. cynapse and the runtime split the work along one line:
+**cynapse holds the messages, the addresses and the read state. The runtime keeps
+everything that needs a running session or a call to a store.**
+
+The dependency runs one way. The runtime registers its participants with cynapse and polls
+it. cynapse records which unit registered whom, and never calls the unit back.
+
+## Who owns what
+
+| cynapse owns | The runtime owns |
+| --- | --- |
+| **Addressing.** Resolving a name to exactly one live participant, or failing with every candidate listed | **Waking.** The doorbell, on top of cyber-mux, decided from the change token and the channel's `wake` trait |
+| **Identity.** Participant IDs derived from registration keys; the key format for a subject's channel | **Session liveness.** Observing whether a session still runs, asserting `live` or `retired`, reconciling after a crash |
+| **The record.** Every message, reply, registration and retirement as an entry | **Claims.** Which session acts as which participant, and which pane the doorbell rings. Last claim wins |
+| **The queries.** `unread`, threads, the change token, waiting on a reply | **Native-ID resolution.** Calling the store to turn a remote into its native ID |
+| | **The migration plan.** When and in what order it moves its own messaging onto cynapse |
+
+## Where traffic goes
+
+**A message is an entry in the channel of what it is about.** There is no mailbox and no
+DM.
+
+- **Work traffic goes on the work channel.** Most of what a runtime sends between sessions
+  is about a work item: a brief, the reports on it, the decisions made on it, a notice
+  that trunk moved under it. It goes on that item's
+  [work channel](/cynapse/concepts/subjects/#channels-keyed-by-subject), such as the
+  channel of `gh:cyberuni/cynapse#30`. Sender and recipient are both members, so a reply
+  reaches both through their own `unread`, and whoever joins the work later reads the whole
+  exchange in one place.
+- **Direct traffic goes on the address channel.** A question to a role, mail for a durable
+  owner, anything not about one work item goes on the addressee's address channel.
+
+This is expensive to unwind. A conversation stays in the channel where it began, so
+traffic sent to the wrong kind of channel stays there. The mechanics of both cases are in
+[Messaging](/cynapse/concepts/messaging/).
+
+## The life of a direct message
+
+<MessageFlowDiagram />
+
+1. **Register.** The runtime calls `registerParticipant` with a key namespaced by itself,
+   such as `cyberlegion:role/reviewer`. cynapse derives the participant's ID from the key,
+   creates its address channel, and writes `cynapse.participant.registered` there.
+   Registering again is a no-op.
+2. **Send.** The asker resolves `reviewer` to one live participant and appends the question
+   to its address channel.
+3. **Notice.** The runtime polls `changes(since)`, a cheap store-wide token, and sees which
+   channels moved. It calls `unread` only for those.
+4. **Wake.** The runtime decides whether to wake a session, using the channel's `wake`
+   trait as advice, and rings the doorbell for the session that currently claims the role.
+5. **Read.** The session reads as the role. The cursor belongs to the participant, not the
+   session, so the backlog waits for whichever session reads next.
+6. **Reply.** The reply names the question as its parent, in the same channel.
+7. **Receive.** The asker, waiting with `entry wait`, gets the reply. Without waiting, the
+   reply still shows in the asker's `unread`, because they follow every thread they wrote in.
+
+On a work channel the flow skips name resolution and followed threads: both parties are
+members, so each sees the other's entries in their own `unread`.
+
+## Why the line falls there
+
+- **Waking needs a long-lived process.** cynapse has no daemon, and the runtime is the one
+  that knows its sessions and panes. So cynapse never wakes anyone. The change token is
+  not an order of entries; it says only "something changed since you last asked".
+- **Only the runtime can tell whether a session is alive,** because only it runs the
+  session. cynapse records the status the runtime asserts and doesn't measure presence with
+  a lease. Leases are for coordination, such as who holds a task. A heartbeat renewing a
+  lease every few seconds would flood the channel with entries.
+- **A claim means something only to whatever runs the panes.** cynapse holds the role's
+  address channel, its mail and its cursor. The runtime may record its current claim as a
+  state record so others can see it, but cynapse doesn't define, enforce or settle claims.
+- **cynapse never calls a store.** So the runtime resolves a remote to its native ID
+  (`gh repo view --json id`) and passes the store and the ID in. **The key format is
+  cynapse's:** the runtime never spells the key itself, so two runtimes resolving the same
+  ID meet in the same channel.
+- **cynapse never depends on the runtime.** If the runtime kept the registry and cynapse
+  resolved names through it, every other unit would need its own resolver.
+
+## The integration contract
+
+The library is the contract, and the CLI is its projection. A runtime built on Node calls
+the [`Store`](/cynapse/api/store/) interface in process, so its poll loop costs no process
+spawns and it gets typed errors. Agents use the CLI, whose `--json` output has the same
+shapes. A runtime codes against `Store`, never against `SqliteStore`, so the hub can
+replace the engine underneath.
+
+Before a runtime depends on cynapse, these must ship:
+
+1. a schema version and forward migrations;
+2. ADR-0012's key scheme and address channels;
+3. the registration surface and `resolveAddress`, with participant IDs derived from keys;
+4. the messaging additions: `excludeTags`, `excludeAuthors`, followed threads, `changes`,
+   `entry wait`;
+5. stable error and exit codes for `ambiguous_address`, `unknown_address` and a wait
+   timeout;
+6. a semver release that isn't `0.0.0`, declaring the `Store` interface, the `--json`
+   shapes and the new `cynapse.*` entry types as public;
+7. the database location contract: a runtime passes `$CYNAPSE_HOME` to the agents it
+   launches, or they write to different databases.
+
+## Related
+
+- [Messaging](/cynapse/concepts/messaging/): the mechanics on each kind of channel.
+- [Participants](/cynapse/concepts/participants/#registration-planned): the registration
+  surface.
+- Issue [#30](https://github.com/cyberuni/cynapse/issues/30), the ten needs this answers.

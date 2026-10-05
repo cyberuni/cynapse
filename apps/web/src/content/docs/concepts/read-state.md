@@ -57,16 +57,9 @@ the work.
 
 ## Planned
 
-[ADR-0013](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0013-messaging-between-participants.md)
-(proposed) adds:
-
-- **Followed threads:** a participant follows every thread they wrote in, so a reply in
-  someone else's channel counts towards their `unread` without making them a member.
-- **A change token:** `changes(since)` returns the channels that moved since an opaque
-  token, so a runtime can poll cheaply and call `unread` only when something changed.
-  cynapse never wakes anyone. Waking is the runtime's decision.
-- **Handled, separate from seen:** the cursor says what was seen. A `cynapse.handled` tag
-  says what was acted on.
+[Messaging](/cynapse/concepts/messaging/) (proposed in ADR-0013) builds on cursors:
+followed threads count replies to a direct message towards the asker's `unread`, a change
+token lets a runtime poll cheaply, and a `cynapse.handled` tag separates handled from seen.
 
 ## Related
 

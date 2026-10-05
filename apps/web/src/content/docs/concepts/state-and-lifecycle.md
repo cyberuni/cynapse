@@ -64,8 +64,9 @@ What the design adds on top, not built yet:
 
 Leases are state records with a TTL, an exclusive flag, path patterns, a release time, and
 a way to repair orphaned leases, following mcp_agent_mail's design. They aren't built.
-Presence, which says that a participant is still alive, is planned as a lease that lapses
-when it isn't renewed.
+Leases are for coordination, such as who holds a task or a file. They are not how a
+session's liveness is tracked: a runtime asserts that itself
+([cynapse and the runtime](/cynapse/design/runtime/#why-the-line-falls-there), proposed).
 
 A "happens at most once" write, such as a single ruling on a decision, needs a
 conditional append that the store doesn't have yet

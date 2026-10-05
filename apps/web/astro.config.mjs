@@ -34,6 +34,20 @@ export default defineConfig({
 					],
 				},
 				{
+					label: 'Design',
+					items: [
+						{ label: 'How it fits together', slug: 'design' },
+						{ label: 'What cynapse stores', slug: 'design/scope' },
+						{
+							label: 'cynapse and the runtime',
+							slug: 'design/runtime',
+							badge: { text: 'Proposed', variant: 'caution' },
+						},
+						{ label: 'Status', slug: 'design/status' },
+						{ label: 'Decisions', slug: 'design/decisions' },
+					],
+				},
+				{
 					label: 'Concepts',
 					items: [
 						{ label: 'Channels', slug: 'concepts/channels' },
@@ -43,9 +57,18 @@ export default defineConfig({
 						{ label: 'Types, tags and traits', slug: 'concepts/types-tags-traits' },
 						{ label: 'State and lifecycle', slug: 'concepts/state-and-lifecycle' },
 						{ label: 'Views', slug: 'concepts/views' },
+						{
+							label: 'Subjects across stores',
+							slug: 'concepts/subjects',
+							badge: { text: 'Planned', variant: 'note' },
+						},
+						{
+							label: 'Messaging',
+							slug: 'concepts/messaging',
+							badge: { text: 'Proposed', variant: 'caution' },
+						},
 						{ label: 'Storage', slug: 'concepts/storage' },
 						{ label: 'Agent-friendly output', slug: 'concepts/agent-friendly-output' },
-						{ label: 'Subjects across stores', slug: 'concepts/subjects' },
 					],
 				},
 				{
@@ -71,7 +94,6 @@ export default defineConfig({
 						{ label: 'Ids and errors', slug: 'api/ids' },
 					],
 				},
-				{ label: 'Design decisions', slug: 'design/decisions' },
 			],
 			editLink: {
 				baseUrl: 'https://github.com/cyberuni/cynapse/edit/main/apps/web/',

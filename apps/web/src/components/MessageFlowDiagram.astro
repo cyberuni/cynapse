@@ -1,0 +1,70 @@
+---
+// The life of a message between participants (ADR-0013, proposed), as a sequence diagram:
+// who registers, who appends, who polls, who wakes. Static inline SVG; see diagram.css.
+import './diagram.css'
+
+const lanes = [
+	{ x: 90, label: 'ASKER (AGENT)' },
+	{ x: 310, label: 'CYNAPSE' },
+	{ x: 510, label: 'RUNTIME' },
+	{ x: 680, label: 'REVIEWER SESSION' },
+]
+const steps = [
+	{ y: 84, from: 510, to: 310, label: '1. register cyberlegion:role/reviewer' },
+	{ y: 128, from: 90, to: 310, label: '2. append to reviewer’s channel' },
+	{ y: 172, from: 510, to: 310, label: '3. changes(since)' },
+	{ y: 200, from: 310, to: 510, label: 'reviewer’s channel moved', reply: true },
+	{ y: 244, from: 510, to: 680, label: '4. wake (doorbell)' },
+	{ y: 288, from: 680, to: 310, label: '5. read unread entries', labelX: 410 },
+	{ y: 332, from: 680, to: 310, label: '6. reply, parent = the question', labelX: 410 },
+	{ y: 376, from: 310, to: 90, label: '7. entry wait returns the reply', reply: true },
+]
+---
+
+<figure class="cynapse-diagram not-content">
+	<svg viewBox="0 0 760 400" role="img" aria-labelledby="flow-title flow-desc">
+		<title id="flow-title">The life of a message between participants</title>
+		<desc id="flow-desc">
+			1. The runtime registers the reviewer participant with cynapse. 2. An asking agent
+			appends a question to the reviewer's address channel. 3. The runtime polls cynapse
+			for changes and learns the reviewer's channel moved. 4. The runtime wakes the reviewer
+			session. 5. The session reads its unread entries. 6. It appends a reply whose parent is
+			the question. 7. The asker, waiting on the thread, receives the reply. cynapse never
+			calls the runtime or a session.
+		</desc>
+		<defs>
+			<marker id="flow-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+				<path d="M0 0 10 5 0 10z" class="head" />
+			</marker>
+			<marker id="flow-arrow-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+				<path d="M0 0 10 5 0 10z" class="head muted" />
+			</marker>
+		</defs>
+
+		{lanes.map((l) => (
+			<g>
+				<text class="layer" x={l.x} y="30" text-anchor="middle">{l.label}</text>
+				<line class="edge dashed" x1={l.x} y1="42" x2={l.x} y2="390" />
+			</g>
+		))}
+
+		{steps.map((s) => (
+			<g>
+				<line
+					class={s.reply ? 'edge dashed' : 'edge'}
+					x1={s.from}
+					y1={s.y}
+					x2={s.to + (s.to > s.from ? -3 : 3)}
+					y2={s.y}
+					marker-end={s.reply ? 'url(#flow-arrow-muted)' : 'url(#flow-arrow)'}
+				/>
+				<text class="edge-label" x={s.labelX ?? (s.from + s.to) / 2} y={s.y - 7} text-anchor="middle">{s.label}</text>
+			</g>
+		))}
+	</svg>
+	<figcaption>
+		Solid arrows are calls; dashed arrows are what a call returns. cynapse only answers. It
+		never calls the runtime or a session, so waking is always the runtime's decision.
+		Proposed in ADR-0013; not built.
+	</figcaption>
+</figure>

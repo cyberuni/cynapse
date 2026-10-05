@@ -1,0 +1,66 @@
+/* Shared look for the site's inline-SVG diagrams (after cyber-civitas's LayerDiagram). Colors
+   come from Starlight's theme variables, so every diagram flips with `data-theme`. Each
+   diagram's root is `figure.cynapse-diagram.not-content`, which keeps Starlight's markdown
+   spacing out of the SVG (see apps/web/AGENTS.md). */
+.cynapse-diagram {
+	margin: 1.5rem 0;
+}
+.cynapse-diagram svg {
+	width: 100%;
+	height: auto;
+	font-family: var(--sl-font);
+}
+.cynapse-diagram .box {
+	fill: var(--sl-color-bg-nav);
+	stroke: var(--sl-color-gray-5);
+	stroke-width: 1.5;
+}
+.cynapse-diagram .box.accent {
+	stroke: var(--sl-color-accent);
+}
+.cynapse-diagram .box.dashed {
+	fill: none;
+	stroke-dasharray: 6 5;
+}
+.cynapse-diagram .box.meta {
+	fill: none;
+}
+.cynapse-diagram .layer {
+	fill: var(--sl-color-gray-3);
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.08em;
+}
+.cynapse-diagram .name {
+	fill: var(--sl-color-white);
+	font-size: 15px;
+	font-weight: 600;
+}
+.cynapse-diagram .note {
+	fill: var(--sl-color-gray-2);
+	font-size: 12px;
+}
+.cynapse-diagram .edge {
+	stroke: var(--sl-color-accent);
+	stroke-width: 1.75;
+	fill: none;
+}
+.cynapse-diagram .edge.dashed {
+	stroke: var(--sl-color-gray-3);
+	stroke-dasharray: 5 4;
+}
+.cynapse-diagram .head {
+	fill: var(--sl-color-accent);
+}
+.cynapse-diagram .head.muted {
+	fill: var(--sl-color-gray-3);
+}
+.cynapse-diagram .edge-label {
+	fill: var(--sl-color-gray-3);
+	font-size: 11px;
+}
+.cynapse-diagram figcaption {
+	color: var(--sl-color-gray-3);
+	font-size: var(--sl-text-sm);
+	margin-top: 0.5rem;
+}

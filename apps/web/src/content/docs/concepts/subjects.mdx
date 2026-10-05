@@ -1,7 +1,9 @@
 ---
 title: Subjects across stores
-description: The planned model — a network of subjects living in their own stores, channels keyed by subject, and cynapse guiding and composing instead of copying.
+description: The planned model — a network of subjects living in their own stores, relations kept on the subjects, and channels keyed by subject.
 ---
+
+import SubjectsDiagram from '../../../components/SubjectsDiagram.astro'
 
 :::note[Accepted, not built]
 This page describes ADR-0010 to ADR-0012, accepted but not built yet. Today a channel takes
@@ -33,11 +35,13 @@ This follows [DNA](https://github.com/cyberuni/dna), the Datum Network Architect
 
 A channel is keyed by the subject it is about, and there are two kinds:
 
+<SubjectsDiagram />
+
 | | Address channel | Work channel |
 | --- | --- | --- |
 | Keyed by | Something that receives messages: a participant, a repository, a project, a folder | A unit of work: an issue, a PR, a task, a mission |
 | Owner | The subject's owner, who triages it and sets conventions | None. It has members. |
-| Used for | Telling someone something. A message to a participant is an entry in their address channel. | The shared working conversation about that piece of work |
+| Used for | Direct traffic: a question to a role, mail for an owner | The shared working conversation about that piece of work, including the messages about it |
 
 - **The key is the subject's native ID** when the channel is created: GitHub's `node_id`,
   Asana's `gid`, Linear's UUID. The readable reference (`gh:cyberuni/cynapse#12`) is a
@@ -49,35 +53,20 @@ A channel is keyed by the subject it is about, and there are two kinds:
 - **Each work item has its own channel.** A PR's channel isn't a child of its issue's.
   Anchors still branch a conversation inside cynapse, such as an arbitration started from
   a review comment.
-- **There are no DMs.** To tell a participant something, post to their address channel.
+- **There are no DMs.** Traffic about a work item goes on its work channel. Direct
+  traffic to a participant goes on their address channel
+  ([Messaging](/cynapse/concepts/messaging/), proposed).
+- **The key format is cynapse's.** A consumer resolves the native ID, because that needs
+  the store's API, and passes the store and the ID in. cynapse builds the key, so two
+  consumers resolving the same ID meet in the same channel.
 
-## Guide and compose
+## Reaching what lives elsewhere
 
-cynapse stores only what no other store can: ledgers, ordered entries, leases, presence,
-read state. For everything else:
-
-- **Guide.** Through skills and conventions, cynapse tells an agent which single call per
-  store returns a subject's ID, metadata and relations (one `gh` call, one `cyber-asana`
-  call), and how to read the result.
-- **Compose.** The agent passes what it fetched to cynapse, and cynapse returns a structured
-  result. A change feed for #12 that merges GitHub's timeline with the entries in #12's
-  work channel is built when it is read, and never stored.
-- **No credentials, no calls.** cynapse never calls GitHub or Asana and holds no tokens.
-  Auth, rate limits and APIs stay with the agent or the UI.
-
-### Write-back
-
-A consumer writes back to the subject's own store only what changes the subject as that
-store's readers see it, and never mirrors the conversation:
-
-1. a decision that changes scope updates the issue body, with a short comment saying what
-   changed;
-2. a state record such as `needs-input` maps to a label or field;
-3. a lifecycle milestone, such as reconciliation, gets one summary comment;
-4. a relation is written as metadata on the subjects.
-
-Each write-back is linked both ways: a `cynapse.published` entry in the channel, and a
-stamp in what was posted that points back.
+A channel holds the conversation, never the subject. cynapse doesn't fetch the issue or
+cache its metadata. It tells a consumer which one call returns it, and composes what the
+consumer passes back. What a consumer writes back to the issue is a short list of things
+that change it for the issue's readers. Both are on
+[What cynapse stores](/cynapse/design/scope/#guide-and-compose).
 
 ## Related
 
