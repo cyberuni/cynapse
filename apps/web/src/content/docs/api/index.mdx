@@ -1,0 +1,116 @@
+---
+title: Library API
+description: Use cynapse as a library — open a store, create channels, append and read entries from TypeScript.
+---
+
+Everything the [CLI](/cynapse/cli/) does is a thin shell over a `Store`. The package exports that
+store, its types and its helpers, so a tool can read and write channels directly instead of shelling
+out to the `cynapse` binary and parsing its output.
+
+## Install
+
+```bash
+npm install cynapse
+```
+
+:::caution[Prototype]
+npm has only a `0.0.0` placeholder so far, and the `Store` interface isn't a stable
+contract until the first real release. Until then, depend on a clone of the repository.
+:::
+
+`cynapse` is ESM-only and ships its own types. The store uses Node's built-in
+[`node:sqlite`](https://nodejs.org/api/sqlite.html), so there is no native module to build; it needs a
+Node.js release that includes it (the package builds for Node 22).
+
+## Entry points
+
+| Import | What it is | Page |
+| --- | --- | --- |
+| `cynapse` | `openStore`, `SqliteStore`, every store type, ids, errors, output helpers, `createProgram`, `seed`. | [Store](/cynapse/api/store/) |
+| `cynapse/refs` | `renderRef` alone, importing nothing — safe to bundle for a browser. | [Refs](/cynapse/api/refs/) |
+
+## Exports of `cynapse`
+
+| Export | Kind | Page |
+| --- | --- | --- |
+| `openStore(options?)`, `resolveDbPath(env?)`, `OpenStoreOptions` | function, type | [Store](/cynapse/api/store/#opening-a-store) |
+| `SqliteStore`, `SqliteStoreOptions` | class, type | [Store](/cynapse/api/store/#opening-a-store) |
+| `Store` and its input and result types: `Channel`, `Entry`, `Member`, `Participant`, `StateRecord`, `View`, `Briefing`, … | types | [Store](/cynapse/api/store/), [Types](/cynapse/api/types/) |
+| `renderRef`, `RenderedRef` | function, type | [Refs](/cynapse/api/refs/) |
+| `uuidv7`, `uuidv5`, `timestampOf`, `isUuid`, `CYNAPSE_NAMESPACE` | functions, constant | [Ids and errors](/cynapse/api/ids/) |
+| `CynapseError`, `EXIT_OK`, `EXIT_FAILURE`, `EXIT_USAGE`, `exitCodeFor`, `renderCliError` | class, constants, functions | [Ids and errors](/cynapse/api/ids/#errors) |
+| `output`, `printEmpty`, `setOutputFormat`, `getOutputFormat`, `OutputFormat` | CLI output helpers | [Agent-friendly output](/cynapse/concepts/agent-friendly-output/) |
+| `createProgram(version?)` | function | builds the Commander command tree without touching `process.argv`; used by the CLI and its tests |
+| `readPackageVersion()` | function | the package's version, read from `package.json` at runtime |
+| `seed`, `SeedClock`, `SEED_START`, `SeedSummary` | function, class, constant, type | the example world behind [`dev seed`](/cynapse/cli/dev/) |
+
+The `Store` types are re-exported with `export type *`, so they are available as type-only imports.
+The CLI entry itself (`cynapse` the binary) is not importable.
+
+## Example
+
+Open a store, create a channel, append an entry, and read it back as another participant.
+
+```ts
+import { openStore } from 'cynapse'
+
+// ':memory:' is a throwaway store. Omit `path` to use $CYNAPSE_HOME/cynapse.db.
+const store = openStore({ path: ':memory:' })
+
+const channel = store.createChannel({
+  handle: 'release-1.0',
+  type: 'demo.release',
+  title: 'Release 1.0',
+  author: 'alice',
+})
+store.addMember(channel.handle, 'bob', 'reviewer', 'alice')
+
+const entry = store.append('release-1.0', {
+  author: 'alice',
+  type: 'demo.note',
+  body: 'Cutting the release branch.',
+  tags: ['demo.status'],
+  refs: ['gh:cyberuni/cynapse#12'],
+})
+console.log(`${entry.channel}#${entry.seq}`, entry.id)
+// release-1.0#3 01a10a48-099a-70e9-9b4c-bc294e541315
+
+console.log(store.unread('bob'))
+// [{ channelId: '01a10a48-…', handle: 'release-1.0', count: 3 }]
+
+for (const e of store.entries('release-1.0', { unreadFor: 'bob' })) console.log(e.seq, e.type)
+// 1 cynapse.channel.created
+// 2 cynapse.member.joined
+// 3 demo.note
+
+store.markRead('release-1.0', 'bob')
+console.log(store.unread('bob')) // []
+
+console.log(store.entry(`release-1.0#${entry.seq}`)?.tags) // [ 'demo.status' ]
+store.close()
+```
+
+Notice that the entry is `#3`, not `#1`: creating a channel and adding a member are themselves
+entries (`cynapse.channel.created`, `cynapse.member.joined`), because the log records every change to
+channel metadata. See [Entries](/cynapse/concepts/entries/).
+
+A store holds an open database connection: call `close()` when you are done. The CLI does this for
+you in a `finally`.
+
+## Failures
+
+Operations that cannot proceed throw a [`CynapseError`](/cynapse/api/ids/#errors) with a message that
+names what failed (`no channel found for "nope"`) and, for conflicts, a stable `code` such as
+`id_conflict`. The library never calls `process.exit` and never writes to stdout; only the CLI does.
+
+:::note
+There is no `registerParticipant`, address resolution, sync or hub in the library yet. They are
+designed but not built.
+:::
+
+## Pages
+
+- [Store](/cynapse/api/store/) — the `Store` interface, method by method.
+- [Types](/cynapse/api/types/) — `Channel`, `Entry`, `Member`, `ChannelTraits`, `Anchor`, and the rest.
+- [Refs](/cynapse/api/refs/) — rendering reference shorthands such as `gh:cyberuni/cynapse#12`.
+- [Ids and errors](/cynapse/api/ids/) — UUIDs, `CynapseError` and the exit-code constants.
