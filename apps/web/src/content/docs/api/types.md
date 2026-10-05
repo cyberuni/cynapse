@@ -53,7 +53,7 @@ Behaviour switches stored on the channel. See [Types, tags and traits](/cynapse/
 interface ChannelTraits {
   membership: 'open' | 'fixed'
   retention?: string
-  wake: boolean           // whether members are woken when an entry lands
+  wake: boolean           // advice to the runtime; cynapse never wakes anyone
   defaultView?: string
 }
 ```
@@ -181,6 +181,23 @@ interface Briefing {
   pinned: Entry[]
   views: View[]
   children: Pick<Channel, 'id' | 'handle' | 'type' | 'title' | 'state'>[]
+}
+```
+
+## `Changes`
+
+What [`changes`](/cynapse/api/store/#read-state) returns. Pass `token` to the next call.
+
+```ts
+interface Changes {
+  token: string             // opaque, local to one store; not an order of entries
+  channels: ChannelChange[] // ordered by handle
+}
+
+interface ChannelChange {
+  channelId: string
+  handle: string
+  lastSeq: number
 }
 ```
 

@@ -9,6 +9,7 @@ import { MIGRATIONS } from './schema.js'
 import type {
 	AppendInput,
 	Briefing,
+	Changes,
 	Channel,
 	ChannelTraits,
 	ChannelTree,
@@ -541,6 +542,28 @@ export class SqliteStore implements Store {
 		)
 	}
 
+	/**
+	 * A range read on `channels.change`, which every append sets from the store clock in
+	 * its own write transaction, so a poll never scans entries.
+	 */
+	changes(since?: string): Changes {
+		const clock = this.#get<{ store: string; change: number }>('SELECT store, change FROM store_clock') as {
+			store: string
+			change: number
+		}
+		const after = since === undefined ? -1 : readToken(since, clock.store)
+		const channels = this.#all<{ channelId: string; handle: string; lastSeq: number }>(
+			`SELECT s.id AS channelId, s.handle AS handle,
+				COALESCE((SELECT MAX(e.seq) FROM entries e WHERE e.channel = s.id), 0) AS lastSeq
+			FROM channels s
+			WHERE s.change > ? AND s.change <= ?
+			ORDER BY s.handle`,
+			after,
+			clock.change,
+		)
+		return { token: writeToken(clock.store, clock.change), channels }
+	}
+
 	// ── state records ───────────────────────────────────────────────────────────
 
 	setState(ref: string, input: SetStateInput, author: string): StateRecord {
@@ -677,6 +700,10 @@ export class SqliteStore implements Store {
 		for (const tag of normalizeTags(input.tags)) {
 			this.#run('INSERT INTO entry_tags (entry, tag) VALUES (?, ?)', id, tag)
 		}
+		// The store clock moves on every append, metadata entries included, in this same
+		// write transaction, so two writers can never take the same value.
+		this.#run('UPDATE store_clock SET change = change + 1')
+		this.#run('UPDATE channels SET change = (SELECT change FROM store_clock) WHERE id = ?', channelId)
 		return this.#toEntry(this.#findEntryRow(id) as EntryRow)
 	}
 
@@ -886,6 +913,32 @@ export class SqliteStore implements Store {
 	#all<T>(sql: string, ...params: SQLInputValue[]): T[] {
 		return this.#db.prepare(sql).all(...params) as T[]
 	}
+}
+
+const TOKEN_PREFIX = 'cyn1.'
+
+/**
+ * A change token: the store's id and its clock, encoded so it reads as one opaque string
+ * rather than a number a caller might compare or treat as an entry order.
+ */
+function writeToken(store: string, change: number): string {
+	return TOKEN_PREFIX + Buffer.from(`${store}:${change}`).toString('base64url')
+}
+
+/** The clock value in a token this store issued. */
+function readToken(token: string, store: string): number {
+	const invalid = () => new CynapseError(`"${token}" is not a change token`, { code: 'invalid_token' })
+	if (!token.startsWith(TOKEN_PREFIX)) throw invalid()
+	const payload = token.slice(TOKEN_PREFIX.length)
+	if (!/^[A-Za-z0-9_-]+$/.test(payload)) throw invalid()
+	const match = /^([0-9a-f-]{36}):(\d+)$/.exec(Buffer.from(payload, 'base64url').toString())
+	if (!match) throw invalid()
+	if (match[1] !== store) {
+		throw new CynapseError('the change token was issued by another store; call changes without --since to start over', {
+			code: 'foreign_token',
+		})
+	}
+	return Number(match[2])
 }
 
 function validateHandle(handle: string): void {

@@ -28,7 +28,10 @@ export function output(data: unknown, readable: () => string): void {
 /**
  * An empty result names what was empty (`0 members found`) rather than printing a
  * blank line, so a caller can tell "nothing matched" from "the command did nothing".
+ * `extra` carries what the caller still needs from an empty result, such as a token.
  */
-export function printEmpty(entity: string): void {
-	output({ count: 0, entity, items: [] }, () => `0 ${entity} found`)
+export function printEmpty(entity: string, extra: Record<string, string> = {}): void {
+	output({ count: 0, entity, items: [], ...extra }, () =>
+		[`0 ${entity} found`, ...Object.entries(extra).map(([key, value]) => `${key}: ${value}`)].join('\n'),
+	)
 }

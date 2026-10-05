@@ -55,7 +55,7 @@ them for its type:
 | Trait | Values | Status |
 | --- | --- | --- |
 | `membership` | `open` (default) or `fixed` | Recorded, not enforced ([Participants](/cynapse/concepts/participants/#how-a-participant-gets-into-a-channel)) |
-| `wake` | `false` (default) or `true` | Recorded, read by nothing. Planned as advice to the runtime that launches agents, never something cynapse acts on. |
+| `wake` | `false` (default) or `true` | Advice to the runtime that launches agents, which reads it alongside `changes` to decide whom to wake. cynapse never acts on it. |
 | `retention` | a retention class | Set through the library only; recorded, not acted on |
 | `defaultView` | a view name | Set through the library only; recorded, not applied yet |
 

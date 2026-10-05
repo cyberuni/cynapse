@@ -1,6 +1,6 @@
 ---
-title: read / unread
-description: Advance your read cursor and list the channels with entries you have not read.
+title: read / unread / changes
+description: Advance your read cursor, list the channels with entries you have not read, and poll for channels that changed.
 ---
 
 Read state is a per-participant cursor on each channel: the last `seq` that participant has read.
@@ -79,3 +79,41 @@ truss-pagination  3 unread
 Under `--json` this is `{ "count": n, "items": [{ "channelId", "handle", "count" }] }`.
 
 To see the entries themselves, use [`entry list --unread`](/cynapse/cli/entry/#cynapse-entry-list).
+
+## `cynapse changes`
+
+List the channels whose last `seq` moved since a change token, and print a new token to pass next
+time. Without `--since` it lists every channel. This is the cheap poll a runtime runs for its sessions:
+call `unread` or `entry list` only on the channels it returns. Every append moves a channel, the
+`cynapse.*` metadata entries included; reading does not. It needs no `--as`.
+
+The token is opaque and belongs to one store. It is not an order of entries: don't compare, sort or
+merge tokens. A token from another database fails with `foreign_token`, and one that isn't a token
+fails with `invalid_token`; call `changes` without `--since` to start over. cynapse never wakes anyone;
+deciding whom to wake, from these changes and the channel's `wake` trait, is the runtime's job.
+
+**Usage**
+
+```bash
+cynapse changes [--since <token>]
+```
+
+| Option | Effect |
+| --- | --- |
+| `--since <token>` | Only channels that changed after this token, from an earlier `changes`. |
+
+**Examples**
+
+```bash
+cynapse changes --since cyn1.ZjBh...
+```
+
+```text
+coord-cynapse  seq 14
+epic-store  seq 9
+token: cyn1.ZjBh...
+```
+
+With nothing changed it prints `0 changed channels found` and the token. Under `--json` this is
+`{ "token", "count": n, "items": [{ "channelId", "handle", "lastSeq" }] }`, and an empty result is
+`{ "count": 0, "entity": "changed channels", "items": [], "token" }`.

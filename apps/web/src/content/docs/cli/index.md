@@ -102,6 +102,8 @@ The `code` is the contract; the `message` is for people and may change. These co
 | `id_conflict` | `1` | A record with that id already exists and differs. Don't retry; investigate. |
 | `port_in_use` | `1` | `cynapse gui` can't bind its port. Pass `--port`. |
 | `gui_not_installed` | `1` | `cynapse gui` can't find `@cyberuni/cynapse-gui`. |
+| `invalid_token` | `1` | `changes --since` got something that isn't a change token. Call `changes` without `--since`. |
+| `foreign_token` | `1` | The change token came from another database. Call `changes` without `--since`. |
 | `timeout` | `3` | `entry wait` saw no reply within `--timeout`. Wait again, or give up. |
 | `failure` | `1` | Any failure not yet given its own code. Read it only as "failed". |
 
@@ -135,6 +137,7 @@ The same constants are exported as `EXIT_OK`, `EXIT_FAILURE`, `EXIT_USAGE` and `
 | [`entry show`](/cynapse/cli/entry/#cynapse-entry-show) | Show one entry, with its refs rendered as links. |
 | [`entry wait`](/cynapse/cli/entry/#cynapse-entry-wait) | Wait for the first reply in an entry's thread from someone else. |
 | [`read`](/cynapse/cli/read/#cynapse-read) | Advance your read cursor on a channel. |
+| [`changes`](/cynapse/cli/read/#cynapse-changes) | Channels that changed since a token; the cheap poll. |
 | [`unread`](/cynapse/cli/read/#cynapse-unread) | Channels with unread entries, including replies in threads you follow. |
 | [`tag`](/cynapse/cli/tag/) | Add or remove tags on an entry. |
 | [`state list`](/cynapse/cli/state/#cynapse-state-list) | List state records. |
