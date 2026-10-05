@@ -12,13 +12,27 @@ Bare `cynapse channel` prints its usage to stderr and exits `2`; `cynapse channe
 
 ## `cynapse channel create`
 
-Create a channel. The id is derived when you give `--anchor` or `--key`, which makes creation
-idempotent: two agents opening the same channel at once end up in one. Repeating the create with
-the same derived id and the same handle, type, title and traits returns the existing channel; if any
-of those differ it fails with an `id_conflict` error. Without `--anchor` or `--key`, a fresh UUIDv7
-is minted and a handle already in use fails with exit `1`.
+Create a channel. The id is derived when you give `--store` and `--native-id`, `--anchor` or `--key`,
+which makes creation idempotent: two agents opening the same channel at once end up in one.
+Without any of them, a fresh UUIDv7 is minted and a handle already in use fails with exit `1`.
 
-Handles are letters, digits and `. _ / -`, starting with a letter or digit, and never shaped like a
+A channel can be [keyed by a subject](/cynapse/concepts/subjects/#channels-keyed-by-subject): pass
+the subject's `--store` and `--native-id`, and the channel id is derived from them. Creating it again
+returns the existing channel, whatever handle, type or title the repeat carries, so every consumer
+that works on the subject lands in the same channel. A subject-keyed channel takes no `--anchor` or
+`--key`, and `--store` and `--native-id` go together (exit `2` if only one is given).
+
+Repeating a create keyed by `--anchor` or `--key` with the same handle, type, title and traits returns
+the existing channel; if any of those differ it fails with an `id_conflict` error. For any derived
+id, a different `--kind` or `--owner` also fails with `id_conflict`.
+
+`--kind` is `work` by default. A work channel has members, not an owner:
+`--owner` on a work channel fails with exit `1`. `--kind address` needs `--owner` (exit `2` without
+it). An address channel with no `--store`, `--anchor` or `--key` gets a minted `cynapse` key, so you
+do not have to invent a native id. An address channel cannot take `--anchor`, and with `--key` and no
+`--store` it fails with exit `1`.
+
+Handles are letters, digits and `. _ / : -`, starting with a letter or digit, and never shaped like a
 UUID (`#` is reserved for `handle#seq`).
 
 **Usage**
@@ -33,7 +47,11 @@ cynapse channel create <handle> --type <type> --title <title> [options]
 | `--title <title>` | Required. A human-readable title. |
 | `--purpose <text>` | What the channel is for. |
 | `--anchor <entry>` | Branch from this entry in a parent channel (UUID or `handle#seq`). The new channel's id is derived from the anchor. |
-| `--key <key>` | A natural key; the channel id is derived from it. |
+| `--key <key>` | A natural key; the channel id is derived from it. Keys starting with `subject:` are reserved and fail with exit `1`; use `--store` and `--native-id`. |
+| `--store <store>` | The subject's store, such as `gh`: lowercase letters, digits, `.` and `-`. Needs `--native-id`. |
+| `--native-id <id>` | The subject's id in its store, such as a GitHub `node_id`; no whitespace. The channel id is derived from the store and this id. Needs `--store`. |
+| `--kind <kind>` | `address` or `work` (the default). Anything else exits `2`. |
+| `--owner <participant>` | The owner of an address channel. Required with `--kind address`; refused on a work channel. |
 | `--member <participant:role>` | Add a member. Repeatable. Without `:role` the role is `member`. |
 | `--context <ref>` | Add a context reference, such as `gh:org/repo#12`. Repeatable. |
 | `--convention <name>` | A convention that applies, plugin-prefixed. Repeatable. |
@@ -60,6 +78,20 @@ cynapse --as sdd-conductor channel create demo-notes \
 ```bash
 # A channel with a natural key: the same key always names the same channel
 cynapse --as sdd-conductor channel create dm-a-b --type cynapse.dm --title "a and b" --key dm:a:b
+```
+
+```bash
+# A work channel for an issue, keyed by its GitHub node_id: running it again returns the same channel
+cynapse --as sdd-conductor channel create gh:cyberuni/cynapse-12 --type demo.issue --title "Issue 12" \
+  --store gh --native-id I_kwDOabc123
+# created gh:cyberuni/cynapse-12  demo.issue  active  1 entries  Issue 12
+```
+
+```bash
+# An address channel for a participant; with no --store, cynapse mints the key
+cynapse --as sdd-conductor channel create alice-box --type cynapse.address --title "Alice" \
+  --kind address --owner alice
+# created alice-box  cynapse.address  active  1 entries  Alice
 ```
 
 ```bash
@@ -111,11 +143,12 @@ List channels, oldest first. With no options it lists all of them. Options combi
 **Usage**
 
 ```bash
-cynapse channel list [--type <type>] [--parent <channel>] [--state <state>]
+cynapse channel list [--kind <kind>] [--type <type>] [--parent <channel>] [--state <state>]
 ```
 
 | Option | Effect |
 | --- | --- |
+| `--kind <kind>` | Only `address` or only `work` channels. Anything else exits `2`. |
 | `--type <type>` | Only channels of exactly this type. |
 | `--parent <channel>` | Only channels anchored directly in this channel. |
 | `--state <state>` | Only channels in this lifecycle state, such as `active` or `reconciled`. |
@@ -173,6 +206,83 @@ cynapse channel rename <channel> <handle>
 ```bash
 cynapse --as sdd-conductor channel rename demo-notes notes-2
 # renamed to notes-2 (aliases: demo-notes)
+```
+
+## `cynapse channel resolve`
+
+Find the [channel keyed by a subject](/cynapse/concepts/subjects/#channels-keyed-by-subject) from its
+store and native id. An alias key added with [`channel add-key`](#cynapse-channel-add-key) resolves
+to the same channel as the first key. When nothing is keyed by the subject it fails with a
+`not_found` error and exit `1`; it never creates a channel.
+
+**Usage**
+
+```bash
+cynapse channel resolve --store <store> --native-id <id>
+```
+
+| Option | Effect |
+| --- | --- |
+| `--store <store>` | Required. The subject's store, such as `gh`. |
+| `--native-id <id>` | Required. The subject's id in its store. |
+
+Text output is one channel line, as in [`channel list`](#cynapse-channel-list). With `--json` it is
+the channel.
+
+**Examples**
+
+```bash
+cynapse channel resolve --store gh --native-id I_kwDOabc123
+# gh:cyberuni/cynapse-12  demo.issue  active  1 entries  Issue 12
+```
+
+```bash
+cynapse channel resolve --store gh --native-id nope
+# error: no channel keyed by gh nope
+```
+
+## `cynapse channel add-key`
+
+Add an alias [key](/cynapse/concepts/subjects/#channels-keyed-by-subject) to a channel, as when the
+subject moved and its store gave it a new native id. Both ids then resolve to the channel. Appends a
+`cynapse.channel.subject-added` entry. Adding a key the channel already has changes nothing; a key
+that already keys another channel fails with exit `1`.
+
+**Usage**
+
+```bash
+cynapse channel add-key <channel> --store <store> --native-id <id>
+```
+
+| Option | Effect |
+| --- | --- |
+| `--store <store>` | Required. The subject's store, such as `gh`. |
+| `--native-id <id>` | Required. The subject's new id in its store. |
+
+**Examples**
+
+```bash
+cynapse --as sdd-conductor channel add-key gh:cyberuni/cynapse-12 --store gh --native-id I_kwDOnew456
+# gh:cyberuni/cynapse-12 keys: gh I_kwDOabc123, gh I_kwDOnew456
+```
+
+## `cynapse channel owner`
+
+Change the owner of an address channel. Appends a `cynapse.channel.owner-changed` entry recording
+the old and new owner. An [address channel](/cynapse/concepts/subjects/#channels-keyed-by-subject) is
+created with an owner; a work channel has none, so this fails on one with exit `1`.
+
+**Usage**
+
+```bash
+cynapse channel owner <channel> <participant>
+```
+
+**Examples**
+
+```bash
+cynapse --as sdd-conductor channel owner alice-box bob
+# alice-box is now owned by bob
 ```
 
 ## `cynapse channel pin`

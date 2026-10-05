@@ -2,9 +2,15 @@
 
 ## Status
 
-Accepted, 2026-10-04. Not built yet. Answers [#30](https://github.com/cyberuni/cynapse/issues/30).
+Accepted, 2026-10-04. Answers [#30](https://github.com/cyberuni/cynapse/issues/30).
 
-Built: the participant registry (needs 1 and 8). A participant's address channel is keyed by the
+Built: the schema version and forward migrations; ADR-0012's key scheme and address
+channels; `excludeTags` and `excludeAuthors` in `ViewFilter`, followed threads in `unread`,
+and `cynapse entry wait` with exit code `3` on timeout; the change token and
+`cynapse changes`; owner-only `cynapse.handled` on address channels; the participant
+registry (needs 1 and 8), with `resolveAddress`, `cynapse participant` and `cynapse entry send`.
+
+In the registry, a participant's address channel is keyed by the
 subject `{ store: 'cynapse', nativeId: <participant id> }`; its handle is made from the name, with
 the first eight characters of the id appended when another channel holds that handle, since names
 are not unique and handles are. `resolveAddress` also matches a live participant's exact id, so
