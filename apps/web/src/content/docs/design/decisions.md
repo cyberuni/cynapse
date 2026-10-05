@@ -22,7 +22,7 @@ changed by a new record that supersedes the old one, never by rewriting it. ADRs
 | [0010](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0010-a-network-of-subjects-across-stores.md) | A network of subjects across stores | Not built | [Subjects across stores](/cynapse/concepts/subjects/) |
 | [0011](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0011-cynapse-stores-only-what-no-other-store-can.md) | Store only what no other store can; guide and compose | Not built | [Subjects across stores](/cynapse/concepts/subjects/#guide-and-compose) |
 | [0012](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0012-channels-are-keyed-by-subject.md) | Channels are keyed by subject: address and work channels | Not built | [Subjects across stores](/cynapse/concepts/subjects/#channels-keyed-by-subject) |
-| [0013](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0013-messaging-between-participants.md) | Messaging between participants on address channels | Proposed | [Participants](/cynapse/concepts/participants/#registration-planned), [Read state](/cynapse/concepts/read-state/#planned) |
+| [0013](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0013-messaging-between-participants.md) | Messaging between participants on work and address channels | Proposed | [Participants](/cynapse/concepts/participants/#registration-planned), [Read state](/cynapse/concepts/read-state/#planned) |
 
 ## Expensive to unwind
 
