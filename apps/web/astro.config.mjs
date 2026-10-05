@@ -77,6 +77,7 @@ export default defineConfig({
 						{ label: 'Overview', slug: 'cli' },
 						{ label: 'channel', slug: 'cli/channel' },
 						{ label: 'entry', slug: 'cli/entry' },
+						{ label: 'participant', slug: 'cli/participant' },
 						{ label: 'read / unread / changes', slug: 'cli/read' },
 						{ label: 'tag', slug: 'cli/tag' },
 						{ label: 'state', slug: 'cli/state' },

@@ -4,6 +4,14 @@
 
 Accepted, 2026-10-04. Not built yet. Answers [#30](https://github.com/cyberuni/cynapse/issues/30).
 
+Built: the participant registry (needs 1 and 8). A participant's address channel is keyed by the
+subject `{ store: 'cynapse', nativeId: <participant id> }`; its handle is made from the name, with
+the first eight characters of the id appended when another channel holds that handle, since names
+are not unique and handles are. `resolveAddress` also matches a live participant's exact id, so
+every candidate an ambiguity lists can still be addressed. `ambiguous_address` exits `4` and
+`unknown_address` exits `5`. A unit registers itself by omitting `registeredBy`, and must then be a
+`service`. Registering a retired key revives the participant with its stored name.
+
 ## Context
 
 A runtime that launches and manages agent sessions, cyberlegion first, keeps its own

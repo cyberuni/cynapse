@@ -6,7 +6,7 @@ description: UUIDv7 and UUIDv5 helpers, the fixed namespace, and CynapseError wi
 ```ts
 import {
   uuidv7, uuidv5, timestampOf, isUuid, CYNAPSE_NAMESPACE,
-  CynapseError, EXIT_OK, EXIT_FAILURE, EXIT_USAGE, EXIT_TIMEOUT, errorCodeFor, exitCodeFor, renderCliError,
+  CynapseError, EXIT_OK, EXIT_FAILURE, EXIT_USAGE, EXIT_TIMEOUT, EXIT_AMBIGUOUS_ADDRESS, EXIT_UNKNOWN_ADDRESS, errorCodeFor, exitCodeFor, renderCliError,
 } from 'cynapse'
 ```
 
@@ -59,7 +59,12 @@ class CynapseError extends Error {
   readonly exitCode: number
   /** A stable, machine-readable reason, for callers that branch on more than the exit code. */
   readonly code?: string
-  constructor(message: string, options?: { exitCode?: number; cause?: unknown; code?: string })
+  /** Structured facts a caller acts on, such as an ambiguous address's `candidates`. */
+  readonly details?: Record<string, unknown>
+  constructor(
+    message: string,
+    options?: { exitCode?: number; cause?: unknown; code?: string; details?: Record<string, unknown> },
+  )
 }
 ```
 
@@ -86,6 +91,8 @@ try {
 | `EXIT_FAILURE` | `1` | The command ran and failed. |
 | `EXIT_USAGE` | `2` | Usage error: bad flag, bad option value, no participant. |
 | `EXIT_TIMEOUT` | `3` | `entry wait` ran out of time with no reply. Waiting again may still get one. |
+| `EXIT_AMBIGUOUS_ADDRESS` | `4` | `resolveAddress` matched more than one live participant (`ambiguous_address`). |
+| `EXIT_UNKNOWN_ADDRESS` | `5` | `resolveAddress` matched no live participant (`unknown_address`). |
 
 The set is small and stable on purpose: anything new needs a reason a caller can act on differently. See
 the [CLI overview](/cynapse/cli/#exit-codes).

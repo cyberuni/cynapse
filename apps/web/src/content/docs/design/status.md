@@ -50,7 +50,7 @@ designed and not yet built. Status as of October 2026.
 | Address channels and work channels keyed by subject | Accepted, not built (ADR-0012). Today a channel takes a free-string `--key` | [Subjects across stores](/cynapse/concepts/subjects/#channels-keyed-by-subject) |
 | Reference shorthand such as `gh:cyberuni/cynapse#12` | Built as free-form text rendered as a link | [Refs](/cynapse/api/refs/) |
 | Routing kinds, prefixed conventions, `init-cynapse`, stamps | Accepted, not built (ADR-0008) | [Decisions](/cynapse/design/decisions/) |
-| Participant registry, `resolveAddress`, retirement | Proposed (ADR-0013). Today participants are created on first use | [Participants](/cynapse/concepts/participants/#registration-planned) |
+| Participant registry, `resolveAddress`, retirement | Built (ADR-0013). `--as` still creates a participant on first use during the prototype | [Participants](/cynapse/concepts/participants/#registration) |
 | Messaging reads: followed threads in `unread`, `excludeTags` and `excludeAuthors`, `entry wait` | Built (ADR-0013) | [Messaging](/cynapse/concepts/messaging/) |
 | Messaging: owner-only `cynapse.handled`, change token | Accepted, not built (ADR-0013) | [Messaging](/cynapse/concepts/messaging/) |
 | The boundary with a runtime | Proposed (ADR-0013) | [cynapse and the runtime](/cynapse/design/runtime/) |

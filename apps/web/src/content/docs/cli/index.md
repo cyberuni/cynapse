@@ -107,6 +107,8 @@ The `code` is the contract; the `message` is for people and may change. These co
 | `invalid_token` | `1` | `changes --since` got something that isn't a change token. Call `changes` without `--since`. |
 | `foreign_token` | `1` | The change token came from another database. Call `changes` without `--since`. |
 | `timeout` | `3` | `entry wait` saw no reply within `--timeout`. Wait again, or give up. |
+| `ambiguous_address` | `4` | The name matches more than one live participant. `error.candidates` lists each one's `id`, `kind`, `name` and `registeredBy`; address one by its id. |
+| `unknown_address` | `5` | The name matches no live participant. Check the name, or register it. |
 | `failure` | `1` | Any failure not yet given its own code. Read it only as "failed". |
 
 A failure that gets its own code later moves out of `failure`; a code above never changes meaning.
@@ -117,10 +119,13 @@ A failure that gets its own code later moves out of `failure`; a code above neve
 | --- | --- |
 | `0` | Success, including `--help` and `--version`. |
 | `1` | The command ran and failed: no such channel or entry (`not_found`), an id conflict (`id_conflict`), a taken handle, a failed load test. |
-| `2` | Usage error: unknown flag or subcommand, a command group run without a subcommand (its usage goes to stderr), missing `--as`, an option value that does not parse (`--data`, `--value`, `--after`, `--limit`, `--port`, …), `--membership` or `--status` outside its set, `tag` with nothing to do, `dev seed --reset` without `--db`. |
+| `2` | Usage error: unknown flag or subcommand, a command group run without a subcommand (its usage goes to stderr), missing `--as`, an option value that does not parse (`--data`, `--value`, `--after`, `--limit`, `--port`, …), `--membership`, `--kind` or `--status` outside its set, `tag` with nothing to do, `dev seed --reset` without `--db`. |
 | `3` | Timed out: `entry wait` saw no reply within `--timeout` (`timeout`). |
+| `4` | Ambiguous address: `participant resolve` or `entry send` named more than one live participant (`ambiguous_address`). |
+| `5` | Unknown address: `participant resolve` or `entry send` named no live participant (`unknown_address`). |
 
-The same constants are exported as `EXIT_OK`, `EXIT_FAILURE`, `EXIT_USAGE` and `EXIT_TIMEOUT` — see
+The same constants are exported as `EXIT_OK`, `EXIT_FAILURE`, `EXIT_USAGE`, `EXIT_TIMEOUT`,
+`EXIT_AMBIGUOUS_ADDRESS` and `EXIT_UNKNOWN_ADDRESS` — see
 [Errors](/cynapse/api/ids/#errors).
 
 ## Commands
@@ -135,9 +140,15 @@ The same constants are exported as `EXIT_OK`, `EXIT_FAILURE`, `EXIT_USAGE` and `
 | [`channel pin`](/cynapse/cli/channel/#cynapse-channel-pin) | Pin an entry in its channel. |
 | [`channel view`](/cynapse/cli/channel/#cynapse-channel-view) | Save a filter as a named view. |
 | [`entry append`](/cynapse/cli/entry/#cynapse-entry-append) | Append an entry; re-appending the same `--id` is a no-op. |
+| [`entry send`](/cynapse/cli/entry/#cynapse-entry-send) | Append to a participant's address channel, resolved by name. |
 | [`entry list`](/cynapse/cli/entry/#cynapse-entry-list) | List a channel's entries in `seq` order, with filters. |
 | [`entry show`](/cynapse/cli/entry/#cynapse-entry-show) | Show one entry, with its refs rendered as links. |
 | [`entry wait`](/cynapse/cli/entry/#cynapse-entry-wait) | Wait for the first reply in an entry's thread from someone else. |
+| [`participant register`](/cynapse/cli/participant/#cynapse-participant-register) | Register a participant and its address channel; idempotent by key. |
+| [`participant retire`](/cynapse/cli/participant/#cynapse-participant-retire) | Retire a participant; it stops resolving. |
+| [`participant rename`](/cynapse/cli/participant/#cynapse-participant-rename) | Rename a participant; the old handle stays as an alias. |
+| [`participant resolve`](/cynapse/cli/participant/#cynapse-participant-resolve) | Resolve a name to exactly one live participant. |
+| [`participant list`](/cynapse/cli/participant/#cynapse-participant-list) | List participants by status and registering unit. |
 | [`read`](/cynapse/cli/read/#cynapse-read) | Advance your read cursor on a channel. |
 | [`changes`](/cynapse/cli/read/#cynapse-changes) | Channels that changed since a token; the cheap poll. |
 | [`unread`](/cynapse/cli/read/#cynapse-unread) | Channels with unread entries, including replies in threads you follow. |
