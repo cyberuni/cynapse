@@ -19,7 +19,10 @@ export interface Participant {
 export interface ChannelTraits {
 	membership: 'open' | 'fixed'
 	retention?: string
-	/** Whether members are woken when an entry lands. */
+	/**
+	 * Advice to the runtime: whether an entry landing here deserves waking a member.
+	 * cynapse never wakes anyone (ADR-0013); a runtime polling `changes` decides.
+	 */
 	wake: boolean
 	defaultView?: string
 }
@@ -240,6 +243,24 @@ export interface UnreadCount {
 	count: number
 }
 
+/** A channel whose `lastSeq` moved after a change token. */
+export interface ChannelChange {
+	channelId: string
+	handle: string
+	lastSeq: number
+}
+
+/**
+ * What `changes` returns: a new token to pass next time, and the channels that moved.
+ *
+ * The token is opaque and local to one store. It says only that something changed; it is
+ * not an order of entries (ADR-0003), so callers never compare, sort or merge tokens.
+ */
+export interface Changes {
+	token: string
+	channels: ChannelChange[]
+}
+
 export interface Store {
 	close(): void
 
@@ -280,6 +301,13 @@ export interface Store {
 	// read state
 	markRead(ref: string, participant: string, seq?: number): Member
 	unread(participant: string): UnreadCount[]
+	/**
+	 * The channels whose `lastSeq` moved after `since`, sorted by handle, and a token to pass
+	 * next time. Without `since`, every channel. Cheap enough to poll; call `unread` or
+	 * `entries` only on what it returns. A token from another store fails with
+	 * `foreign_token`, and one it cannot read with `invalid_token`.
+	 */
+	changes(since?: string): Changes
 
 	// state records
 	setState(ref: string, input: SetStateInput, author: string): StateRecord

@@ -243,3 +243,29 @@ describe('cynapse dev seed', () => {
 		expect(seeded.channels.length).toBeGreaterThan(0)
 	})
 })
+
+describe('cynapse changes', () => {
+	it('lists every channel without --since, then only what changed after the token', async () => {
+		await cli('--as', 'alice', 'channel', 'create', 'auth', '--type', 'sdd.mission', '--title', 'Add auth')
+		await cli('--as', 'alice', 'channel', 'create', 'docs', '--type', 'sdd.mission', '--title', 'Docs')
+		const all = await json('changes')
+		expect(all.items.map((c: any) => c.handle)).toEqual(['auth', 'docs'])
+		expect(all.count).toBe(2)
+
+		await cli('--as', 'bob', 'entry', 'append', 'docs', '--type', 'note')
+		const next = await json('changes', '--since', all.token)
+		expect(next.items).toEqual([expect.objectContaining({ handle: 'docs', lastSeq: 2 })])
+		expect(await cli('changes', '--since', all.token)).toBe(`docs  seq 2\ntoken: ${next.token}`)
+	})
+
+	it('names what was empty and still gives the token to poll with', async () => {
+		await cli('--as', 'alice', 'channel', 'create', 'auth', '--type', 'sdd.mission', '--title', 'Add auth')
+		const { token } = await json('changes')
+		expect(await json('changes', '--since', token)).toEqual({ count: 0, entity: 'changed channels', items: [], token })
+		expect(await cli('changes', '--since', token)).toBe(`0 changed channels found\ntoken: ${token}`)
+	})
+
+	it('fails with a coded error for a token it cannot read', async () => {
+		await expect(cli('changes', '--since', 'nope')).rejects.toMatchObject({ code: 'invalid_token' })
+	})
+})

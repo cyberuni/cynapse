@@ -92,6 +92,61 @@ describe('schema version', () => {
 	})
 })
 
+describe('the change-token migration', () => {
+	it('backfills a database written before it, so the first changes() sees every channel', () => {
+		const path = join(dir, 'v1-changes.db')
+		const db = new DatabaseSync(path)
+		migrate(db, MIGRATIONS.slice(0, 1))
+		const insertChannel = db.prepare(
+			`INSERT INTO channels (id, handle, type, title, traits, state, conventions, created_at)
+			VALUES (?, ?, 't', ?, '{"membership":"open","wake":false}', 'active', '[]', ?)`,
+		)
+		const insertEntry = db.prepare(
+			`INSERT INTO entries (id, channel, seq, author, type, refs, tags, body, recorded_at)
+			VALUES (?, ?, ?, 'alice', 't', '[]', '[]', '', ?)`,
+		)
+		const insertHandle = db.prepare('INSERT INTO channel_handles (handle, channel) VALUES (?, ?)')
+		for (const [id, handle, at] of [
+			['c-old', 'old', '2026-01-01T00:00:00.000Z'],
+			['c-new', 'new', '2026-01-02T00:00:00.000Z'],
+			['c-empty', 'empty', '2026-01-03T00:00:00.000Z'],
+		] as const) {
+			insertChannel.run(id, handle, handle, at)
+			insertHandle.run(handle, id)
+		}
+		insertEntry.run('e1', 'c-new', 1, '2026-01-02T00:00:00.000Z')
+		insertEntry.run('e2', 'c-old', 1, '2026-01-01T00:00:00.000Z')
+		insertEntry.run('e3', 'c-old', 2, '2026-01-04T00:00:00.000Z')
+		db.close()
+
+		const upgraded = new SqliteStore({ path })
+		try {
+			const first = upgraded.changes()
+			expect(first.channels).toEqual([
+				{ channelId: 'c-empty', handle: 'empty', lastSeq: 0 },
+				{ channelId: 'c-new', handle: 'new', lastSeq: 1 },
+				{ channelId: 'c-old', handle: 'old', lastSeq: 2 },
+			])
+			expect(upgraded.changes(first.token).channels).toEqual([])
+
+			upgraded.append('old', { author: 'alice', type: 't' })
+			expect(upgraded.changes(first.token).channels.map((c) => c.handle)).toEqual(['old'])
+		} finally {
+			upgraded.close()
+		}
+		const check = new DatabaseSync(path)
+		try {
+			expect(check.prepare('SELECT handle, change FROM channels ORDER BY change').all()).toEqual([
+				{ handle: 'empty', change: 0 },
+				{ handle: 'new', change: 1 },
+				{ handle: 'old', change: 3 },
+			])
+		} finally {
+			check.close()
+		}
+	})
+})
+
 describe('migrate', () => {
 	const v1: Migration = 'CREATE TABLE IF NOT EXISTS notes (id TEXT PRIMARY KEY) STRICT;'
 

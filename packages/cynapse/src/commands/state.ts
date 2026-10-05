@@ -36,6 +36,22 @@ export function registerRead(program: Command): void {
 		})
 }
 
+export function registerChanges(program: Command): void {
+	program
+		.command('changes')
+		.description('channels that changed since a token; poll with the token it prints')
+		.option('--since <token>', 'the token from the last call; every channel when absent')
+		.action(async (opts, command: Command) => {
+			await withStore(command, (store) => {
+				const { token, channels } = store.changes(opts.since)
+				if (!channels.length) return printEmpty('changed channels', { token })
+				output({ token, count: channels.length, items: channels }, () =>
+					[...channels.map((c) => `${c.handle}  seq ${c.lastSeq}`), `token: ${token}`].join('\n'),
+				)
+			})
+		})
+}
+
 export function registerTag(program: Command): void {
 	program
 		.command('tag <entry> [tags...]')

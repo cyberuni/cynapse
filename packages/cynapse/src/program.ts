@@ -4,7 +4,7 @@ import { registerChannel } from './commands/channel.js'
 import { registerDev } from './commands/dev.js'
 import { registerEntry } from './commands/entry.js'
 import { registerGui } from './commands/gui.js'
-import { registerRead, registerState, registerTag } from './commands/state.js'
+import { registerChanges, registerRead, registerState, registerTag } from './commands/state.js'
 import { setOutputFormat } from './output.js'
 import { readPackageVersion } from './version.js'
 
@@ -61,6 +61,7 @@ export function createProgram(version: string = readPackageVersion()): Command {
 	registerChannel(program)
 	registerEntry(program)
 	registerRead(program)
+	registerChanges(program)
 	registerTag(program)
 	registerState(program)
 	registerGui(program)

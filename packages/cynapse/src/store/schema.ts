@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import type { Migration } from './migrate.js'
 
 /**
@@ -117,6 +118,31 @@ CREATE TABLE IF NOT EXISTS views (
 	PRIMARY KEY (channel, name)
 ) STRICT;
 `,
+	// 2: the store-wide change token (ADR-0013, need 10). `store_clock` holds one row: the
+	// store's own id, which a token carries so a token from another store is refused, and
+	// `change`, bumped by every append. `channels.change` is the value at the channel's last
+	// append, so `changes(since)` is a range read on its index. Existing channels are
+	// numbered 1..n by their latest entry, and the clock starts at n, so the first
+	// `changes()` after the upgrade sees every channel that has entries.
+	(db) => {
+		db.exec(`
+CREATE TABLE store_clock (
+	singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
+	store TEXT NOT NULL,
+	change INTEGER NOT NULL
+) STRICT;
+ALTER TABLE channels ADD COLUMN change INTEGER NOT NULL DEFAULT 0;
+UPDATE channels SET change = ranked.n
+FROM (
+	SELECT channel, ROW_NUMBER() OVER (ORDER BY MAX(recorded_at), channel) AS n FROM entries GROUP BY channel
+) AS ranked
+WHERE ranked.channel = channels.id;
+CREATE INDEX channels_change ON channels (change);
+`)
+		db.prepare(
+			'INSERT INTO store_clock (singleton, store, change) VALUES (1, ?, (SELECT COALESCE(MAX(change), 0) FROM channels))',
+		).run(randomUUID())
+	},
 ]
 
 /** The version a database is at once every migration has run. */
