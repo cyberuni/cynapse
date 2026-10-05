@@ -137,6 +137,16 @@ describe('registerParticipant', () => {
 		expect(channel.handle).toBe('Ada-Lovelace')
 	})
 
+	it('makes a handle from a name with long runs of dashes in linear time', () => {
+		const dashes = '-'.repeat(50_000)
+		const started = performance.now()
+		const inner = register('cyberlegion:role/inner', `x${dashes}y`).channel
+		const edges = register('cyberlegion:role/edges', `${dashes}z${dashes}`).channel
+		expect(performance.now() - started).toBeLessThan(1_000)
+		expect(inner.handle).toBe(`x${dashes}y`)
+		expect(edges.handle).toBe('z')
+	})
+
 	it('bumps the change token, since the registration is an append', () => {
 		const before = store.changes().token
 		const { channel } = register('cyberlegion:role/reviewer', 'reviewer')

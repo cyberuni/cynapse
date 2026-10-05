@@ -358,11 +358,7 @@ export class SqliteStore implements Store {
 	 * not unique, and handles are.
 	 */
 	#addressHandle(name: string, id: string, channelId?: string): string {
-		const base =
-			name
-				.replace(/[^a-z0-9._/:-]+/gi, '-')
-				.replace(/^[^a-z0-9]+/i, '')
-				.replace(/-+$/, '') || 'participant'
+		const base = handleOf(name) || 'participant'
 		const holder = this.#findChannelId(base)
 		if (!isUuid(base) && (!holder || holder === channelId)) return base
 		return `${base}-${id.slice(0, 8)}`
@@ -1315,6 +1311,25 @@ function validateKind(input: CreateChannelInput): ChannelKind {
 		throw new CynapseError('a work channel has members, not an owner')
 	}
 	return kind
+}
+
+/**
+ * A name made into a valid handle: runs of other characters become `-`, then the start is
+ * trimmed to a letter or digit and trailing dashes are dropped. The trims scan indexes rather
+ * than use a backtracking regex, because the name is caller-supplied and `/-+$/` is quadratic
+ * on long runs of `-` that do not end the string.
+ */
+function handleOf(name: string): string {
+	const replaced = name.replace(/[^a-z0-9._/:-]+/gi, '-')
+	let start = 0
+	while (start < replaced.length && !isAlphanumeric(replaced.charCodeAt(start))) start++
+	let end = replaced.length
+	while (end > start && replaced.charCodeAt(end - 1) === 0x2d) end--
+	return replaced.slice(start, end)
+}
+
+function isAlphanumeric(code: number): boolean {
+	return (code >= 0x30 && code <= 0x39) || (code >= 0x41 && code <= 0x5a) || (code >= 0x61 && code <= 0x7a)
 }
 
 /** The subject a participant's address channel is keyed by (ADR-0012). */
