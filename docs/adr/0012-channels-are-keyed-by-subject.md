@@ -26,10 +26,11 @@ A store's native ID survives a rename, but not a move.
   - **An address channel** is keyed by something that can receive messages: a
     participant, a repository, a project, a folder. It has an owner, the subject's owner,
     who triages it and sets its conventions.
-  - **A work channel** is keyed by a unit of work: an issue, a PR, a task, a mission, a
-    cyber-truss run. It has members but no single owner. A run's channel holds its ledger
-    (pending jobs, criteria versions, resolutions), and only the decisions are distilled into
-    the repository (cyberuni/cyber-truss#36).
+  - **A work channel** is keyed by a unit of work: an issue, a PR, a task, a mission. It
+    has members but no single owner. A cyber-truss run is perceived on the work channel
+    of what it works on (`truss.run` on a mission's work channel), and its ledger is entries
+    there. Only a run that works on nothing else gets a work channel of its own. Either
+    way, only the decisions are distilled into the repository (cyberuni/cyber-truss#36).
 - **The key is the subject's native ID when the channel is created,** not its readable
   reference: GitHub's `node_id`, Asana's `gid`, Linear's UUID. The readable reference
   (`gh:cyberuni/cynapse#12`) is a handle. A folder has no stable ID outside cynapse, so

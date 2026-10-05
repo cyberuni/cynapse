@@ -239,16 +239,18 @@ Examples of how consumers map onto these terms, not part of the core:
   is a cynapse-native `sdd.mission` channel. Its raw ledger is every entry, and its distilled ledger is a view plus the state
   `reconciled`.
 - **cyber-truss:** a *workflow* is the creation and propagation of changes across artifact
-  sets. *Arbitration* is how workflow agents discuss until they reach consensus. It is a
-  `truss.arbitration` child channel, anchored at a `truss.arbitration-needed` entry in the
-  mission channel. The members are the electorate, and the answers (`agree`, `disagree`,
-  `uncontested/yield`, `request-recess`) are typed entries. The pending answers are state,
-  and the decision is written back into the mission channel (LC08). Arbitrations are
-  short-lived and stay in cynapse's store. If one stalls (cyber-truss decides what counts
-  as a stall), the stall is written back to the work channel as an outcome entry that
-  references the anchor, with a `needs-input` state record. The decider named by the
-  consumer's convention gets the ask in their address channel, with a summary and a link,
-  not the transcript. Their decision entry clears the state and closes the arbitration.
+  sets. A run is perceived as `truss.run` on the work channel of what it works on, usually
+  a mission's, and its ledger is entries there. *Arbitration* is how workflow agents
+  discuss until they reach consensus. It is a `truss.arbitration` child channel, anchored
+  at a `truss.arbitration-needed` entry in the mission's work channel. The members are the
+  electorate, and the answers (`agree`, `disagree`, `uncontested/yield`, `request-recess`)
+  are typed entries. The pending answers are state, and the decision is written back into
+  the mission's work channel (LC08). Arbitrations are short-lived and stay in cynapse's
+  store. If one stalls (cyber-truss decides what counts as a stall), the stall is written
+  back to the work channel as an outcome entry that references the anchor, with a
+  `needs-input` state record. The decider named by the consumer's convention gets the ask
+  in their address channel, with a summary and a link, not the transcript. Their decision
+  entry clears the state and closes the arbitration.
 
 ### Shape
 
