@@ -1,0 +1,80 @@
+---
+// The anatomy of one channel, drawn from the quick start's `review-12`: entries in `seq`
+// order, a reply, per-reader cursors, a state record and a child channel at an anchor.
+// Static inline SVG; see diagram.css.
+import './diagram.css'
+
+const entries = [
+	{ seq: 1, label: 'created', meta: true },
+	{ seq: 2, label: 'joined', meta: true },
+	{ seq: 3, label: 'joined', meta: true },
+	{ seq: 4, label: 'context', meta: true },
+	{ seq: 5, label: 'question', meta: false },
+	{ seq: 6, label: 'answer', meta: false },
+	{ seq: 7, label: 'label', meta: true },
+	{ seq: 8, label: 'state', meta: true },
+]
+const x = (seq: number) => 24 + (seq - 1) * 88
+const center = (seq: number) => x(seq) + 38
+---
+
+<figure class="cynapse-diagram not-content">
+	<svg viewBox="0 0 760 310" role="img" aria-labelledby="channel-title channel-desc">
+		<title id="channel-title">One channel: entries, a thread, cursors, state and a child</title>
+		<desc id="channel-desc">
+			The channel review-12 holds eight entries numbered 1 to 8 by seq. Entries 1 to 4, 7
+			and 8 are cynapse metadata entries; 5 is a question and 6 an answer whose parent is 5.
+			Alice's cursor is at 5 and Bob's at 6. Entry 8 records a change to the state record
+			cursor-rule, which is open and waiting on Carol. The child channel review-12-arb
+			branches from anchor entry 6.
+		</desc>
+		<defs>
+			<marker id="channel-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+				<path d="M0 0 10 5 0 10z" class="head" />
+			</marker>
+		</defs>
+
+		<text class="layer" x="24" y="22">CHANNEL review-12</text>
+		<text class="edge-label" x="736" y="22" text-anchor="end">seq: arrival order, no gaps →</text>
+
+		{entries.map((e) => (
+			<g>
+				<rect class={e.meta ? 'box meta' : 'box accent'} x={x(e.seq)} y="64" width="76" height="56" rx="6" />
+				<text class="name" x={center(e.seq)} y="88" text-anchor="middle">#{e.seq}</text>
+				<text class="note" x={center(e.seq)} y="108" text-anchor="middle">{e.label}</text>
+			</g>
+		))}
+
+		<path class="edge" d={`M ${center(6)} 64 C ${center(6)} 36, ${center(5)} 36, ${center(5)} 62`} marker-end="url(#channel-arrow)" />
+		<text class="edge-label" x={(center(5) + center(6)) / 2} y="40" text-anchor="middle">parent</text>
+
+		<path class="head" d={`M ${center(5)} 126 l -6 10 h 12 z`} />
+		<text class="edge-label" x={center(5)} y="152" text-anchor="middle">alice</text>
+		<path class="head" d={`M ${center(6) - 14} 126 l -6 10 h 12 z`} />
+		<text class="edge-label" x={center(6) - 14} y="152" text-anchor="middle">bob</text>
+
+		<line class="edge" x1={center(6) + 16} y1="120" x2={center(6) + 16} y2="208" marker-end="url(#channel-arrow)" />
+		<text class="edge-label" x={center(6) + 22} y="186">anchor</text>
+		<line class="edge" x1={center(8)} y1="120" x2={center(8)} y2="208" marker-end="url(#channel-arrow)" />
+
+		<rect class="box" x="24" y="210" width="240" height="76" rx="8" />
+		<text class="layer" x="40" y="234">METADATA IS WRITTEN AS ENTRIES</text>
+		<text class="note" x="40" y="256">outlined boxes are cynapse.* entries:</text>
+		<text class="note" x="40" y="274">the channel records its own history</text>
+
+		<rect class="box" x="300" y="210" width="250" height="76" rx="8" />
+		<text class="layer" x="316" y="234">CHILD CHANNEL</text>
+		<text class="name" x="316" y="258">review-12-arb</text>
+		<text class="note" x="316" y="276">branched at anchor review-12#6</text>
+
+		<rect class="box" x="570" y="210" width="166" height="76" rx="8" />
+		<text class="layer" x="586" y="234">STATE RECORD</text>
+		<text class="name" x="586" y="258">cursor-rule</text>
+		<text class="note" x="586" y="276">open → carol</text>
+	</svg>
+	<figcaption>
+		The <a href="/cynapse/getting-started/quick-start/">quick start</a>'s channel, simplified.
+		Each reader's cursor is their own and is not an entry. A transition of the state record is
+		entry #8. The child channel's outcome comes back to review-12 as a new entry referring to #6.
+	</figcaption>
+</figure>

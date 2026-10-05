@@ -3,6 +3,8 @@ title: Channels
 description: The one primitive — an ordered, append-only sequence of entries with a stable identity, renameable handles, and anchors.
 ---
 
+import ChannelDiagram from '../../../components/ChannelDiagram.astro'
+
 A **channel** is an ordered, append-only sequence of immutable
 [entries](/cynapse/concepts/entries/), with exactly one order owner at a time. Ledgers,
 arbitrations, coordination, change feeds and conversations are all channels. cynapse has
@@ -11,6 +13,8 @@ no second structure for mail, threads or DMs.
 Many participants write to a channel and read from it. Earlier design records call it a
 *stream*. The name was changed because "stream" suggests one-way flow
 ([ADR-0009](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0009-call-the-stream-a-channel.md)).
+
+<ChannelDiagram />
 
 ## Identity
 

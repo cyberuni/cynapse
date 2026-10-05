@@ -4,6 +4,11 @@ import { defineConfig } from 'astro/config'
 export default defineConfig({
 	site: 'https://cyberuni.github.io',
 	base: '/cynapse',
+	// Pages that moved. GitHub Pages has no server-side redirects, so Astro writes a page at
+	// the old path that forwards to the new one.
+	redirects: {
+		'/getting-started/introduction': '/cynapse/what-is/',
+	},
 	integrations: [
 		starlight({
 			title: 'cynapse',
@@ -26,11 +31,20 @@ export default defineConfig({
 				},
 			],
 			sidebar: [
+				{ label: 'What is cynapse', slug: 'what-is' },
+				{ label: 'Quick start', slug: 'getting-started/quick-start' },
 				{
-					label: 'Getting Started',
+					label: 'Design',
 					items: [
-						{ label: 'Introduction', slug: 'getting-started/introduction' },
-						{ label: 'Quick start', slug: 'getting-started/quick-start' },
+						{ label: 'How it fits together', slug: 'design' },
+						{ label: 'What cynapse stores', slug: 'design/scope' },
+						{
+							label: 'cynapse and the runtime',
+							slug: 'design/runtime',
+							badge: { text: 'Proposed', variant: 'caution' },
+						},
+						{ label: 'Status', slug: 'design/status' },
+						{ label: 'Decisions', slug: 'design/decisions' },
 					],
 				},
 				{
@@ -43,9 +57,18 @@ export default defineConfig({
 						{ label: 'Types, tags and traits', slug: 'concepts/types-tags-traits' },
 						{ label: 'State and lifecycle', slug: 'concepts/state-and-lifecycle' },
 						{ label: 'Views', slug: 'concepts/views' },
+						{
+							label: 'Subjects across stores',
+							slug: 'concepts/subjects',
+							badge: { text: 'Planned', variant: 'note' },
+						},
+						{
+							label: 'Messaging',
+							slug: 'concepts/messaging',
+							badge: { text: 'Proposed', variant: 'caution' },
+						},
 						{ label: 'Storage', slug: 'concepts/storage' },
 						{ label: 'Agent-friendly output', slug: 'concepts/agent-friendly-output' },
-						{ label: 'Subjects across stores', slug: 'concepts/subjects' },
 					],
 				},
 				{
@@ -71,7 +94,6 @@ export default defineConfig({
 						{ label: 'Ids and errors', slug: 'api/ids' },
 					],
 				},
-				{ label: 'Design decisions', slug: 'design/decisions' },
 			],
 			editLink: {
 				baseUrl: 'https://github.com/cyberuni/cynapse/edit/main/apps/web/',

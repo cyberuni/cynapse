@@ -1,0 +1,101 @@
+---
+// Where cynapse sits: consumers, the stores that hold subjects, cynapse's own store, and the
+// runtime that launches and wakes sessions. Static inline SVG; see diagram.css.
+import './diagram.css'
+---
+
+<figure class="cynapse-diagram not-content">
+	<svg viewBox="0 0 760 490" role="img" aria-labelledby="system-title system-desc">
+		<title id="system-title">How cynapse fits with stores, consumers and the runtime</title>
+		<desc id="system-desc">
+			Consumers (agents, people, UIs) fetch from and write back to the external stores
+			directly, and append to, read and compose through cynapse. The runtime launches and
+			wakes consumers, registers participants with cynapse and polls it for changes.
+			cynapse refers to subjects in the stores by reference and never calls them. Its
+			channels live in stock SQLite outside any repository; a hub is planned for more
+			than one machine. Only distilled results reach a repository.
+		</desc>
+		<defs>
+			<marker id="system-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+				<path d="M0 0 10 5 0 10z" class="head" />
+			</marker>
+			<marker id="system-arrow-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+				<path d="M0 0 10 5 0 10z" class="head muted" />
+			</marker>
+		</defs>
+
+		<rect class="box" x="20" y="20" width="720" height="76" rx="8" />
+		<text class="layer" x="36" y="44">CONSUMERS</text>
+		<text class="name" x="36" y="74">Agents · people · UIs such as Cortex</text>
+		<text class="note" x="400" y="74">each with its own credentials for the stores</text>
+
+		<rect class="box" x="20" y="150" width="200" height="180" rx="8" />
+		<text class="layer" x="36" y="174">STORES</text>
+		<text class="name" x="36" y="200">GitHub · Asana · Linear</text>
+		<text class="note" x="36" y="226">hold the subjects:</text>
+		<text class="note" x="36" y="244">issues, PRs, tasks,</text>
+		<text class="note" x="36" y="262">repositories</text>
+		<text class="note" x="36" y="288">relations as metadata</text>
+		<text class="note" x="36" y="306">on both ends</text>
+
+		<rect class="box accent" x="280" y="150" width="200" height="180" rx="8" />
+		<text class="layer" x="296" y="174">CYNAPSE</text>
+		<text class="name" x="296" y="200">channels of entries</text>
+		<text class="note" x="296" y="226">keyed by subject</text>
+		<text class="note" x="296" y="244">seq order, threads</text>
+		<text class="note" x="296" y="262">cursors, tags, state</text>
+		<text class="note" x="296" y="288">participants, addresses</text>
+		<text class="note" x="296" y="306">guides and composes</text>
+
+		<rect class="box" x="540" y="150" width="200" height="180" rx="8" />
+		<text class="layer" x="556" y="174">RUNTIME</text>
+		<text class="name" x="556" y="200">cyberlegion</text>
+		<text class="note" x="556" y="226">wakes sessions</text>
+		<text class="note" x="556" y="244">observes liveness</text>
+		<text class="note" x="556" y="262">claims: which session</text>
+		<text class="note" x="556" y="280">acts as a role</text>
+		<text class="note" x="556" y="306">resolves native IDs</text>
+
+		<rect class="box dashed" x="20" y="390" width="200" height="76" rx="8" />
+		<text class="layer" x="36" y="414">REPOSITORY</text>
+		<text class="note" x="36" y="438">distilled results only:</text>
+		<text class="note" x="36" y="456">an ADR, a summary</text>
+
+		<rect class="box" x="280" y="390" width="200" height="76" rx="8" />
+		<text class="layer" x="296" y="414">STORAGE</text>
+		<text class="name" x="296" y="440">stock SQLite, WAL</text>
+		<text class="note" x="296" y="458">$CYNAPSE_HOME, no daemon</text>
+
+		<rect class="box dashed" x="540" y="390" width="200" height="76" rx="8" />
+		<text class="layer" x="556" y="414">HUB (PLANNED)</text>
+		<text class="note" x="556" y="438">owns seq beyond</text>
+		<text class="note" x="556" y="456">one machine</text>
+
+		<line class="edge" x1="120" y1="96" x2="120" y2="148" marker-end="url(#system-arrow)" />
+		<text class="edge-label" x="128" y="127">fetch · write back</text>
+		<line class="edge" x1="380" y1="96" x2="380" y2="148" marker-end="url(#system-arrow)" />
+		<text class="edge-label" x="388" y="127">append · read · compose</text>
+		<line class="edge" x1="640" y1="150" x2="640" y2="98" marker-end="url(#system-arrow)" />
+		<text class="edge-label" x="648" y="127">launches · wakes</text>
+
+		<line class="edge" x1="540" y1="216" x2="482" y2="216" marker-end="url(#system-arrow)" />
+		<text class="edge-label" x="511" y="206" text-anchor="middle">register</text>
+		<text class="edge-label" x="511" y="234" text-anchor="middle">poll</text>
+
+		<line class="edge dashed" x1="280" y1="270" x2="222" y2="270" marker-end="url(#system-arrow-muted)" />
+		<text class="edge-label" x="251" y="260" text-anchor="middle">refers</text>
+		<text class="edge-label" x="251" y="288" text-anchor="middle">by ref</text>
+
+		<line class="edge" x1="380" y1="330" x2="380" y2="388" marker-end="url(#system-arrow)" />
+		<line class="edge dashed" x1="480" y1="428" x2="538" y2="428" marker-end="url(#system-arrow-muted)" />
+		<text class="edge-label" x="509" y="418" text-anchor="middle">sync</text>
+		<line class="edge dashed" x1="280" y1="428" x2="222" y2="428" marker-end="url(#system-arrow-muted)" />
+		<text class="edge-label" x="251" y="418" text-anchor="middle">distil</text>
+	</svg>
+	<figcaption>
+		Solid arrows are calls; a dashed arrow is a reference or a planned path. Nothing points
+		from cynapse to a store or to the runtime: cynapse holds no credentials, calls no store,
+		and wakes no one. Channels keyed by subject, participant registration and the change
+		poll are designed, not built (see <a href="/cynapse/design/status/">Status</a>).
+	</figcaption>
+</figure>

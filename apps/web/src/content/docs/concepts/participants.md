@@ -9,7 +9,7 @@ belongs to one participant, and every member of a channel is one.
 
 cynapse owns participant identity and addressing. Units built on top of it, such as
 cyberlegion, register their participants with cynapse. cynapse never registers with them
-and never calls them back.
+and never calls them back ([cynapse and the runtime](/cynapse/design/runtime/)).
 
 ## What a participant is today
 
@@ -100,9 +100,13 @@ is planned for the hub, where the channel is already the unit of access.
 - **Names resolve.** `resolveAddress(name)` matches live participants exactly. More than
   one match fails and lists every candidate. It never picks one. Sending to a name no
   longer creates a participant by accident.
-- **A message to a participant is an entry in their address channel.** There is no
-  mailbox and no DM. A durable role is a participant whose cursor outlives the sessions
-  that read as it.
+- **A message is an entry in the channel of what it is about:** a work item's work
+  channel, or for direct traffic the addressee's address channel
+  ([Messaging](/cynapse/concepts/messaging/)). A durable role is a participant whose
+  cursor outlives the sessions that read as it.
+- **Liveness is asserted by the runtime,** `live` or `retired`. cynapse records it and
+  never measures it. Which session acts as a role is the runtime's claim, not cynapse's
+  ([cynapse and the runtime](/cynapse/design/runtime/)).
 - **The registering unit is a participant too,** and cynapse records which unit
   registered whom.
 

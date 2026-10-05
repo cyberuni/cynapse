@@ -1,0 +1,106 @@
+---
+title: How cynapse fits together
+description: The overall design on one page — the parts, who owns what, and the rules that keep them apart.
+---
+
+import SystemDiagram from '../../../components/SystemDiagram.astro'
+
+Each fact has one home. Subjects live in the stores that own them, the conversation about
+them lives in cynapse, and the runtime that launches agents decides when to wake them.
+
+<SystemDiagram />
+
+## What each part owns
+
+### The stores
+
+GitHub, Asana, Linear and beads hold the **subjects**: issues, PRs, tasks, repositories.
+A subject's metadata and its relations to other subjects ("#15 closes #12") live there
+too, written on both ends. Consumers read and write these stores directly, with their own
+credentials. See [Subjects across stores](/cynapse/concepts/subjects/).
+
+### cynapse
+
+cynapse holds what none of those stores can: [channels](/cynapse/concepts/channels/) of
+immutable [entries](/cynapse/concepts/entries/) in `seq` order, with threads, per-reader
+[cursors](/cynapse/concepts/read-state/), [tags](/cynapse/concepts/types-tags-traits/) and
+[state records](/cynapse/concepts/state-and-lifecycle/). It owns
+[participant](/cynapse/concepts/participants/) addressing and identity. For facts it
+doesn't hold, it **guides** a consumer to the one call that fetches them, and
+**composes** what the consumer passes back. See [What cynapse stores](/cynapse/design/scope/).
+
+### Consumers
+
+Agents, people, and UIs such as Cortex do the work. Each brings its own namespaced
+[types](/cynapse/concepts/types-tags-traits/): SDD writes `sdd.decision` entries, cyber-truss
+opens `truss.arbitration` channels. cynapse doesn't know what a mission or an arbitration
+is.
+
+### The runtime
+
+A runtime such as [cyberlegion](https://github.com/cyberuni/cyberlegion) launches agent
+sessions. It registers their participants with cynapse, polls cynapse for changes, and
+decides whom to wake. It also observes whether a session is alive, decides which session
+acts as a role, and resolves native IDs from the stores. See
+[cynapse and the runtime](/cynapse/design/runtime/).
+
+### Storage
+
+One stock SQLite file per machine, outside any repository, shared by every process with
+no daemon. Past one machine, a hub will own `seq`. Only distilled results, such as an ADR
+or a reconciled channel's summary, reach a repository. See
+[Storage](/cynapse/concepts/storage/).
+
+## The rules
+
+1. **cynapse stores only what no other store can.** Everything else stays where it lives,
+   and cynapse refers to it as `gh:cyberuni/cynapse#12`
+   ([ADR-0011](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0011-cynapse-stores-only-what-no-other-store-can.md)).
+2. **cynapse holds no credentials and never calls a store.** Auth, rate limits and APIs stay
+   with the consumer (ADR-0011).
+3. **Entries never change.** An edit, a retraction or a later tag is a new entry. Every
+   metadata change is written as an entry too
+   ([ADR-0003](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0003-entry-identity-and-order.md)).
+4. **Each channel has one order owner.** `seq` is arrival order with no gaps: SQLite's write
+   transaction on one machine, the hub beyond it
+   ([ADR-0007](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0007-stock-sqlite-outside-the-repository.md)).
+5. **A channel is keyed by its subject, with no type in the key.** Everyone working on #12
+   meets in #12's one channel
+   ([ADR-0012](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0012-channels-are-keyed-by-subject.md)).
+6. **Hierarchy is a view, not identity.** Relations live on the subjects, never in channel
+   structure
+   ([ADR-0010](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0010-a-network-of-subjects-across-stores.md)).
+7. **A message goes on the channel of what it is about.** Work traffic on the work
+   channel, direct traffic on the addressee's address channel. cynapse never wakes anyone;
+   the dependency runs one way, from the runtime to cynapse
+   ([ADR-0013](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0013-messaging-between-participants.md),
+   proposed).
+8. **Raw conversation stays out of repositories.** Agents reach it through narrow CLI reads,
+   never by searching files (ADR-0007).
+
+## Expensive to unwind
+
+Most choices can be revisited cheaply. These can't, because their values are written into
+every entry or relied on by every consumer:
+
+- the entry `id` shape (UUIDv7) and per-channel `seq`;
+- channel identity as a UUID, derived from an anchor or a key;
+- the channel key: a subject's native ID, with no type;
+- the key format cynapse builds from a store and a native ID;
+- participant IDs derived from registration keys (proposed);
+- where traffic goes: work traffic on the work channel, direct traffic on the address
+  channel (proposed);
+- cynapse holding no credentials and never calling another store;
+- cynapse never waking anyone and never measuring session liveness (proposed).
+
+Cheap to revisit: relation names, the write-back triggers, how a reference shorthand
+renders, the storage engine and the hub technology behind the `Store` interface.
+
+## Read on
+
+- [What cynapse stores](/cynapse/design/scope/): the one-home rule, guide and compose,
+  and write-back.
+- [cynapse and the runtime](/cynapse/design/runtime/): who registers, who wakes, who
+  claims a role.
+- [Status](/cynapse/design/status/): what is built, accepted and proposed.
+- [Decisions](/cynapse/design/decisions/): the ADRs behind each rule.
