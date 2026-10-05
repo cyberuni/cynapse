@@ -2,6 +2,7 @@ import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { DatabaseSync, type SQLInputValue } from 'node:sqlite'
 import { isDeepStrictEqual } from 'node:util'
+import { channelIdOf, channelKey, type SubjectId } from '../channel-key.js'
 import { CynapseError } from '../cli-error.js'
 import { isUuid, timestampOf, uuidv5, uuidv7 } from '../ids.js'
 import { migrate } from './migrate.js'
@@ -11,6 +12,7 @@ import type {
 	Briefing,
 	Changes,
 	Channel,
+	ChannelKind,
 	ChannelTraits,
 	ChannelTree,
 	ConditionalAppend,
@@ -22,6 +24,7 @@ import type {
 	Member,
 	Participant,
 	ParticipantKind,
+	RegisterAddressInput,
 	SearchQuery,
 	SetStateInput,
 	StateQuery,
@@ -54,6 +57,8 @@ interface ChannelRow {
 	state: string
 	conventions: string
 	created_at: string
+	kind: ChannelKind
+	owner: string | null
 }
 
 interface EntryRow {
@@ -156,16 +161,24 @@ export class SqliteStore implements Store {
 	// ── channels ─────────────────────────────────────────────────────────────────
 
 	createChannel(input: CreateChannelInput): Channel {
+		const kind = validateKind(input)
 		const id = this.#write(() => {
 			const anchor = input.anchor ? this.#requireEntryRow(input.anchor) : undefined
-			const id = anchor ? uuidv5(anchor.id) : input.key ? uuidv5(input.key) : uuidv7(this.#clock())
+			const id = input.subject
+				? (this.#subjectChannelId(input.subject) ?? channelIdOf(input.subject))
+				: anchor
+					? uuidv5(anchor.id)
+					: input.key
+						? uuidv5(input.key)
+						: uuidv7(this.#clock())
 			// A derived id makes creation idempotent: two agents opening the same channel at
 			// once end up in one channel, not two.
 			if (this.#get('SELECT 1 AS found FROM channels WHERE id = ?', id)) {
-				const field = this.#createConflict(id, input)
+				const field = this.#createConflict(id, input, kind)
 				if (field) {
+					const source = input.subject ? 'subject' : anchor ? 'anchor' : 'key'
 					throw new CynapseError(
-						`channel id ${id} (derived from the ${anchor ? 'anchor' : 'key'}) already exists and differs in ${field}`,
+						`channel id ${id} (derived from the ${source}) already exists and differs in ${field}`,
 						{
 							code: 'id_conflict',
 						},
@@ -180,8 +193,8 @@ export class SqliteStore implements Store {
 			const traits = { ...DEFAULT_TRAITS, ...input.traits }
 			this.#run(
 				`INSERT INTO channels (id, handle, type, title, purpose, parent_channel, parent_entry, traits, state,
-					conventions, created_at)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+					conventions, created_at, kind, owner)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 				id,
 				input.handle,
 				input.type,
@@ -193,8 +206,12 @@ export class SqliteStore implements Store {
 				input.state ?? 'active',
 				JSON.stringify(input.conventions ?? []),
 				this.#now(),
+				kind,
+				input.owner ?? null,
 			)
 			this.#run('INSERT INTO channel_handles (handle, channel) VALUES (?, ?)', input.handle, id)
+			if (input.subject) this.#insertSubject(input.subject, id)
+			if (input.owner) this.#ensureParticipant(input.owner)
 			this.#appendIn(id, {
 				author: input.author,
 				type: 'cynapse.channel.created',
@@ -202,6 +219,9 @@ export class SqliteStore implements Store {
 					handle: input.handle,
 					type: input.type,
 					title: input.title,
+					kind,
+					...(input.owner ? { owner: input.owner } : {}),
+					...(input.subject ? { subject: subjectOf(input.subject) } : {}),
 					...(input.purpose ? { purpose: input.purpose } : {}),
 					...(anchor ? { anchor: anchor.id } : {}),
 				},
@@ -211,12 +231,25 @@ export class SqliteStore implements Store {
 		return this.#requireChannel(id)
 	}
 
+	registerAddress(input: RegisterAddressInput): Channel {
+		return this.createChannel({
+			...input,
+			subject: { store: 'cynapse', nativeId: uuidv7(this.#clock()) },
+			kind: 'address',
+		})
+	}
+
 	/**
 	 * The first field in which a repeated create of a derived-id channel differs from the
 	 * stored channel. A handle still matches after a rename, since the old one is an alias.
+	 * A subject's channel is shared by every consumer that works on the subject (ADR-0012),
+	 * so only a contradiction about the subject itself, its kind or owner, conflicts.
 	 */
-	#createConflict(id: string, input: CreateChannelInput): string | undefined {
+	#createConflict(id: string, input: CreateChannelInput, kind: ChannelKind): string | undefined {
 		const stored = this.#get<ChannelRow>('SELECT * FROM channels WHERE id = ?', id) as ChannelRow
+		if (stored.kind !== kind) return 'kind'
+		if ((stored.owner ?? undefined) !== input.owner) return 'owner'
+		if (input.subject) return undefined
 		if (this.#findChannelId(input.handle) !== id) return 'handle'
 		if (stored.type !== input.type) return 'type'
 		if (stored.title !== input.title) return 'title'
@@ -229,9 +262,49 @@ export class SqliteStore implements Store {
 		return id ? this.#loadChannel(id, options.as) : undefined
 	}
 
+	getChannelBySubject(subject: SubjectId): Channel | undefined {
+		const id = this.#subjectChannelId(subject)
+		return id ? this.#loadChannel(id) : undefined
+	}
+
+	addSubject(ref: string, subject: SubjectId, author: string): Channel {
+		const id = this.#write(() => {
+			const id = this.#requireChannelId(ref)
+			const holder = this.#subjectChannelId(subject)
+			if (holder === id) return id
+			if (holder) throw new CynapseError(`subject ${channelKey(subject)} already keys channel ${holder}`)
+			this.#insertSubject(subject, id)
+			this.#appendIn(id, { author, type: 'cynapse.channel.subject-added', data: { subject: subjectOf(subject) } })
+			return id
+		})
+		return this.#requireChannel(id)
+	}
+
+	setOwner(ref: string, owner: string, author: string): Entry {
+		return this.#writeEntry(() => {
+			const id = this.#requireChannelId(ref)
+			const row = this.#get<{ kind: ChannelKind; owner: string | null }>(
+				'SELECT kind, owner FROM channels WHERE id = ?',
+				id,
+			) as { kind: ChannelKind; owner: string | null }
+			if (row.kind !== 'address') throw new CynapseError(`channel ${ref} is a work channel, which has no owner`)
+			this.#ensureParticipant(owner)
+			this.#run('UPDATE channels SET owner = ? WHERE id = ?', owner, id)
+			return this.#appendIn(id, {
+				author,
+				type: 'cynapse.channel.owner-changed',
+				data: { ...(row.owner ? { from: row.owner } : {}), to: owner },
+			})
+		})
+	}
+
 	listChannels(query: ListChannelsQuery = {}): Channel[] {
 		const where: string[] = []
 		const params: SQLInputValue[] = []
+		if (query.kind) {
+			where.push('kind = ?')
+			params.push(query.kind)
+		}
 		if (query.type) {
 			where.push('type = ?')
 			params.push(query.type)
@@ -762,6 +835,25 @@ export class SqliteStore implements Store {
 		this.#run("INSERT OR IGNORE INTO participants (id, kind, name) VALUES (?, 'agent', ?)", id, id)
 	}
 
+	/** The channel a subject keys, validating the subject's key format on the way. */
+	#subjectChannelId(subject: SubjectId): string | undefined {
+		channelKey(subject)
+		return this.#get<{ channel: string }>(
+			'SELECT channel FROM channel_subjects WHERE store = ? AND native_id = ?',
+			subject.store,
+			subject.nativeId,
+		)?.channel
+	}
+
+	#insertSubject(subject: SubjectId, channelId: string): void {
+		this.#run(
+			'INSERT INTO channel_subjects (store, native_id, channel) VALUES (?, ?, ?)',
+			subject.store,
+			subject.nativeId,
+			channelId,
+		)
+	}
+
 	#findChannelId(ref: string): string | undefined {
 		if (isUuid(ref)) {
 			const row = this.#get<{ id: string }>('SELECT id FROM channels WHERE id = ?', ref.toLowerCase())
@@ -803,6 +895,10 @@ export class SqliteStore implements Store {
 			id,
 			row.handle,
 		).map((alias) => alias.handle)
+		const subjects = this.#all<{ store: string; nativeId: string }>(
+			'SELECT store, native_id AS nativeId FROM channel_subjects WHERE channel = ? ORDER BY rowid',
+			id,
+		).map(subjectOf)
 		const members = this.#all<Member>(
 			`SELECT m.participant, m.role, COALESCE(c.seq, 0) AS cursor
 			FROM members m LEFT JOIN cursors c ON c.channel = m.channel AND c.participant = m.participant
@@ -839,6 +935,9 @@ export class SqliteStore implements Store {
 		return {
 			id: row.id,
 			handle: row.handle,
+			kind: row.kind,
+			...(row.owner ? { owner: row.owner } : {}),
+			subjects,
 			aliases,
 			type: row.type,
 			title: row.title,
@@ -943,10 +1042,38 @@ function readToken(token: string, store: string): number {
 
 function validateHandle(handle: string): void {
 	// `#` separates a handle from a seq in a short reference, and a handle shaped like a
-	// UUID would shadow a channel id.
-	if (!/^[a-z0-9][a-z0-9._/-]*$/i.test(handle) || isUuid(handle)) {
-		throw new CynapseError(`"${handle}" is not a valid channel handle (letters, digits, . _ / -)`)
+	// UUID would shadow a channel id. `:` lets a readable reference (`gh:cyberuni/cynapse`)
+	// be the handle of its subject's channel.
+	if (!/^[a-z0-9][a-z0-9._/:-]*$/i.test(handle) || isUuid(handle)) {
+		throw new CynapseError(`"${handle}" is not a valid channel handle (letters, digits, . _ / : -)`)
 	}
+}
+
+/**
+ * The channel's kind, after checking that the input is consistent with it: an address
+ * channel has a subject and an owner and is not anchored, and a work channel has no owner.
+ */
+function validateKind(input: CreateChannelInput): ChannelKind {
+	if (input.key?.startsWith('subject:')) {
+		throw new CynapseError(`key "${input.key}" uses the reserved subject: form; pass the subject instead`)
+	}
+	if (input.subject && (input.anchor || input.key)) {
+		throw new CynapseError('a channel keyed by a subject takes no anchor or key')
+	}
+	const kind = input.kind ?? 'work'
+	if (kind === 'address') {
+		if (input.anchor) throw new CynapseError('an address channel cannot branch from an anchor')
+		if (!input.subject) throw new CynapseError('an address channel needs a subject; use registerAddress to mint one')
+		if (!input.owner) throw new CynapseError('an address channel needs an owner')
+	} else if (input.owner) {
+		throw new CynapseError('a work channel has members, not an owner')
+	}
+	return kind
+}
+
+/** A subject as a plain object, so one passed with extra fields is stored and compared as itself. */
+function subjectOf(subject: SubjectId): SubjectId {
+	return { store: subject.store, nativeId: subject.nativeId }
 }
 
 function mergeFilters(view: ViewFilter, extra: ViewFilter): ViewFilter {

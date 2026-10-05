@@ -1,3 +1,4 @@
+import type { SubjectId } from '../channel-key.js'
 import { renderRef } from '../refs.js'
 import type { Briefing, Channel, ChannelTree, Entry, StateRecord } from '../store/types.js'
 
@@ -38,6 +39,8 @@ export function stateLine(state: StateRecord, handle?: string): string {
 export function briefing(brief: Briefing): string {
 	const { channel } = brief
 	const lines = [`${channel.handle}  ${channel.type}  ${channel.state}`, channel.title]
+	lines.push(channel.owner ? `address of ${channel.owner}` : 'work channel')
+	if (channel.subjects.length) lines.push(`keys: ${channel.subjects.map(subjectText).join(', ')}`)
 	if (channel.purpose) lines.push(`purpose: ${channel.purpose}`)
 	if (channel.parent) lines.push(`parent anchor: ${channel.parent.entryId} (seq ${channel.parent.seq})`)
 	if (channel.aliases.length) lines.push(`aliases: ${channel.aliases.join(', ')}`)
@@ -61,6 +64,10 @@ export function treeLines(trees: ChannelTree[], depth = 0): string[] {
 		`${'  '.repeat(depth)}${channelLine(tree.channel)}`,
 		...treeLines(tree.children, depth + 1),
 	])
+}
+
+export function subjectText(subject: SubjectId): string {
+	return `${subject.store} ${subject.nativeId}`
 }
 
 function truncate(text: string, max: number): string {
