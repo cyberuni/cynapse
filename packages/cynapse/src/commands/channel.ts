@@ -113,7 +113,9 @@ export function registerChannel(program: Command): void {
 		.option('--type <type>', 'include this type or prefix.* (repeatable)', collect)
 		.option('--exclude-type <type>', 'exclude this type or prefix.* (repeatable)', collect)
 		.option('--tag <tag>', 'include entries with this tag (repeatable)', collect)
+		.option('--exclude-tag <tag>', 'exclude entries that carry this tag now (repeatable)', collect)
 		.option('--author <participant>', 'include entries by this author (repeatable)', collect)
+		.option('--exclude-author <participant>', 'exclude entries by this author (repeatable)', collect)
 		.action(async (ref: string, name: string, opts, command: Command) => {
 			const author = actor(command)
 			await withStore(command, (store) => {
@@ -122,6 +124,8 @@ export function registerChannel(program: Command): void {
 					...(opts.excludeType ? { excludeTypes: opts.excludeType } : {}),
 					...(opts.tag ? { tags: opts.tag } : {}),
 					...(opts.author ? { authors: opts.author } : {}),
+					...(opts.excludeTag ? { excludeTags: opts.excludeTag } : {}),
+					...(opts.excludeAuthor ? { excludeAuthors: opts.excludeAuthor } : {}),
 				}
 				const logged = store.defineView(ref, name, filter, author)
 				output(logged, () => `view ${name} saved on ${logged.channel}`)

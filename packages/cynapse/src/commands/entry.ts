@@ -47,7 +47,9 @@ export function registerEntry(program: Command): void {
 		.option('--type <type>', 'only this type or prefix.* (repeatable)', collect)
 		.option('--exclude-type <type>', 'exclude this type or prefix.* (repeatable)', collect)
 		.option('--tag <tag>', 'only entries with this tag (repeatable)', collect)
+		.option('--exclude-tag <tag>', 'exclude entries that carry this tag now (repeatable)', collect)
 		.option('--author <participant>', 'only entries by this author (repeatable)', collect)
+		.option('--exclude-author <participant>', 'exclude entries by this author (repeatable)', collect)
 		.option('--view <name>', 'apply a saved view, such as distilled')
 		.option('--root <entry>', 'only this thread')
 		.option('--after <seq>', 'only entries after this seq')
@@ -57,7 +59,9 @@ export function registerEntry(program: Command): void {
 				types: opts.type,
 				excludeTypes: opts.excludeType,
 				tags: opts.tag,
+				excludeTags: opts.excludeTag,
 				authors: opts.author,
+				excludeAuthors: opts.excludeAuthor,
 				view: opts.view,
 				root: opts.root,
 				metaOnly: Boolean(opts.metaOnly),

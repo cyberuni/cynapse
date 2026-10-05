@@ -159,7 +159,7 @@ given at write time.
 ### `appendUnless(ref, input, unless)`
 
 ```ts
-interface EntryMatch extends ViewFilter {   // types, excludeTypes, tags, authors
+interface EntryMatch extends ViewFilter {   // types, excludeTypes, tags, excludeTags, authors, excludeAuthors
   parent?: string      // only direct replies to this entry
 }
 
@@ -188,7 +188,7 @@ given fields must hold. A retry of the write that already landed (the same `inpu
 ### `entries(ref, query)`
 
 ```ts
-interface EntryQuery extends ViewFilter {   // types, excludeTypes, tags, authors
+interface EntryQuery extends ViewFilter {   // types, excludeTypes, tags, excludeTags, authors, excludeAuthors
   afterSeq?: number
   limit?: number
   view?: string        // a saved view; its filter is combined with the other options
@@ -200,7 +200,9 @@ interface EntryQuery extends ViewFilter {   // types, excludeTypes, tags, author
 ```
 
 `types` and `excludeTypes` accept an exact type or a namespace prefix ending in `.*` (`sdd.*`). Within
-one list values are alternatives; the lists are ANDed. A `view` that does not exist throws
+one list values are alternatives; the lists are ANDed. `excludeTags` drops an entry that carries any of
+those tags in its current set, so removing a tag brings the entry back. A view's exclusions add to the
+query's. A `view` that does not exist throws
 `no view named "<name>" on channel <ref>`.
 
 ### `search(query)`

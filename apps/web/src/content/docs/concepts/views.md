@@ -23,11 +23,16 @@ A filter combines:
 | `--type <type>` | Entries of this type, or `prefix.*` (repeatable; any of them) |
 | `--exclude-type <type>` | Not this type or `prefix.*` |
 | `--tag <tag>` | Entries carrying **any** of these tags |
+| `--exclude-tag <tag>` | Not entries that carry this tag now, such as `cynapse.handled` |
 | `--author <participant>` | Entries by any of these authors |
+| `--exclude-author <participant>` | Not entries by this author |
 
 Defining a view writes a `cynapse.view.defined` entry, and defining it again under the
 same name replaces the filter. The channel's [briefing](/cynapse/concepts/channels/#the-briefing)
 lists its views.
+
+An excluded tag is checked against the entry's *current* tags, so removing the tag
+brings the entry back.
 
 `entry list --view <name>` combines the view's filter with any other options on the
 command, so `--view distilled --after 12 --meta-only` works.
@@ -35,8 +40,6 @@ command, so `--view distilled --after 12 --meta-only` works.
 ## Limits
 
 - A view filters one channel. Searching across channels is `Store.search`, in the library.
-- Tags can only be included, not excluded. ADR-0013 proposes `excludeTags` and
-  `excludeAuthors`, for "unhandled" and "replies from someone else".
 - Applying a view by default when a channel is `reconciled` is planned
   ([State and lifecycle](/cynapse/concepts/state-and-lifecycle/#cleanup-is-a-state-not-a-deletion)).
 

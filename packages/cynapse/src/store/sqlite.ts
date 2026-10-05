@@ -883,6 +883,8 @@ function mergeFilters(view: ViewFilter, extra: ViewFilter): ViewFilter {
 		excludeTypes: [...(view.excludeTypes ?? []), ...(extra.excludeTypes ?? [])],
 		tags: both(view.tags, extra.tags),
 		authors: both(view.authors, extra.authors),
+		excludeTags: [...(view.excludeTags ?? []), ...(extra.excludeTags ?? [])],
+		excludeAuthors: [...(view.excludeAuthors ?? []), ...(extra.excludeAuthors ?? [])],
 	}
 }
 
@@ -906,6 +908,16 @@ function applyFilter(filter: ViewFilter, where: string[], params: SQLInputValue[
 	if (filter.authors?.length) {
 		where.push(`e.author IN (${filter.authors.map(() => '?').join(', ')})`)
 		params.push(...filter.authors)
+	}
+	if (filter.excludeTags?.length) {
+		where.push(
+			`NOT EXISTS (SELECT 1 FROM entry_tags t WHERE t.entry = e.id AND t.tag IN (${filter.excludeTags.map(() => '?').join(', ')}))`,
+		)
+		params.push(...filter.excludeTags)
+	}
+	if (filter.excludeAuthors?.length) {
+		where.push(`e.author NOT IN (${filter.excludeAuthors.map(() => '?').join(', ')})`)
+		params.push(...filter.excludeAuthors)
 	}
 }
 

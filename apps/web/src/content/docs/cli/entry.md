@@ -84,7 +84,9 @@ cynapse entry list <channel> [options]
 | `--type <type>` | Only this type, or every type under a prefix with `prefix.*`. Repeatable. |
 | `--exclude-type <type>` | Exclude this type or `prefix.*`. Repeatable. |
 | `--tag <tag>` | Only entries with this tag. Repeatable. |
+| `--exclude-tag <tag>` | Exclude entries that carry this tag now. Repeatable. |
 | `--author <participant>` | Only entries by this author. Repeatable. |
+| `--exclude-author <participant>` | Exclude entries by this author. Repeatable. |
 | `--view <name>` | Apply a saved [view](/cynapse/concepts/views/). Fails if the channel has no view of that name. |
 | `--root <entry>` | Only this thread: the root entry and every reply under it. |
 | `--after <seq>` | Only entries with a `seq` greater than this. |
@@ -105,6 +107,11 @@ cynapse entry list notes-2
 ```bash
 # What is new for me, without the bookkeeping entries
 cynapse --as council entry list notes-2 --unread --exclude-type 'cynapse.*'
+```
+
+```bash
+# What nobody has handled yet, leaving out my own entries
+cynapse --as council entry list notes-2 --exclude-tag cynapse.handled --exclude-author council
 ```
 
 ```bash

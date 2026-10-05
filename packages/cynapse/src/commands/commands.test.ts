@@ -129,6 +129,30 @@ describe('cynapse entry', () => {
 		expect(await cli('--as', 'bob', 'entry', 'list', 'auth', '--unread')).toBe('0 unread entries found')
 	})
 
+	it('excludes by tag and by author, and saves both in a view', async () => {
+		await cli('--as', 'alice', 'entry', 'append', 'auth', '--type', 'note', '--body', 'a')
+		await cli('--as', 'bob', 'entry', 'append', 'auth', '--type', 'note', '--body', 'b')
+		await cli('--as', 'carol', 'entry', 'append', 'auth', '--type', 'note', '--body', 'c')
+		await cli('--as', 'alice', 'tag', 'auth#2', 'cynapse.handled')
+		const bodies = async (...args: string[]) =>
+			(await json('entry', 'list', 'auth', '--type', 'note', ...args)).items.map((e: any) => e.body)
+		expect(await bodies('--exclude-tag', 'cynapse.handled')).toEqual(['b', 'c'])
+		expect(await bodies('--exclude-author', 'alice', '--exclude-author', 'bob')).toEqual(['c'])
+		await cli(
+			'--as',
+			'alice',
+			'channel',
+			'view',
+			'auth',
+			'open',
+			'--exclude-tag',
+			'cynapse.handled',
+			'--exclude-author',
+			'carol',
+		)
+		expect(await bodies('--view', 'open')).toEqual(['b'])
+	})
+
 	it('requires a participant for a write', async () => {
 		vi.stubEnv('CYNAPSE_PARTICIPANT', '')
 		const error = await cli('entry', 'append', 'auth', '--type', 'note').catch((e: unknown) => e)

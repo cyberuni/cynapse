@@ -198,6 +198,35 @@ describe('entries', () => {
 		expect(store.unread('bob')).toEqual([{ channelId: expect.any(String), handle: 'auth', count: 2 }])
 	})
 
+	it('excludes entries by current tag and by author', () => {
+		mission()
+		store.append('auth', { author: 'alice', type: 'note', body: 'handled', tags: ['sdd.risk'] })
+		store.append('auth', { author: 'bob', type: 'note', body: 'open' })
+		store.append('auth', { author: 'carol', type: 'note', body: 'later handled' })
+		store.addTags('auth#4', ['cynapse.handled'], 'alice')
+		store.append('auth', { author: 'carol', type: 'note', body: 'reopened', tags: ['cynapse.handled'] })
+		store.removeTags('auth#6', ['cynapse.handled'], 'alice')
+		const notes = { types: ['note'] }
+		expect(
+			store.entries('auth', { ...notes, excludeTags: ['cynapse.handled', 'sdd.risk'] }).map((e) => e.body),
+		).toEqual(['open', 'reopened'])
+		expect(store.entries('auth', { ...notes, excludeAuthors: ['alice', 'carol'] }).map((e) => e.body)).toEqual(['open'])
+		expect(store.search({ ...notes, excludeAuthors: ['bob'], excludeTags: ['sdd.risk'] }).map((e) => e.body)).toEqual([
+			'later handled',
+			'reopened',
+		])
+	})
+
+	it("combines a view's exclusions with the query's", () => {
+		mission()
+		store.append('auth', { author: 'alice', type: 'note', body: 'a', tags: ['x.done'] })
+		store.append('auth', { author: 'bob', type: 'note', body: 'b' })
+		store.append('auth', { author: 'carol', type: 'note', body: 'c' })
+		store.defineView('auth', 'open', { types: ['note'], excludeTags: ['x.done'] }, 'alice')
+		expect(store.entries('auth', { view: 'open' }).map((e) => e.body)).toEqual(['b', 'c'])
+		expect(store.entries('auth', { view: 'open', excludeAuthors: ['bob'] }).map((e) => e.body)).toEqual(['c'])
+	})
+
 	it('filters through a saved view such as distilled', () => {
 		mission()
 		store.append('auth', { author: 'alice', type: 'note', body: 'chatter' })
