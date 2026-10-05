@@ -14,11 +14,13 @@ channel — with unread entries and open `needs-input` records waiting for the `
 Timestamps come from a fixed clock starting 2026-09-21, so the world is the same every time.
 
 The command refuses to touch a database that already has channels: it fails with exit `1` unless you
-pass `--reset`. `--reset` deletes the database file (and its `-wal` and `-shm` companions) first.
+pass `--reset`. `--reset` deletes the database file (and its `-wal` and `-shm` companions) first,
+so it needs an explicit `--db`: without one it fails with exit `2` and leaves your real database at
+`$CYNAPSE_HOME/cynapse.db` untouched.
 
 :::caution
-`dev seed` with no `--db` writes to your real database at `$CYNAPSE_HOME/cynapse.db`, and `--reset`
-deletes it. Always pass `--db` to a scratch file.
+`dev seed` with no `--db` still writes to your real database at `$CYNAPSE_HOME/cynapse.db`. Pass
+`--db` to a scratch file.
 :::
 
 **Usage**
@@ -29,7 +31,7 @@ cynapse --db <path> dev seed [--reset]
 
 | Option | Effect |
 | --- | --- |
-| `--reset` | Delete the database first. |
+| `--reset` | Delete the database first. Requires `--db`. |
 
 **Examples**
 

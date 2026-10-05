@@ -45,7 +45,7 @@ agents has to pass it on, or they write to different databases.
 ## No migrations yet
 
 The schema has no version and there are no migrations. A database created before a schema
-change may not open correctly. Re-seed it with `cynapse dev seed --reset`, which deletes the database first, so point it at a scratch one with `--db`. Schema
+change may not open correctly. Re-seed it with `cynapse --db <path> dev seed --reset`, which deletes the database first; `--reset` refuses to run without `--db`, so it never deletes your real database. Schema
 versioning is a precondition for the first release a runtime depends on.
 
 ## Beyond one machine (planned)

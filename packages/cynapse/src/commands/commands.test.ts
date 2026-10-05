@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -174,5 +174,28 @@ describe('cynapse state', () => {
 		expect(error).toBeInstanceOf(CynapseError)
 		expect((error as CynapseError).message).toBe('--status must be open or resolved')
 		expect((error as CynapseError).exitCode).toBe(EXIT_USAGE)
+	})
+})
+
+describe('cynapse dev seed', () => {
+	it('refuses --reset without an explicit --db, leaving the default database alone', async () => {
+		vi.stubEnv('CYNAPSE_HOME', dir)
+		const home = join(dir, 'cynapse.db')
+		writeFileSync(home, 'real data')
+		const error = await createProgram('0.0.0')
+			.parseAsync(['node', 'cynapse', 'dev', 'seed', '--reset'])
+			.catch((e: unknown) => e)
+		expect(error).toBeInstanceOf(CynapseError)
+		expect((error as CynapseError).exitCode).toBe(EXIT_USAGE)
+		expect((error as CynapseError).message).toMatch(/--db/)
+		expect(readFileSync(home, 'utf8')).toBe('real data')
+		vi.unstubAllEnvs()
+	})
+
+	it('rebuilds an explicit --db with --reset', async () => {
+		await cli('dev', 'seed')
+		const seeded = await json('dev', 'seed', '--reset')
+		expect(seeded.db).toBe(db)
+		expect(seeded.channels.length).toBeGreaterThan(0)
 	})
 })
