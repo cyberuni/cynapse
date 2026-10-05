@@ -10,13 +10,16 @@ from a few Council actions, which are written back as ordinary entries and state
 ## Run it
 
 ```sh
-# From the repository root: seed an example database, then start Cortex on it.
-pnpm cynapse dev --db /tmp/cynapse.db dev seed --reset
-CORTEX_DB=/tmp/cynapse.db pnpm cortex dev      # http://127.0.0.1:5173
-
-# Your own cynapse database: CORTEX_DB defaults to cynapse's own path ($CYNAPSE_HOME/cynapse.db).
-pnpm cortex dev
+# From the repository root: seed the example world, then start Cortex on it.
+pnpm seed                 # --reset rebuilds it
+pnpm cortex dev           # http://127.0.0.1:5173
 ```
+
+Both read the same database: `CORTEX_DB`, else cynapse's own path
+(`$CYNAPSE_HOME/cynapse.db`, `~/.cynapse/cynapse.db` by default). `pnpm seed` creates it
+and refuses one that already has channels unless you pass `--reset`. To keep the example
+apart from your own cynapse database, point `CORTEX_DB` elsewhere for both:
+`CORTEX_DB=/tmp/cynapse.db pnpm seed`, then `CORTEX_DB=/tmp/cynapse.db pnpm cortex dev`.
 
 `pnpm cortex build && pnpm cortex start` serves the built UI and the API on one port
 (`PORT`, default 4173). `pnpm cortex screenshots [url]` captures every view from a

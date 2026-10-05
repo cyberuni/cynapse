@@ -27,7 +27,7 @@ describe('openCortexStore', () => {
 	})
 
 	it('explains how to get a database when there is none', () => {
-		expect(() => openCortexStore({ CORTEX_DB: join(dir, 'missing.db') })).toThrow(/dev seed/)
+		expect(() => openCortexStore({ CORTEX_DB: join(dir, 'missing.db') })).toThrow(/`pnpm seed`/)
 	})
 })
 
