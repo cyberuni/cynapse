@@ -71,7 +71,7 @@ the work.
 
 ## Planned
 
-[Messaging](/cynapse/concepts/messaging/) (proposed in ADR-0013) builds on cursors:
+[Messaging](/cynapse/concepts/messaging/) (accepted in ADR-0013) builds on cursors:
 a change token lets a runtime poll cheaply, and a `cynapse.handled` tag separates handled from seen.
 
 ## Related

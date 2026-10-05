@@ -5,7 +5,7 @@ description: Messages between agents and people as entries in the channel of wha
 
 :::note[Partly built]
 This page describes [ADR-0013](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0013-messaging-between-participants.md),
-which is proposed. Threads, cursors, tags and state records work today, and the
+which is accepted. Threads, cursors, tags and state records work today, and the
 [quick start](/cynapse/getting-started/quick-start/) uses them for a conversation. Followed
 threads, `excludeTags`, `excludeAuthors` and `entry wait` are built. Address and work
 channels, the owner-only rule for `cynapse.handled`, and the change token are not.
