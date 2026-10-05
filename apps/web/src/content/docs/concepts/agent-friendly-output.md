@@ -44,21 +44,27 @@ $ cynapse --as zed --json unread
 }
 ```
 
-## Errors are one line
+## Errors go where the data would have
 
-A failure prints one line on stderr that names what failed, with no stack trace:
+A failure prints on stdout, where the agent is already reading, and names what failed with no stack
+trace. stderr is left for diagnostics an agent doesn't need to read.
 
 ```console
 $ cynapse entry show nope#9
-no entry found for "nope#9"
+error: no entry found for "nope#9"
 ```
 
-Under `--json` the line is a JSON object with a stable code, so a caller branches on the reason
-rather than on prose:
+Under `--json` the error is a JSON object formatted like any other output, with a stable code, so a
+caller branches on the reason rather than on prose:
 
 ```console
 $ cynapse --json entry show nope#9
-{"error":{"code":"not_found","message":"no entry found for \"nope#9\""}}
+{
+  "error": {
+    "code": "not_found",
+    "message": "no entry found for \"nope#9\""
+  }
+}
 ```
 
 The codes are listed in the [CLI overview](/cynapse/cli/#errors).

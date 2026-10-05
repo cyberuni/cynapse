@@ -2,4 +2,4 @@
 'cynapse': minor
 ---
 
-Render errors as `{"error":{"code","message"}}` on stderr under `--json`, including usage errors, and code a missing channel, entry or view `not_found`.
+Print errors on stdout, as axi asks: `error: <message>` in text and `{ "error": { "code", "message" } }` under `--json`, including usage errors. A missing channel, entry or view is now coded `not_found`.

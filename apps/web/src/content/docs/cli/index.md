@@ -75,17 +75,22 @@ matches nothing says so — `0 channels found`, `0 unread entries found` — rat
 blank line; under `--json` it is `{ "count": 0, "entity": "channels", "items": [] }`. A non-empty
 listing under `--json` is `{ "count": n, "items": [...] }`.
 
-Errors go to stderr as one line, with no stack trace. In text mode the line is the message; under
-`--json` it is one JSON object carrying a stable code. See [Errors](#errors).
+Errors go to stdout too, with no stack trace: `error: <message>` in text, and a JSON object carrying a
+stable code under `--json`. stderr is left for diagnostics. See [Errors](#errors).
 
 ## Errors
 
-Under `--json`, a failure — including a usage error — prints `{"error":{"code","message"}}` on stderr,
-so a caller branches on the reason without parsing prose:
+Under `--json`, a failure — including a usage error — prints `{ "error": { "code", "message" } }` on
+stdout, so a caller branches on the reason without parsing prose:
 
 ```console
 $ cynapse --json entry show nope#9
-{"error":{"code":"not_found","message":"no entry found for \"nope#9\""}}
+{
+  "error": {
+    "code": "not_found",
+    "message": "no entry found for \"nope#9\""
+  }
+}
 ```
 
 The `code` is the contract; the `message` is for people and may change. These codes are stable:

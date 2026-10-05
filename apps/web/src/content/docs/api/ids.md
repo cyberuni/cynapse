@@ -101,6 +101,7 @@ its exit code is `EXIT_USAGE` and `failure` for everything else.
 
 ### `renderCliError(error, format?)` → `string`
 
-One line, no stack. The message of an `Error`, with its cause's message appended after a colon when the
-cause adds information; `String(error)` for anything else. With `format` `'json'` the line is
-`{"error":{"code","message"}}`, the code from `errorCodeFor`. This is what the CLI prints to stderr.
+No stack. The message of an `Error`, with its cause's message appended after a colon when the
+cause adds information; `String(error)` for anything else, behind an `error: ` label. With `format`
+`'json'` it is `{ "error": { "code", "message" } }`, pretty-printed like other `--json` output, the code
+from `errorCodeFor`. This is what the CLI prints to stdout on failure.

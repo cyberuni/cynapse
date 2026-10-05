@@ -38,13 +38,16 @@ export function exitCodeFor(error: unknown): number {
 }
 
 /**
- * One line on stderr, no stack. Agents read this text, so it names what failed rather
- * than dumping a trace; the cause is appended when it adds information. Under `--json`
- * the line is `{"error":{"code","message"}}`, so a caller branches on the code, not prose.
+ * What the CLI prints to stdout on failure, no stack. Agents read stdout, not stderr, so
+ * an error goes where the data would have (axi principle 6): `error: <message>` in text,
+ * `{ "error": { code, message } }` under `--json`, formatted like any other output so a
+ * caller branches on the code, not prose. The cause is appended when it adds information.
  */
 export function renderCliError(error: unknown, format: OutputFormat = 'text'): string {
 	const message = describe(error)
-	return format === 'json' ? JSON.stringify({ error: { code: errorCodeFor(error), message } }) : message
+	return format === 'json'
+		? JSON.stringify({ error: { code: errorCodeFor(error), message } }, null, 2)
+		: `error: ${message}`
 }
 
 function describe(error: unknown): string {

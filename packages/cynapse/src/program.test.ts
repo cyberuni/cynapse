@@ -32,6 +32,11 @@ describe(createProgram.name, () => {
 		expect((error as CynapseError).code).toBe('usage')
 	})
 
+	it("drops Commander's own error: label, which the renderer adds", async () => {
+		const error = await parse('--nope').catch((e: unknown) => e)
+		expect((error as CynapseError).message).toBe("unknown option '--nope'")
+	})
+
 	it('switches to JSON before a usage error under --json, so the error renders as JSON', async () => {
 		await parse('--json', '--nope').catch(() => {})
 		expect(getOutputFormat()).toBe('json')

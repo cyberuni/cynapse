@@ -24,7 +24,7 @@ async function run(argv: string[]): Promise<number> {
 		return EXIT_OK
 	} catch (error) {
 		if (error instanceof CommanderError && CLEAN_EXITS.has(error.code)) return EXIT_OK
-		console.error(renderCliError(error, getOutputFormat()))
+		console.log(renderCliError(error, getOutputFormat()))
 		return exitCodeFor(error)
 	}
 }
