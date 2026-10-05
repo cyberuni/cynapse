@@ -2,6 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { channelIdOf } from '../channel-key.js'
 import { CynapseError, EXIT_TIMEOUT, EXIT_USAGE } from '../cli-error.js'
 import { setOutputFormat } from '../output.js'
 import { createProgram } from '../program.js'
@@ -79,6 +80,107 @@ describe('cynapse channel', () => {
 
 	it('names what was empty', async () => {
 		expect(await cli('channel', 'list')).toBe('0 channels found')
+	})
+})
+
+describe('cynapse channel, keyed by subject', () => {
+	const repo = ['--store', 'gh', '--native-id', 'R_kgDOPfmJ6A']
+	const createRepo = (...extra: string[]) =>
+		json(
+			'--as',
+			'legion',
+			'channel',
+			'create',
+			'gh:cyberuni/cynapse',
+			'--type',
+			'cynapse.repo',
+			'--title',
+			'cyberuni/cynapse',
+			...repo,
+			'--kind',
+			'address',
+			'--owner',
+			'unional',
+			...extra,
+		)
+
+	it('creates an address channel from a store and native id, with its owner in --json', async () => {
+		const created = await createRepo()
+		expect(created).toMatchObject({
+			id: channelIdOf({ store: 'gh', nativeId: 'R_kgDOPfmJ6A' }),
+			handle: 'gh:cyberuni/cynapse',
+			kind: 'address',
+			owner: 'unional',
+			subjects: [{ store: 'gh', nativeId: 'R_kgDOPfmJ6A' }],
+		})
+		expect((await createRepo()).id).toBe(created.id)
+		expect((await json('channel', 'list', '--kind', 'address')).count).toBe(1)
+		expect(await cli('channel', 'show', 'gh:cyberuni/cynapse')).toContain('address of unional')
+	})
+
+	it('defaults to a work channel keyed by its subject', async () => {
+		const created = await json(
+			'--as',
+			'alice',
+			'channel',
+			'create',
+			'gh:cyberuni/cynapse/issues/12',
+			'--type',
+			'sdd.mission',
+			'--title',
+			'Add auth',
+			'--store',
+			'gh',
+			'--native-id',
+			'I_kwDO12',
+		)
+		expect(created).toMatchObject({ kind: 'work', subjects: [{ store: 'gh', nativeId: 'I_kwDO12' }] })
+		expect(created.owner).toBeUndefined()
+	})
+
+	it('registers an address with a minted key when no store is given', async () => {
+		const folder = await json(
+			'--as',
+			'alice',
+			'channel',
+			'create',
+			'notes',
+			'--type',
+			'cynapse.folder',
+			'--title',
+			'~/notes',
+			'--kind',
+			'address',
+			'--owner',
+			'alice',
+		)
+		expect(folder).toMatchObject({ kind: 'address', owner: 'alice', subjects: [{ store: 'cynapse' }] })
+	})
+
+	it('resolves a channel by store and native id, including an alias key', async () => {
+		const created = await createRepo()
+		await cli('--as', 'unional', 'channel', 'add-key', 'gh:cyberuni/cynapse', '--store', 'gh', '--native-id', 'R_moved')
+		const found = await json('channel', 'resolve', '--store', 'gh', '--native-id', 'R_moved')
+		expect(found.id).toBe(created.id)
+		await expect(cli('channel', 'resolve', '--store', 'gh', '--native-id', 'R_none')).rejects.toMatchObject({
+			code: 'not_found',
+		})
+	})
+
+	it('changes the owner of an address channel', async () => {
+		await createRepo()
+		const logged = await json('--as', 'unional', 'channel', 'owner', 'gh:cyberuni/cynapse', 'bob')
+		expect(logged).toMatchObject({ type: 'cynapse.channel.owner-changed', data: { from: 'unional', to: 'bob' } })
+	})
+
+	it('rejects an unknown kind, an address without an owner and a store without a native id as usage errors', async () => {
+		await expect(createRepo('--kind', 'dm')).rejects.toMatchObject({ exitCode: EXIT_USAGE })
+		await expect(
+			cli('--as', 'a', 'channel', 'create', 'x', '--type', 't', '--title', 'x', '--kind', 'address'),
+		).rejects.toMatchObject({ exitCode: EXIT_USAGE })
+		await expect(
+			cli('--as', 'a', 'channel', 'create', 'x', '--type', 't', '--title', 'x', '--store', 'gh'),
+		).rejects.toMatchObject({ exitCode: EXIT_USAGE })
 	})
 })
 
