@@ -29,7 +29,7 @@ cynapse state list [options]
 | --- | --- |
 | `--channel <channel>` | Only this channel. |
 | `--kind <kind>` | Only this kind, such as `needs-input`. |
-| `--status <status>` | `open` or `resolved`. Not validated by `list`: another value matches nothing. |
+| `--status <status>` | `open` or `resolved`; anything else exits `2`. |
 | `--subject <participant>` | Only records waiting on, or held by, this participant. |
 
 **Examples**

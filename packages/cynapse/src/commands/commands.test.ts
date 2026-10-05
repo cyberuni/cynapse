@@ -165,4 +165,14 @@ describe('cynapse state', () => {
 		await cli('--as', 'a', 'state', 'lifecycle', 'arb', 'reconciled')
 		expect((await json('channel', 'show', 'arb')).channel.state).toBe('reconciled')
 	})
+
+	it.each([
+		['list', ['state', 'list', '--status', 'opne']],
+		['set', ['--as', 'a', 'state', 'set', 'arb', 'k', '--kind', 'lease', '--status', 'opne']],
+	])('rejects an unknown --status on state %s as a usage error', async (_name, args) => {
+		const error = await cli(...args).catch((e: unknown) => e)
+		expect(error).toBeInstanceOf(CynapseError)
+		expect((error as CynapseError).message).toBe('--status must be open or resolved')
+		expect((error as CynapseError).exitCode).toBe(EXIT_USAGE)
+	})
 })
