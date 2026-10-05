@@ -41,14 +41,14 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"commander": "^14.0.0"
+		"commander": "^15.0.0"
 	},
 	"devDependencies": {
 		"@types/node": "^25.9.1",
 		"tsdown": "^0.23.0",
 		"tsx": "^4.23.8",
 		"typescript": "^7.0.0",
-		"vitest": "^4.1.11"
+		"vitest": "^5.0.0"
 	},
 	"engines": {
 		"node": ">=22.13"
