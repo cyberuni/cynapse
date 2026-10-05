@@ -5,11 +5,8 @@ description: Where cynapse stops and a runtime such as cyberlegion starts — wh
 
 import MessageFlowDiagram from '../../../components/MessageFlowDiagram.astro'
 
-:::note[Proposed, not built]
 This page describes [ADR-0013](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0013-messaging-between-participants.md),
-which is proposed. Today there is no participant registry, no address or work channel, no
-change token and no `entry wait`.
-:::
+which is accepted and built.
 
 A **runtime** launches and manages agent sessions. cyberlegion is the first; any unit that
 runs agents plays the same part. cynapse and the runtime split the work along one line:
