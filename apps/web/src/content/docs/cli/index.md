@@ -83,7 +83,7 @@ Errors go to stderr as one line, with no stack trace. They are plain text even u
 | --- | --- |
 | `0` | Success, including `--help` and `--version`. |
 | `1` | The command ran and failed: no such channel or entry, a taken handle, an id conflict, a failed load test. |
-| `2` | Usage error: unknown flag or subcommand, missing `--as`, an option value that does not parse (`--data`, `--value`, `--after`, `--limit`, `--port`, …), `--membership` or `--status` outside its set, `tag` with nothing to do. |
+| `2` | Usage error: unknown flag or subcommand, a command group run without a subcommand (its usage goes to stderr), missing `--as`, an option value that does not parse (`--data`, `--value`, `--after`, `--limit`, `--port`, …), `--membership` or `--status` outside its set, `tag` with nothing to do. |
 
 The same constants are exported as `EXIT_OK`, `EXIT_FAILURE` and `EXIT_USAGE` — see
 [Errors](/cynapse/api/ids/#errors).

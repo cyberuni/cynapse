@@ -1,4 +1,4 @@
-import { CommanderError } from 'commander'
+import { type Command, CommanderError } from 'commander'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CynapseError, EXIT_USAGE } from './cli-error.js'
 import { getOutputFormat, setOutputFormat } from './output.js'
@@ -33,8 +33,23 @@ describe(createProgram.name, () => {
 		expect((error as CynapseError).exitCode).toBe(EXIT_USAGE)
 	})
 
+	it.each(groupPaths(createProgram('1.2.3')))('prints help and raises a usage error for bare `%s`', async (path) => {
+		const stderr = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+		const error = await parse(...path.split(' ').filter(Boolean)).catch((e: unknown) => e)
+		expect(error).toBeInstanceOf(CynapseError)
+		expect((error as CynapseError).exitCode).toBe(EXIT_USAGE)
+		const written = stderr.mock.calls.map(([chunk]) => String(chunk)).join('')
+		expect(written).toContain(`Usage: cynapse${path ? ` ${path}` : ''}`)
+	})
+
 	it('leaves the output format alone when --json is absent', () => {
 		createProgram('1.2.3')
 		expect(getOutputFormat()).toBe('text')
 	})
 })
+
+/** Every command with subcommands, as its path below `cynapse` (the root is ''). */
+function groupPaths(command: Command, prefix: string[] = []): string[] {
+	if (command.commands.length === 0) return []
+	return [prefix.join(' '), ...command.commands.flatMap((sub) => groupPaths(sub, [...prefix, sub.name()]))]
+}
