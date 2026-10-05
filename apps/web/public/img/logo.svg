@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="cynapse">
+  <!-- Family frame: the cyber-* command reticle. Identical in every cyber-* package. -->
+  <path class="s" d="M17 63V17h46"/>
+  <path class="s" d="M111 65v46H65"/>
+  <!-- Glyph slot (32..96): a synapse. An axon ends in a terminal, a vesicle crosses the
+       gap, and the receiving membrane cups it. -->
+  <path class="s" d="M33 64h12"/>
+  <circle class="f" cx="50" cy="64" r="18"/>
+  <circle class="f" cx="77" cy="64" r="4.5"/>
+  <path class="f" d="M97 34V94H79Q93 64 79 34Z"/>
+  <style>.f{fill:#000}.s{fill:none;stroke:#000;stroke-width:10;stroke-linecap:round;stroke-linejoin:round}@media (prefers-color-scheme:dark){.f{fill:#fff}.s{stroke:#fff}}</style>
+</svg>

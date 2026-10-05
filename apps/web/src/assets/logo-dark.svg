@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="cynapse">
+  <g fill="none" stroke="#f7f8f8" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M17 63V17h46"/>
+    <path d="M111 65v46H65"/>
+    <path d="M33 64h12"/>
+  </g>
+  <g fill="#f7f8f8">
+    <circle cx="50" cy="64" r="18"/>
+    <circle cx="77" cy="64" r="4.5"/>
+    <path d="M97 34V94H79Q93 64 79 34Z"/>
+  </g>
+</svg>

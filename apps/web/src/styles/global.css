@@ -1,0 +1,9 @@
+/* The cyber-* header lockup (cyberuni/cyber-mux docs/design/icon-system.md §7): a tighter
+   mark-to-title gap than --sl-nav-gap, and the square glyph sized to the title's type. */
+.site-title {
+	gap: 0.5rem;
+}
+
+.site-title img {
+	height: 1em;
+}
