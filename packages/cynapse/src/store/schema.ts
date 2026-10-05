@@ -143,6 +143,21 @@ CREATE INDEX channels_change ON channels (change);
 			'INSERT INTO store_clock (singleton, store, change) VALUES (1, ?, (SELECT COALESCE(MAX(change), 0) FROM channels))',
 		).run(randomUUID())
 	},
+	// 3: channel kinds and subject keys (ADR-0012). Every channel so far is a work channel
+	// with no owner. `channel_subjects` holds a channel's keys: the one its id was derived
+	// from, then the aliases a move adds, in rowid order.
+	`
+ALTER TABLE channels ADD COLUMN kind TEXT NOT NULL DEFAULT 'work' CHECK (kind IN ('address', 'work'));
+ALTER TABLE channels ADD COLUMN owner TEXT;
+
+CREATE TABLE channel_subjects (
+	store TEXT NOT NULL,
+	native_id TEXT NOT NULL,
+	channel TEXT NOT NULL REFERENCES channels (id),
+	PRIMARY KEY (store, native_id)
+) STRICT;
+CREATE INDEX channel_subjects_channel ON channel_subjects (channel);
+`,
 ]
 
 /** The version a database is at once every migration has run. */

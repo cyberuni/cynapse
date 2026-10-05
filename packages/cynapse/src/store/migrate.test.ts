@@ -60,6 +60,23 @@ describe('schema version', () => {
 		expect(readVersion(path)).toBe(SCHEMA_VERSION)
 	})
 
+	it('makes every channel from before channel kinds an unkeyed work channel with no owner', () => {
+		const path = join(dir, 'v2-channels.db')
+		const db = new DatabaseSync(path)
+		migrate(db, MIGRATIONS.slice(0, 2))
+		db.exec(`INSERT INTO channels (id, handle, type, title, traits, state, conventions, created_at)
+			VALUES ('0199a6c4-0000-7000-8000-000000000001', 'auth', 'sdd.mission', 'Add auth', '{"membership":"open","wake":false}',
+				'active', '[]', '2026-10-01T00:00:00.000Z')`)
+		db.exec(`INSERT INTO channel_handles (handle, channel) VALUES ('auth', '0199a6c4-0000-7000-8000-000000000001')`)
+		db.close()
+
+		const store = new SqliteStore({ path })
+		expect(store.getChannel('auth')).toMatchObject({ kind: 'work', subjects: [] })
+		expect(store.getChannel('auth')?.owner).toBeUndefined()
+		store.close()
+		expect(readVersion(path)).toBe(SCHEMA_VERSION)
+	})
+
 	it('reopens a current database without changing it', () => {
 		const path = join(dir, 'reopen.db')
 		const first = new SqliteStore({ path })

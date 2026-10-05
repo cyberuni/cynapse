@@ -7,6 +7,10 @@
  * `handle#seq`.
  */
 
+import type { SubjectId } from '../channel-key.js'
+
+export type { SubjectId }
+
 export type ParticipantKind = 'agent' | 'human' | 'service'
 
 /** Anything that reads or writes: an agent, a person, a service. */
@@ -49,9 +53,25 @@ export interface ChannelStats {
 	unread?: number
 }
 
+/**
+ * What a channel is keyed by (ADR-0012). An address channel is keyed by something that can
+ * receive messages, such as a participant, repository, project or folder, and has an owner.
+ * A work channel is about a unit of work, such as an issue, PR, task or mission, and has
+ * members but no owner.
+ */
+export type ChannelKind = 'address' | 'work'
+
 export interface Channel {
 	id: string
 	handle: string
+	kind: ChannelKind
+	/** The participant who triages an address channel; absent on a work channel. */
+	owner?: string
+	/**
+	 * The subject keys the channel resolves from: the one its id was derived from first,
+	 * then any added when the subject moved. Empty for a channel not keyed by a subject.
+	 */
+	subjects: SubjectId[]
 	/** Handles this channel used to have; they still resolve. */
 	aliases: string[]
 	/** Namespaced and defined by the consumer, such as `sdd.mission`. */
@@ -147,6 +167,15 @@ export interface CreateChannelInput {
 	anchor?: string
 	/** A natural key, such as a DM's participants; the channel id becomes UUIDv5 of it. */
 	key?: string
+	/**
+	 * The subject the channel is about. The id becomes `channelIdOf(subject)`, and creating
+	 * it again, from this key or an alias, returns the existing channel whatever its type.
+	 */
+	subject?: SubjectId
+	/** Defaults to `work`. An address channel needs a `subject` and an `owner`. */
+	kind?: ChannelKind
+	/** The owner of an address channel. */
+	owner?: string
 	traits?: Partial<ChannelTraits>
 	conventions?: string[]
 	/** Initial lifecycle state; defaults to `active`. */
@@ -215,7 +244,13 @@ export interface SetStateInput {
 	value?: unknown
 }
 
+/** An address for a subject with no native ID, such as a folder; cynapse mints its key. */
+export type RegisterAddressInput = Omit<CreateChannelInput, 'anchor' | 'key' | 'subject' | 'kind' | 'owner'> & {
+	owner: string
+}
+
 export interface ListChannelsQuery {
+	kind?: ChannelKind
 	type?: string
 	/** Channels anchored in this channel. */
 	parent?: string
@@ -270,7 +305,15 @@ export interface Store {
 
 	// channels
 	createChannel(input: CreateChannelInput): Channel
+	/** Registers an address channel keyed by a `cynapse` subject it mints, so each call makes a new one. */
+	registerAddress(input: RegisterAddressInput): Channel
 	getChannel(ref: string, options?: { as?: string }): Channel | undefined
+	/** The channel keyed by this subject, by its first key or an alias. */
+	getChannelBySubject(subject: SubjectId): Channel | undefined
+	/** Adds an alias key, as when the subject moved and its store gave it a new native ID. */
+	addSubject(ref: string, subject: SubjectId, author: string): Channel
+	/** Changes an address channel's owner. */
+	setOwner(ref: string, owner: string, author: string): Entry
 	listChannels(query?: ListChannelsQuery): Channel[]
 	children(ref: string): Channel[]
 	tree(ref?: string): ChannelTree[]

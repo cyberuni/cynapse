@@ -91,6 +91,8 @@ export function createMemoryStore(options: { now?: () => Date } = {}): MemorySto
 			const channel: Channel = {
 				id: nextId(),
 				handle: input.handle,
+				kind: 'work',
+				subjects: [],
 				aliases: [],
 				type: input.type,
 				title: input.title,
