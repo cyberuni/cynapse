@@ -3,6 +3,7 @@ import { CynapseError, EXIT_USAGE } from './cli-error.js'
 import { registerChannel } from './commands/channel.js'
 import { registerDev } from './commands/dev.js'
 import { registerEntry } from './commands/entry.js'
+import { registerGui } from './commands/gui.js'
 import { registerRead, registerState, registerTag } from './commands/state.js'
 import { setOutputFormat } from './output.js'
 import { readPackageVersion } from './version.js'
@@ -47,6 +48,7 @@ export function createProgram(version: string = readPackageVersion()): Command {
 	registerRead(program)
 	registerTag(program)
 	registerState(program)
+	registerGui(program)
 	registerDev(program)
 
 	return program

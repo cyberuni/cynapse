@@ -8,6 +8,20 @@ from a few Council actions, which are written back as ordinary entries and state
 
 ## Run it
 
+Install it next to cynapse and start it from the CLI:
+
+```sh
+npm install -g cynapse @cyberuni/cynapse-gui
+cynapse gui               # http://127.0.0.1:4173, opens the browser
+cynapse gui --port 8080 --no-open
+```
+
+`cynapse gui` reads the same database as every other cynapse command (`--db`, else
+`$CYNAPSE_HOME/cynapse.db`, `~/.cynapse/cynapse.db` by default). Without this package
+installed, it says how to install it.
+
+### From this repository
+
 ```sh
 # From the repository root: seed the example world, then start the GUI on it.
 pnpm seed                 # --reset rebuilds it

@@ -134,6 +134,7 @@ pnpm cynapse dev --help         # run the CLI from source (tsx)
 pnpm web dev                    # run the docs site locally
 pnpm seed [--reset]             # seed the example world into the database the GUI reads
 pnpm gui dev                    # run the Council's viewer from source (see packages/cynapse-gui/README.md)
+pnpm cynapse dev gui            # `cynapse gui` from source, on the built cynapse-gui (pnpm build first)
 ```
 
 `pnpm cynapse <script>` is the root shortcut for `pnpm run --filter=./packages/cynapse <script>`.
