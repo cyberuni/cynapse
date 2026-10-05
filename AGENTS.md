@@ -140,6 +140,7 @@ pnpm verify                     # lint + build + typecheck + test + knip
 pnpm build                      # compile to dist/
 pnpm cynapse dev --help         # run the CLI from source (tsx)
 pnpm web dev                    # run the docs site locally
+pnpm seed [--reset]             # seed the example world into the database Cortex reads
 pnpm cortex dev                 # run Cortex, the Council's viewer (see apps/cortex/README.md)
 ```
 

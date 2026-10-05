@@ -11,6 +11,7 @@
 		"knip": "knip",
 		"prepare": "husky",
 		"release": "changeset publish",
+		"seed": "node scripts/seed.mjs",
 		"test": "turbo run test",
 		"typecheck": "turbo run typecheck",
 		"verify": "pnpm check && turbo run build typecheck test && pnpm knip",

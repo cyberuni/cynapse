@@ -7,7 +7,7 @@ export function openCortexStore(env: NodeJS.ProcessEnv = process.env): { store: 
 	const path = env.CORTEX_DB ?? resolveDbPath()
 	if (!existsSync(path)) {
 		throw new Error(
-			`no cynapse database at ${path}. Seed one with \`pnpm cynapse dev --db ${path} dev seed\`, or point CORTEX_DB at yours.`,
+			`no cynapse database at ${path}. Seed the example one with \`pnpm seed\` from the repository root, or point CORTEX_DB at yours.`,
 		)
 	}
 	return { store: openStore({ path }), label: path }
