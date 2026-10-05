@@ -154,5 +154,51 @@ data: {"participant":"sdd-conductor","role":"owner"}
 `created` is when the writer minted the entry (read from its UUIDv7); `recorded` is when it arrived in
 the channel.
 
+## `cynapse entry wait`
+
+Wait for an answer. Polls the thread of `<entry>` until an entry arrives after it that someone other
+than you wrote, then prints that reply as [`entry show`](#cynapse-entry-show) does (the entry itself
+under `--json`). The thread is the whole conversation: the root and every reply under it, so you can
+wait on your own follow-up as well as on the question that started it. Your own entries never count as
+a reply, and replies from before `<entry>` are ignored.
+
+The poll runs in your own process every half second, with no daemon; any other process can write the
+reply. With no reply within `--timeout`, it fails with code `timeout` and exits `3`, so a caller can
+tell "nobody answered yet" from a failure. `--timeout 0` checks once.
+
+When "still waiting" must outlive this process, open a `cynapse.awaiting-reply`
+[state record](/cynapse/cli/state/) as well; `entry wait` never resolves one.
+
+**Usage**
+
+```bash
+cynapse entry wait <entry> --timeout <seconds>
+```
+
+| Option | Effect |
+| --- | --- |
+| `--timeout <seconds>` | Required. Give up after this many seconds; fractions work. Not a number exits `2`. |
+
+Needs `--as`.
+
+**Examples**
+
+```bash
+q=$(cynapse --as alice --json entry append bob-inbox --type note --body "Which token format?" | jq -r .id)
+cynapse --as alice entry wait "$q" --timeout 300
+# bob-inbox#7  note  by bob
+# ...
+```
+
+```bash
+# Branch on the exit code
+cynapse --as alice entry wait bob-inbox#6 --timeout 60
+case $? in
+  0) ;;                          # the reply was printed
+  3) echo "no answer yet" ;;
+  *) echo "wait failed" >&2 ;;
+esac
+```
+
 See also [`tag`](/cynapse/cli/tag/), [`channel pin`](/cynapse/cli/channel/#cynapse-channel-pin) and the
 [`Entry`](/cynapse/api/types/#entry) type.

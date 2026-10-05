@@ -37,7 +37,7 @@ Global options go before the command name or anywhere after it.
 | `CYNAPSE_HOME` | Directory holding the database. The file is `$CYNAPSE_HOME/cynapse.db`; the directory defaults to `~/.cynapse`. `--db` overrides it. |
 | `CYNAPSE_PARTICIPANT` | The participant to act as when `--as` is not given. |
 
-Commands that write — and `read`, `unread` and `entry list --unread` — need an identity. With neither
+Commands that write — and `read`, `unread`, `entry list --unread` and `entry wait` — need an identity. With neither
 `--as` nor `$CYNAPSE_PARTICIPANT` they fail with exit `2`:
 
 ```text
@@ -102,6 +102,7 @@ The `code` is the contract; the `message` is for people and may change. These co
 | `id_conflict` | `1` | A record with that id already exists and differs. Don't retry; investigate. |
 | `port_in_use` | `1` | `cynapse gui` can't bind its port. Pass `--port`. |
 | `gui_not_installed` | `1` | `cynapse gui` can't find `@cyberuni/cynapse-gui`. |
+| `timeout` | `3` | `entry wait` saw no reply within `--timeout`. Wait again, or give up. |
 | `failure` | `1` | Any failure not yet given its own code. Read it only as "failed". |
 
 A failure that gets its own code later moves out of `failure`; a code above never changes meaning.
@@ -113,8 +114,9 @@ A failure that gets its own code later moves out of `failure`; a code above neve
 | `0` | Success, including `--help` and `--version`. |
 | `1` | The command ran and failed: no such channel or entry (`not_found`), an id conflict (`id_conflict`), a taken handle, a failed load test. |
 | `2` | Usage error: unknown flag or subcommand, a command group run without a subcommand (its usage goes to stderr), missing `--as`, an option value that does not parse (`--data`, `--value`, `--after`, `--limit`, `--port`, …), `--membership` or `--status` outside its set, `tag` with nothing to do, `dev seed --reset` without `--db`. |
+| `3` | Timed out: `entry wait` saw no reply within `--timeout` (`timeout`). |
 
-The same constants are exported as `EXIT_OK`, `EXIT_FAILURE` and `EXIT_USAGE` — see
+The same constants are exported as `EXIT_OK`, `EXIT_FAILURE`, `EXIT_USAGE` and `EXIT_TIMEOUT` — see
 [Errors](/cynapse/api/ids/#errors).
 
 ## Commands
@@ -131,6 +133,7 @@ The same constants are exported as `EXIT_OK`, `EXIT_FAILURE` and `EXIT_USAGE` �
 | [`entry append`](/cynapse/cli/entry/#cynapse-entry-append) | Append an entry; re-appending the same `--id` is a no-op. |
 | [`entry list`](/cynapse/cli/entry/#cynapse-entry-list) | List a channel's entries in `seq` order, with filters. |
 | [`entry show`](/cynapse/cli/entry/#cynapse-entry-show) | Show one entry, with its refs rendered as links. |
+| [`entry wait`](/cynapse/cli/entry/#cynapse-entry-wait) | Wait for the first reply in an entry's thread from someone else. |
 | [`read`](/cynapse/cli/read/#cynapse-read) | Advance your read cursor on a channel. |
 | [`unread`](/cynapse/cli/read/#cynapse-unread) | Channels with unread entries, including replies in threads you follow. |
 | [`tag`](/cynapse/cli/tag/) | Add or remove tags on an entry. |

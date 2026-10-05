@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { CynapseError, EXIT_USAGE } from '../cli-error.js'
+import { CynapseError, EXIT_TIMEOUT, EXIT_USAGE } from '../cli-error.js'
 import { setOutputFormat } from '../output.js'
 import { createProgram } from '../program.js'
 
@@ -151,6 +151,24 @@ describe('cynapse entry', () => {
 			'carol',
 		)
 		expect(await bodies('--view', 'open')).toEqual(['b'])
+	})
+
+	it('waits for a reply and prints it, or times out with its own exit code', async () => {
+		await cli('--as', 'alice', 'entry', 'append', 'auth', '--type', 'note', '--body', 'q?')
+		const timedOut = await cli('--as', 'alice', 'entry', 'wait', 'auth#2', '--timeout', '0').catch((e: unknown) => e)
+		expect(timedOut).toMatchObject({ code: 'timeout', exitCode: EXIT_TIMEOUT })
+		await cli('--as', 'bob', 'entry', 'append', 'auth', '--type', 'note', '--body', 'yes', '--parent', 'auth#2')
+		expect(await json('--as', 'alice', 'entry', 'wait', 'auth#2', '--timeout', '0')).toMatchObject({
+			seq: 3,
+			author: 'bob',
+			body: 'yes',
+		})
+		expect(await cli('--as', 'alice', 'entry', 'wait', 'auth#2', '--timeout', '0')).toContain('auth#3  note  by bob')
+	})
+
+	it('rejects a --timeout that is not a number of seconds', async () => {
+		const error = await cli('--as', 'alice', 'entry', 'wait', 'auth#1', '--timeout', 'soon').catch((e: unknown) => e)
+		expect(error).toMatchObject({ exitCode: EXIT_USAGE })
 	})
 
 	it('requires a participant for a write', async () => {
