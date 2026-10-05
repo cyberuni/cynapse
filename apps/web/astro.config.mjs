@@ -4,6 +4,11 @@ import { defineConfig } from 'astro/config'
 export default defineConfig({
 	site: 'https://cyberuni.github.io',
 	base: '/cynapse',
+	// Pages that moved. GitHub Pages has no server-side redirects, so Astro writes a page at
+	// the old path that forwards to the new one.
+	redirects: {
+		'/getting-started/introduction': '/cynapse/what-is/',
+	},
 	integrations: [
 		starlight({
 			title: 'cynapse',
@@ -26,13 +31,8 @@ export default defineConfig({
 				},
 			],
 			sidebar: [
-				{
-					label: 'Getting Started',
-					items: [
-						{ label: 'Introduction', slug: 'getting-started/introduction' },
-						{ label: 'Quick start', slug: 'getting-started/quick-start' },
-					],
-				},
+				{ label: 'What is cynapse', slug: 'what-is' },
+				{ label: 'Quick start', slug: 'getting-started/quick-start' },
 				{
 					label: 'Design',
 					items: [

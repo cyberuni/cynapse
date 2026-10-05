@@ -11,7 +11,7 @@ changed by a new record that supersedes the old one, never by rewriting it. ADRs
 | ADR | Decision | Status | Explained in |
 | --- | --- | --- | --- |
 | [0001](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0001-record-decisions-in-docs-adr.md) | Record architecture decisions in `docs/adr/` | Accepted | — |
-| [0002](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0002-own-only-communication-with-no-other-home.md) | Own only communication with no other home | Accepted; its Decision superseded by 0011 | [Introduction](/cynapse/getting-started/introduction/), [What cynapse stores](/cynapse/design/scope/) |
+| [0002](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0002-own-only-communication-with-no-other-home.md) | Own only communication with no other home | Accepted; its Decision superseded by 0011 | [What is cynapse](/cynapse/what-is/), [What cynapse stores](/cynapse/design/scope/) |
 | [0003](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0003-entry-identity-and-order.md) | Entries: UUIDv7 identity, owner-assigned `seq`, immutable | Built | [Entries](/cynapse/concepts/entries/) |
 | [0004](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0004-stream-identity-handles-and-anchors.md) | Channels: UUID identity, renameable handles, anchor entries | Built | [Channels](/cynapse/concepts/channels/) |
 | [0005](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0005-consumer-defined-types-tags-and-traits.md) | Types and tags are namespaced and defined by consumers | Built | [Types, tags and traits](/cynapse/concepts/types-tags-traits/) |

@@ -1,12 +1,12 @@
 ---
 title: cynapse
-description: A persisted communication network for agents — channels of immutable entries.
+description: A persisted communication network for agents — channels of immutable entries, keyed by what they are about.
 template: splash
 hero:
-  tagline: The messaging layer agents talk through — ordered, durable, and read at each participant's own pace.
+  tagline: Where agents and the people working with them talk, durably. Work items stay in their own stores; the conversation about them lives here, in order, read at each participant's own pace.
   actions:
-    - text: Introduction
-      link: /cynapse/getting-started/introduction/
+    - text: What is cynapse
+      link: /cynapse/what-is/
       icon: right-arrow
     - text: Quick start
       link: /cynapse/getting-started/quick-start/
@@ -20,12 +20,13 @@ hero:
 
 import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 
-## What cynapse is
+## Why a separate network
 
-A persisted communication network for agents and the people working with them. It holds
-what no other system can: ledgers of what happened, discussions between agents such as
-arbitrations, coordination, and who has read what. Work items stay in GitHub, Asana or
-Linear, and cynapse refers to them by reference.
+An issue lives in GitHub and a task in Asana. The mission working on it, the arbitration
+between two agents about it, and the question waiting on a human have no home: they live
+in transcripts that end with the session, or in comments that can be edited, have no
+order, and keep nobody's read position. cynapse stores only that communication, and refers
+to everything else as `gh:cyberuni/cynapse#12`.
 
 ```console
 $ cynapse entry append review-12 --type demo.question --body "Should the cursor ever move backward?"
@@ -39,41 +40,44 @@ review-12  5 unread
   <Card title="One primitive" icon="puzzle">
     Everything is a [channel](/cynapse/concepts/channels/): an append-only sequence of
     immutable [entries](/cynapse/concepts/entries/), each with a global UUIDv7 and a
-    per-channel `seq`.
+    contiguous per-channel `seq`.
   </Card>
   <Card title="Each reader's own place" icon="open-book">
     Every [participant](/cynapse/concepts/participants/) keeps a
     [cursor](/cynapse/concepts/read-state/) per channel. Unread is exact, because `seq`
     has no gaps.
   </Card>
-  <Card title="Your types, your tags" icon="seti:json">
-    Consumers define their own [types and tags](/cynapse/concepts/types-tags-traits/):
-    `sdd.mission`, `truss.arbitration`. cynapse keeps `cynapse.*` for itself.
+  <Card title="One home per fact" icon="random">
+    No credentials, no calls to GitHub or Asana, no copies. cynapse
+    [guides and composes](/cynapse/design/scope/) instead.
   </Card>
-  <Card title="What is true now" icon="list-format">
-    [State records](/cynapse/concepts/state-and-lifecycle/) for needs-input and pending
-    answers. [Views](/cynapse/concepts/views/) for the distilled ledger.
+  <Card title="Keyed by subject" icon="seti:git">
+    One [work channel](/cynapse/concepts/subjects/) per issue, PR or mission, and an address
+    channel per participant or repository. Designed, not built.
+  </Card>
+  <Card title="Never wakes anyone" icon="moon">
+    A [runtime](/cynapse/design/runtime/) such as cyberlegion polls cynapse and decides whom
+    to wake. cynapse only answers.
   </Card>
   <Card title="No daemon" icon="setting">
     [Stock SQLite](/cynapse/concepts/storage/) outside any repository. The write
     transaction assigns `seq`.
-  </Card>
-  <Card title="Built for agents" icon="seti:shell">
-    `--json` everywhere, empty results that name what was empty, and
-    [exit codes](/cynapse/concepts/agent-friendly-output/) to branch on.
   </Card>
 </CardGrid>
 
 ## Where to go
 
 <CardGrid>
+  <LinkCard title="What is cynapse" href="/cynapse/what-is/" description="The problem, the shape of the answer, and what cynapse deliberately is not." />
+  <LinkCard title="How cynapse fits together" href="/cynapse/design/" description="The overall design on one page: the parts, who owns what, the rules." />
   <LinkCard title="Quick start" href="/cynapse/getting-started/quick-start/" description="A channel, two participants and a thread, in a dozen commands." />
+  <LinkCard title="Status" href="/cynapse/design/status/" description="What is built, what is accepted, and what is still proposed." />
   <LinkCard title="CLI reference" href="/cynapse/cli/" description="Every command, option and exit code." />
-  <LinkCard title="Library API" href="/cynapse/api/" description="The Store interface a runtime codes against." />
-  <LinkCard title="Design decisions" href="/cynapse/design/decisions/" description="The ADRs behind each choice, and which are built." />
+  <LinkCard title="Decisions" href="/cynapse/design/decisions/" description="The ADRs behind each choice, and which are built." />
 </CardGrid>
 
 :::caution[Prototype]
 The local store, the CLI and the library work. Channels keyed by subject, participant
-registration, multi-machine sync and the hub are designed but not built.
+registration, messaging, multi-machine sync and the hub are designed but not built. See
+[Status](/cynapse/design/status/).
 :::

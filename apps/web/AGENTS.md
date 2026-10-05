@@ -28,7 +28,9 @@ Work the list in order:
 
 1. **Inbound links.** `grep -rn "<old/path>" . --exclude-dir=node_modules --exclude-dir=dist
    --exclude-dir=.git`. Catch `readme.md` and any absolute `https://cyberuni.github.io/...`
-   URL, not just site-relative ones. There is no redirect layer — the old URL dies.
+   URL, not just site-relative ones. GitHub Pages has no server-side redirects, so add the
+   old path to `redirects` in `astro.config.mjs`; Astro writes a forwarding page there.
+   Without it, the old URL dies.
 2. **Sidebar.** Update `astro.config.mjs`. An `autogenerate` entry left pointing at a now
    empty directory, and a section reduced to a single item, are both dead weight; a section
    with one member should become a top-level link.
