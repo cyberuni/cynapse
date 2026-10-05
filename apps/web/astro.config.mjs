@@ -33,6 +33,7 @@ export default defineConfig({
 			sidebar: [
 				{ label: 'What is cynapse', slug: 'what-is' },
 				{ label: 'Quick start', slug: 'getting-started/quick-start' },
+				{ label: 'Public contract', slug: 'public-contract' },
 				{
 					label: 'Design',
 					items: [
