@@ -108,22 +108,19 @@ is planned for the hub, where the channel is already the unit of access.
 
 ## Open questions
 
-These are not settled, and the current code doesn't answer them:
+These are not settled. Each one waits on a use case that would decide it.
 
-- **What `service` covers.** It holds three different things in the seed: a ledger that
-  records a run, CI reporting results, and a watcher posting changes. ADR-0013 also uses
-  it for a runtime that registers other participants. A runtime that launches and
-  supervises agent sessions (a *harness*) differs from the rest. It speaks for other
-  participants and is answerable for their lifecycle. Whether it is a `service`, a kind of
-  its own, or whether kinds should be namespaced and defined by consumers like
-  [types](/cynapse/concepts/types-tags-traits/), is open.
-- **Whether kind should change behaviour.** If kind only labels, a closed list buys
-  little. If it gates something, such as who may register participants, who may add
-  `cynapse.handled`, or who is woken, each kind needs that rule written down.
-- **How each kind joins a channel.** Whether a participant joins a channel itself, is
-  added by an owner, or becomes a member as a side effect of registration, such as
-  owning its address channel. Whether the `membership` trait should be enforced, and
-  against whom.
+- **Whether `kind` needs to be more than a label.** Nothing behaves differently by kind
+  today, so how the kinds are divided doesn't matter yet. `service` covers a run ledger,
+  CI and a trunk watcher in the seed, and ADR-0013 also uses it for the runtime that
+  registers participants. Splitting it, or adding a kind, is worth doing only when some
+  behaviour has to differ between them.
+- **How a participant joins a channel after it is created.** Today only the creator can
+  add members, and there is nothing that needs a participant to join later. That
+  changes when one does, such as an observer following a participant's address channel
+  under ADR-0013.
+- **Whether the `membership` trait should be enforced.** It is recorded and has no
+  effect. Enforcing it needs a case where a non-member writing would do harm.
 
 ## Related
 
