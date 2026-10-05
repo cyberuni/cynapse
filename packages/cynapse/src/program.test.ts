@@ -42,6 +42,12 @@ describe(createProgram.name, () => {
 		expect(getOutputFormat()).toBe('json')
 	})
 
+	it('switches to JSON before a bare command group under --json', async () => {
+		vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+		await parse('--json', 'channel').catch(() => {})
+		expect(getOutputFormat()).toBe('json')
+	})
+
 	it('switches to JSON before an unknown subcommand under --json', async () => {
 		await parse('--json', 'anneal').catch(() => {})
 		expect(getOutputFormat()).toBe('json')

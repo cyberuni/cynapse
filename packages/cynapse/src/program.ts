@@ -36,8 +36,11 @@ export function createProgram(version: string = readPackageVersion()): Command {
 	// printed the group's help to stderr and reports it as `commander.help` with a non-zero
 	// exit code, unlike `--help`, which exits 0.
 	program.exitOverride((error: CommanderError) => {
+		// A usage error can fire before the preAction hook runs, so `--json` is read here
+		// too; otherwise the error would render as text under `--json`.
+		if (program.opts().json) setOutputFormat('json')
 		if (error.code === 'commander.help' && error.exitCode !== 0) {
-			throw new CynapseError('missing subcommand; see the usage above', { exitCode: EXIT_USAGE })
+			throw new CynapseError('missing subcommand; see the usage above', { exitCode: EXIT_USAGE, code: 'usage' })
 		}
 		if (
 			error.code === 'commander.version' ||
@@ -46,9 +49,6 @@ export function createProgram(version: string = readPackageVersion()): Command {
 		) {
 			throw error
 		}
-		// A usage error can fire before the preAction hook runs, so `--json` is read here
-		// too; otherwise the error would render as text under `--json`.
-		if (program.opts().json) setOutputFormat('json')
 		throw new CynapseError(error.message.replace(/^error: /, ''), {
 			exitCode: EXIT_USAGE,
 			code: 'usage',
