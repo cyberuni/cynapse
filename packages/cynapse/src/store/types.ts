@@ -13,11 +13,64 @@ export type { SubjectId }
 
 export type ParticipantKind = 'agent' | 'human' | 'service'
 
+/**
+ * Whether a participant is addressable. The runtime that registered it asserts this;
+ * cynapse never measures it (ADR-0013, need 8).
+ */
+export type ParticipantStatus = 'live' | 'retired'
+
 /** Anything that reads or writes: an agent, a person, a service. */
 export interface Participant {
 	id: string
 	kind: ParticipantKind
+	/** A display name; not unique. `resolveAddress` matches it among live participants. */
 	name: string
+	status: ParticipantStatus
+	/**
+	 * The registration key, namespaced by the registering unit (`cyberlegion:role/reviewer`);
+	 * the id is UUIDv5 of it. Absent on a participant from before the registry.
+	 */
+	key?: string
+	/** The id of the `service` participant that registered this one; itself, for a unit. */
+	registeredBy?: string
+}
+
+/** What `addParticipant` takes: a bare participant, live and unregistered. */
+export type NewParticipant = Pick<Participant, 'id' | 'kind' | 'name'>
+
+export interface RegisterParticipantInput {
+	/** Namespaced by the registering unit: `<unit>:<rest>`, such as `cyberlegion:role/reviewer`. */
+	key: string
+	kind: ParticipantKind
+	name: string
+	/**
+	 * The id of the registering unit, a `service` participant. Omit it for a unit registering
+	 * itself, which must then be a `service`.
+	 */
+	registeredBy?: string
+}
+
+/** A participant and its address channel, the channel keyed by its id (ADR-0012). */
+export interface RegisteredParticipant {
+	participant: Participant
+	channel: Channel
+}
+
+/** What `resolveAddress` returns. A participant from before the registry has no address channel. */
+export interface ResolvedAddress {
+	participant: Participant
+	channel?: Channel
+}
+
+export interface ResolveAddressOptions {
+	/** Only participants of these kinds. */
+	kinds?: ParticipantKind[]
+}
+
+export interface ParticipantQuery {
+	status?: ParticipantStatus
+	/** Only participants this unit registered. */
+	registeredBy?: string
 }
 
 export interface ChannelTraits {
@@ -300,8 +353,26 @@ export interface Store {
 	close(): void
 
 	// participants
-	addParticipant(participant: Participant): Participant
-	participants(): Participant[]
+	/** Inserts or updates a bare participant by id, outside the registry. */
+	addParticipant(participant: NewParticipant): Participant
+	/** Ordered by id. */
+	participants(query?: ParticipantQuery): Participant[]
+	/**
+	 * Creates or revives the participant `UUIDv5(key)` and its address channel, and logs
+	 * `cynapse.participant.registered` there, in one transaction. Registering a live key again
+	 * is a no-op; the same key with a different kind fails with `id_conflict`.
+	 */
+	registerParticipant(input: RegisterParticipantInput): RegisteredParticipant
+	/** Marks the participant retired and logs `cynapse.participant.retired`. It is never deleted. */
+	retireParticipant(id: string, author: string): Participant
+	/** Renames the participant and its address handle; the old handle stays as an alias. */
+	renameParticipant(id: string, name: string, author: string): Participant
+	/**
+	 * The one live participant whose name, or address channel's handle or alias, is exactly
+	 * `name`. More than one fails with `ambiguous_address`, listing the candidates in
+	 * `details.candidates`; none fails with `unknown_address`.
+	 */
+	resolveAddress(name: string, options?: ResolveAddressOptions): ResolvedAddress
 
 	// channels
 	createChannel(input: CreateChannelInput): Channel

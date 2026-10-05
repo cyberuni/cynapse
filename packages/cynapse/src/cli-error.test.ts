@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { CynapseError, EXIT_FAILURE, EXIT_USAGE, errorCodeFor, exitCodeFor, renderCliError } from './cli-error.js'
+import {
+	CynapseError,
+	EXIT_AMBIGUOUS_ADDRESS,
+	EXIT_FAILURE,
+	EXIT_TIMEOUT,
+	EXIT_UNKNOWN_ADDRESS,
+	EXIT_USAGE,
+	errorCodeFor,
+	exitCodeFor,
+	renderCliError,
+} from './cli-error.js'
 
 describe(exitCodeFor.name, () => {
 	it('returns the code a CynapseError carries', () => {
@@ -77,5 +87,31 @@ describe(`${renderCliError.name} as json`, () => {
 	it('is formatted like any other --json output', () => {
 		const error = new CynapseError('boom')
 		expect(renderCliError(error, 'json')).toBe(JSON.stringify({ error: { code: 'failure', message: 'boom' } }, null, 2))
+	})
+})
+
+describe('exit codes', () => {
+	it('gives each address failure its own stable code, above the ones already taken', () => {
+		expect([EXIT_FAILURE, EXIT_USAGE, EXIT_TIMEOUT, EXIT_AMBIGUOUS_ADDRESS, EXIT_UNKNOWN_ADDRESS]).toEqual([
+			1, 2, 3, 4, 5,
+		])
+	})
+})
+
+describe('error details', () => {
+	const candidates = [{ id: 'a', kind: 'agent', name: 'reviewer', registeredBy: 'u' }]
+	const error = new CynapseError('"reviewer" names 1 participant', {
+		code: 'ambiguous_address',
+		details: { candidates },
+	})
+
+	it('carries details a caller can branch on', () => {
+		expect(error.details).toEqual({ candidates })
+	})
+
+	it('renders the details beside code and message under --json', () => {
+		expect(JSON.parse(renderCliError(error, 'json'))).toEqual({
+			error: { code: 'ambiguous_address', message: '"reviewer" names 1 participant', candidates },
+		})
 	})
 })

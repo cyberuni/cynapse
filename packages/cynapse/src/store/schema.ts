@@ -158,6 +158,17 @@ CREATE TABLE channel_subjects (
 ) STRICT;
 CREATE INDEX channel_subjects_channel ON channel_subjects (channel);
 `,
+	// 4: the participant registry (ADR-0013, needs 1 and 8). A registered participant has the
+	// `key` its id was derived from and the unit that registered it. Every participant so far
+	// is live, with no key: it keeps working and resolves by name, but has no address channel.
+	`
+ALTER TABLE participants ADD COLUMN key TEXT;
+ALTER TABLE participants ADD COLUMN status TEXT NOT NULL DEFAULT 'live' CHECK (status IN ('live', 'retired'));
+ALTER TABLE participants ADD COLUMN registered_by TEXT;
+CREATE UNIQUE INDEX participants_key ON participants (key);
+CREATE INDEX participants_name ON participants (name);
+CREATE INDEX participants_registered_by ON participants (registered_by);
+`,
 ]
 
 /** The version a database is at once every migration has run. */

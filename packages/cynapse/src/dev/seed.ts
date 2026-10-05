@@ -1,4 +1,4 @@
-import type { Entry, Participant, Store } from '../store/types.js'
+import type { Entry, NewParticipant, Store } from '../store/types.js'
 
 /**
  * A mutable clock for the seed: each write lands a few minutes after the last, so the
@@ -21,7 +21,7 @@ export class SeedClock {
 /** When the example world starts: Monday 2026-09-21, 09:00 UTC. */
 export const SEED_START = Date.UTC(2026, 8, 21, 9, 0, 0)
 
-const PARTICIPANTS: Participant[] = [
+const PARTICIPANTS: NewParticipant[] = [
 	{ id: 'council', kind: 'human', name: 'Council' },
 	{ id: 'sdd-conductor', kind: 'agent', name: 'SDD conductor' },
 	{ id: 'sdd-spec-judge', kind: 'agent', name: 'SDD spec-judge (cold)' },

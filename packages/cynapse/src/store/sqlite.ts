@@ -3,7 +3,7 @@ import { dirname } from 'node:path'
 import type { DatabaseSync, SQLInputValue } from 'node:sqlite'
 import { isDeepStrictEqual } from 'node:util'
 import { channelIdOf, channelKey, type SubjectId } from '../channel-key.js'
-import { CynapseError } from '../cli-error.js'
+import { CynapseError, EXIT_AMBIGUOUS_ADDRESS, EXIT_UNKNOWN_ADDRESS } from '../cli-error.js'
 import { isUuid, timestampOf, uuidv5, uuidv7 } from '../ids.js'
 import { connect } from './connect.js'
 import { migrate } from './migrate.js'
@@ -23,9 +23,16 @@ import type {
 	EntryQuery,
 	ListChannelsQuery,
 	Member,
+	NewParticipant,
 	Participant,
 	ParticipantKind,
+	ParticipantQuery,
+	ParticipantStatus,
 	RegisterAddressInput,
+	RegisteredParticipant,
+	RegisterParticipantInput,
+	ResolveAddressOptions,
+	ResolvedAddress,
 	SearchQuery,
 	SetStateInput,
 	StateQuery,
@@ -79,6 +86,17 @@ interface EntryRow {
 	data: string | null
 	recorded_at: string
 }
+
+interface ParticipantRow {
+	id: string
+	kind: ParticipantKind
+	name: string
+	status: ParticipantStatus
+	key: string | null
+	registered_by: string | null
+}
+
+const PARTICIPANT_SELECT = 'SELECT id, kind, name, status, key, registered_by FROM participants'
 
 interface StateRow {
 	channel: string
@@ -136,7 +154,7 @@ export class SqliteStore implements Store {
 
 	// ── participants ────────────────────────────────────────────────────────────
 
-	addParticipant(participant: Participant): Participant {
+	addParticipant(participant: NewParticipant): Participant {
 		this.#write(() =>
 			this.#run(
 				`INSERT INTO participants (id, kind, name) VALUES (?, ?, ?)
@@ -146,13 +164,219 @@ export class SqliteStore implements Store {
 				participant.name,
 			),
 		)
-		return participant
+		return this.#requireParticipant(participant.id)
 	}
 
-	participants(): Participant[] {
-		return this.#all<{ id: string; kind: ParticipantKind; name: string }>(
-			'SELECT id, kind, name FROM participants ORDER BY id',
-		)
+	participants(query: ParticipantQuery = {}): Participant[] {
+		const where: string[] = []
+		const params: SQLInputValue[] = []
+		if (query.status) {
+			where.push('status = ?')
+			params.push(query.status)
+		}
+		if (query.registeredBy) {
+			where.push('registered_by = ?')
+			params.push(query.registeredBy)
+		}
+		return this.#all<ParticipantRow>(
+			`${PARTICIPANT_SELECT} ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY id`,
+			...params,
+		).map(toParticipant)
+	}
+
+	registerParticipant(input: RegisterParticipantInput): RegisteredParticipant {
+		validateParticipantKey(input.key)
+		const name = validateParticipantName(input.name)
+		const id = uuidv5(input.key)
+		const registeredBy = input.registeredBy ?? id
+		const channelId = this.#write(() => {
+			this.#checkRegistrant(registeredBy, id, input)
+			const existing = this.#findParticipant(id)
+			if (existing && existing.kind !== input.kind) {
+				throw new CynapseError(
+					`participant id ${id} (derived from the key ${input.key}) already exists and differs in kind`,
+					{ code: 'id_conflict' },
+				)
+			}
+			const subject = addressOf(id)
+			const address = this.#subjectChannelId(subject)
+			// Registering a live key again is a no-op: the runtime may re-register on every start.
+			if (existing?.status === 'live' && existing.key === input.key && address) return address
+			if (existing) {
+				this.#run(
+					"UPDATE participants SET status = 'live', key = ?, registered_by = ? WHERE id = ?",
+					input.key,
+					registeredBy,
+					id,
+				)
+			} else {
+				this.#run(
+					"INSERT INTO participants (id, kind, name, status, key, registered_by) VALUES (?, ?, ?, 'live', ?, ?)",
+					id,
+					input.kind,
+					name,
+					input.key,
+					registeredBy,
+				)
+			}
+			// A revived participant keeps its name and address channel; renaming is its own act.
+			const current = this.#requireParticipant(id)
+			const channelId =
+				address ??
+				this.createChannel({
+					handle: this.#addressHandle(current.name, id),
+					type: 'cynapse.participant',
+					title: current.name,
+					author: registeredBy,
+					subject,
+					kind: 'address',
+					owner: id,
+				}).id
+			this.#appendIn(channelId, {
+				author: registeredBy,
+				type: 'cynapse.participant.registered',
+				data: { participant: id, key: input.key, kind: current.kind, name: current.name, registeredBy },
+			})
+			return channelId
+		})
+		return { participant: this.#requireParticipant(id), channel: this.#requireChannel(channelId) }
+	}
+
+	retireParticipant(id: string, author: string): Participant {
+		this.#write(() => {
+			const participant = this.#requireParticipant(id)
+			if (participant.status === 'retired') return
+			const channelId = this.#requireAddress(participant, 'retired')
+			this.#run("UPDATE participants SET status = 'retired' WHERE id = ?", participant.id)
+			this.#appendIn(channelId, { author, type: 'cynapse.participant.retired', data: { participant: participant.id } })
+		})
+		return this.#requireParticipant(id)
+	}
+
+	renameParticipant(id: string, name: string, author: string): Participant {
+		const to = validateParticipantName(name)
+		this.#write(() => {
+			const participant = this.#requireParticipant(id)
+			if (participant.name === to) return
+			const channelId = this.#requireAddress(participant, 'renamed')
+			this.#run('UPDATE participants SET name = ? WHERE id = ?', to, participant.id)
+			this.renameChannel(channelId, this.#addressHandle(to, participant.id, channelId), author)
+			this.#appendIn(channelId, {
+				author,
+				type: 'cynapse.participant.renamed',
+				data: { participant: participant.id, from: participant.name, to },
+			})
+		})
+		return this.#requireParticipant(id)
+	}
+
+	/**
+	 * An exact match, never fuzzy: a fuzzy match with one candidate today silently routes
+	 * elsewhere tomorrow (ADR-0013, need 1). The id matches too, so every candidate an
+	 * ambiguity lists can still be addressed.
+	 */
+	resolveAddress(name: string, options: ResolveAddressOptions = {}): ResolvedAddress {
+		const where = [
+			"p.status = 'live'",
+			`(p.id = ?1 OR p.name = ?1 OR EXISTS (
+				SELECT 1 FROM channel_subjects cs JOIN channel_handles h ON h.channel = cs.channel
+				WHERE cs.store = 'cynapse' AND cs.native_id = p.id AND h.handle = ?1))`,
+		]
+		const params: SQLInputValue[] = [name]
+		if (options.kinds?.length) {
+			where.push(`p.kind IN (${options.kinds.map((_, i) => `?${i + 2}`).join(', ')})`)
+			params.push(...options.kinds)
+		}
+		const matches = this.#all<ParticipantRow>(
+			`SELECT p.id, p.kind, p.name, p.status, p.key, p.registered_by FROM participants p
+			WHERE ${where.join(' AND ')} ORDER BY p.id`,
+			...params,
+		).map(toParticipant)
+		const among = options.kinds?.length ? ` of kind ${options.kinds.join(' or ')}` : ''
+		const [participant] = matches
+		if (!participant) {
+			throw new CynapseError(`no live participant${among} is named "${name}"`, {
+				code: 'unknown_address',
+				exitCode: EXIT_UNKNOWN_ADDRESS,
+			})
+		}
+		if (matches.length > 1) {
+			const candidates = matches.map(({ id, kind, name, registeredBy }) => ({
+				id,
+				kind,
+				name,
+				...(registeredBy ? { registeredBy } : {}),
+			}))
+			const lines = candidates.map(
+				(c) => `  ${c.id}  ${c.kind}  ${c.name}${c.registeredBy ? `  registered by ${c.registeredBy}` : ''}`,
+			)
+			throw new CynapseError(
+				[`"${name}" names ${matches.length} live participants${among}; address one by its id:`, ...lines].join('\n'),
+				{ code: 'ambiguous_address', exitCode: EXIT_AMBIGUOUS_ADDRESS, details: { candidates } },
+			)
+		}
+		const channelId = this.#subjectChannelId(addressOf(participant.id))
+		return { participant, ...(channelId ? { channel: this.#requireChannel(channelId) } : {}) }
+	}
+
+	/**
+	 * A unit registers itself, as a service, or is registered by a service that already
+	 * exists. cynapse records the registrant and never calls it back (ADR-0013).
+	 */
+	#checkRegistrant(registeredBy: string, id: string, input: RegisterParticipantInput): void {
+		if (registeredBy === id) {
+			if (input.kind !== 'service') {
+				throw new CynapseError(
+					`only a service registers itself; ${input.key} is ${input.kind === 'agent' ? 'an' : 'a'} ${input.kind}, so pass the unit that registers it`,
+				)
+			}
+			return
+		}
+		const unit = this.#findParticipant(registeredBy)
+		if (!unit) throw new CynapseError(`no participant found for registrant "${registeredBy}"`, { code: 'not_found' })
+		if (unit.kind !== 'service') {
+			throw new CynapseError(
+				`registrant ${registeredBy} is ${unit.kind === 'agent' ? 'an' : 'a'} ${unit.kind}; a unit that registers participants is a service`,
+			)
+		}
+	}
+
+	/** The address channel a lifecycle change is logged in; a participant from before the registry has none. */
+	#requireAddress(participant: Participant, act: string): string {
+		const channelId = this.#subjectChannelId(addressOf(participant.id))
+		if (!channelId) {
+			throw new CynapseError(
+				`participant ${participant.id} was never registered, so it has no address channel; register it before it can be ${act}`,
+			)
+		}
+		return channelId
+	}
+
+	/**
+	 * A handle for a participant's address channel: its name made into a valid handle, with
+	 * the start of its id appended when another channel already holds that handle. Names are
+	 * not unique, and handles are.
+	 */
+	#addressHandle(name: string, id: string, channelId?: string): string {
+		const base =
+			name
+				.replace(/[^a-z0-9._/:-]+/gi, '-')
+				.replace(/^[^a-z0-9]+/i, '')
+				.replace(/-+$/, '') || 'participant'
+		const holder = this.#findChannelId(base)
+		if (!isUuid(base) && (!holder || holder === channelId)) return base
+		return `${base}-${id.slice(0, 8)}`
+	}
+
+	#findParticipant(id: string): Participant | undefined {
+		const row = this.#get<ParticipantRow>(`${PARTICIPANT_SELECT} WHERE id = ?`, id)
+		return row ? toParticipant(row) : undefined
+	}
+
+	#requireParticipant(id: string): Participant {
+		const participant = this.#findParticipant(id)
+		if (!participant) throw new CynapseError(`no participant found for "${id}"`, { code: 'not_found' })
+		return participant
 	}
 
 	// ── channels ─────────────────────────────────────────────────────────────────
@@ -1091,6 +1315,37 @@ function validateKind(input: CreateChannelInput): ChannelKind {
 		throw new CynapseError('a work channel has members, not an owner')
 	}
 	return kind
+}
+
+/** The subject a participant's address channel is keyed by (ADR-0012). */
+function addressOf(participantId: string): SubjectId {
+	return { store: 'cynapse', nativeId: participantId }
+}
+
+function toParticipant(row: ParticipantRow): Participant {
+	return {
+		id: row.id,
+		kind: row.kind,
+		name: row.name,
+		status: row.status,
+		...(row.key ? { key: row.key } : {}),
+		...(row.registered_by ? { registeredBy: row.registered_by } : {}),
+	}
+}
+
+/** A registration key is namespaced by the unit that registers it: `<unit>:<rest>`. */
+function validateParticipantKey(key: string): void {
+	if (!/^[^\s:]+:\S+$/.test(key)) {
+		throw new CynapseError(
+			`"${key}" is not a namespaced registration key; prefix it with the registering unit, such as cyberlegion:role/reviewer`,
+		)
+	}
+}
+
+function validateParticipantName(name: string): string {
+	const trimmed = name.trim()
+	if (!trimmed) throw new CynapseError('a participant needs a name')
+	return trimmed
 }
 
 /** A subject as a plain object, so one passed with extra fields is stored and compared as itself. */

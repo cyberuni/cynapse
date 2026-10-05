@@ -8,6 +8,7 @@ import type {
 	Entry,
 	EntryMatch,
 	EntryQuery,
+	NewParticipant,
 	Participant,
 	SearchQuery,
 	SetStateInput,
@@ -34,7 +35,7 @@ export type MemoryStore = Store & {
 	createChannel(input: ChannelInput): Channel
 	defineView(ref: string, view: Omit<View, 'channelId'>): void
 	pin(ref: string, seq: number): void
-	addParticipant(participant: Participant): void
+	addParticipant(participant: NewParticipant): void
 	setLifecycle(ref: string, state: string, author: string): void
 }
 
@@ -128,7 +129,7 @@ export function createMemoryStore(options: { now?: () => Date } = {}): MemorySto
 			channel.state = state
 		},
 		addParticipant(participant) {
-			participants.push(participant)
+			participants.push({ ...participant, status: 'live' })
 		},
 		listChannels(query = {}) {
 			return channels.filter(
