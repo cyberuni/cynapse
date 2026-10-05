@@ -222,10 +222,13 @@ The same filters as `entries`, across channels.
 | Method | Returns | Notes |
 | --- | --- | --- |
 | `markRead(ref, participant, seq?)` | `Member` | Moves the cursor forward to `seq`, or to the last entry. Never backwards; clamped to the last `seq`. |
+| `changes(since?)` | `Changes` | The channels whose last `seq` moved after the token `since`, ordered by handle, plus a new token. Without `since`, every channel. An indexed read, cheap to poll. A token from another store throws `foreign_token`; an unreadable one, `invalid_token`. |
 | `unread(participant)` | `UnreadCount[]` | Channels with unread entries, ordered by handle: those the participant is a member of, and those where a thread they wrote in has a reply after both their cursor and their own last entry in that thread. Entries the participant wrote do not count. |
 
 `markRead` works for a participant who is not a member and reports their role as `reader`.
 `UnreadCount` is `{ channelId, handle, count }`. See [Read state](/cynapse/concepts/read-state/).
+`Changes` is `{ token, channels: { channelId, handle, lastSeq }[] }`. The token is opaque and local to
+one store, and it is not an order of entries. See [Knowing that something arrived](/cynapse/concepts/messaging/#knowing-that-something-arrived).
 
 ## State records
 
