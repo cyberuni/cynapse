@@ -42,11 +42,17 @@ Agents reach the database through the CLI's narrow reads (`--unread`, `--meta-on
 `$CYNAPSE_HOME` decides which store a group of processes shares. A runtime that launches
 agents has to pass it on, or they write to different databases.
 
-## No migrations yet
+## Schema version and migrations
 
-The schema has no version and there are no migrations. A database created before a schema
-change may not open correctly. Re-seed it with `cynapse --db <path> dev seed --reset`, which deletes the database first; `--reset` refuses to run without `--db`, so it never deletes your real database. Schema
-versioning is a precondition for the first release a runtime depends on.
+The database records its schema version in `PRAGMA user_version`. Opening a store runs the
+forward migrations it hasn't run yet, in one write transaction, so several processes opening
+a fresh database at once migrate it once. A database written by a newer cynapse fails to
+open with `schema_too_new`; upgrade cynapse rather than write to it. There are no backward
+migrations.
+
+To start an example database over, run `cynapse --db <path> dev seed --reset`, which deletes
+the database first; `--reset` refuses to run without `--db`, so it never deletes your real
+database.
 
 ## Beyond one machine (planned)
 

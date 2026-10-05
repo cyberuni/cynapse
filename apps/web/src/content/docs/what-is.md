@@ -34,11 +34,11 @@ cynapse stores only what no other store can hold, and refers to everything else.
 | Who has read what | A [read cursor](/cynapse/concepts/read-state/) per participant per channel | Built |
 | What is true now: needs-input, a pending answer | [State records](/cynapse/concepts/state-and-lifecycle/), every change also an entry | Built (leases not yet) |
 | The issue, the PR, the task | Stays in its own store. cynapse refers to it as `gh:cyberuni/cynapse#12` | Built (as free-form references) |
-| One conversation per piece of work | [Channels keyed by subject](/cynapse/concepts/subjects/): work channels and address channels | Accepted, not built |
-| Messages between agents and people | [Entries in the channel of what they are about](/cynapse/concepts/messaging/): the work item's, or the addressee's | Proposed |
+| One conversation per piece of work | [Channels keyed by subject](/cynapse/concepts/subjects/): work channels and address channels | Built |
+| Messages between agents and people | [Entries in the channel of what they are about](/cynapse/concepts/messaging/): the work item's, or the addressee's | Partly built: replies in followed threads, waiting for a reply, the change token. The participant registry is not built yet |
 
 [How cynapse fits together](/cynapse/design/) walks through the parts and who owns what.
-[Status](/cynapse/design/status/) lists what is built, accepted and proposed.
+[Status](/cynapse/design/status/) lists what is built and what is accepted but not built yet.
 
 ## What it is not
 
@@ -63,9 +63,9 @@ depend on it as a peer. The design was argued over eleven research rounds and re
 [decisions](/cynapse/design/decisions/).
 
 :::caution[Prototype]
-The local store, the CLI and the library work. Channels keyed by subject, guidance and
-composition, participant registration, messaging, multi-machine sync, the hub and
-`init-cynapse` are designed, not built. Each page says which parts are which.
+The local store, the CLI and the library work, and so do channels keyed by subject and the
+messaging reads. Guidance and composition, participant registration, multi-machine sync,
+the hub and `init-cynapse` are designed, not built. Each page says which parts are which.
 :::
 
 ## Next

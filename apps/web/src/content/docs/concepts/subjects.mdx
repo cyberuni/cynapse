@@ -1,13 +1,14 @@
 ---
 title: Subjects across stores
-description: The planned model — a network of subjects living in their own stores, relations kept on the subjects, and channels keyed by subject.
+description: The model — a network of subjects living in their own stores, relations kept on the subjects, and channels keyed by subject.
 ---
 
 import SubjectsDiagram from '../../../components/SubjectsDiagram.astro'
 
-:::note[Accepted, not built]
-This page describes ADR-0010 to ADR-0012, accepted but not built yet. Today a channel takes
-a free-string `--key`, and there are no address or work channels.
+:::note[Partly built]
+This page describes ADR-0010 to ADR-0012. Channels keyed by subject (ADR-0012) are built:
+address and work channels, owners, alias keys and the key format. Subjects and relations
+across stores (ADR-0010) and guide and compose (ADR-0011) are accepted, not built.
 :::
 
 Work for agents is spread across stores. An issue lives in GitHub, its task in Asana, the
@@ -55,7 +56,7 @@ A channel is keyed by the subject it is about, and there are two kinds:
   a review comment.
 - **There are no DMs.** Traffic about a work item goes on its work channel. Direct
   traffic to a participant goes on their address channel
-  ([Messaging](/cynapse/concepts/messaging/), proposed).
+  ([Messaging](/cynapse/concepts/messaging/)).
 - **The key format is cynapse's.** A consumer resolves the native ID, because that needs
   the store's API, and passes the store and the ID in. cynapse builds the key, so two
   consumers resolving the same ID meet in the same channel.
