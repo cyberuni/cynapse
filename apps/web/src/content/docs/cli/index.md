@@ -100,6 +100,8 @@ The `code` is the contract; the `message` is for people and may change. These co
 | `usage` | `2` | Any usage error listed under [Exit codes](#exit-codes). Fix the call. |
 | `not_found` | `1` | The channel, entry or view named doesn't exist. Fix the reference. |
 | `id_conflict` | `1` | A record with that id already exists and differs. Don't retry; investigate. |
+| `not_owner` | `1` | Only the address channel's owner may add or remove `cynapse.handled`. Ask the owner. |
+| `not_address` | `1` | `cynapse.handled` was given on a work channel; it is defined on address channels only. |
 | `port_in_use` | `1` | `cynapse gui` can't bind its port. Pass `--port`. |
 | `gui_not_installed` | `1` | `cynapse gui` can't find `@cyberuni/cynapse-gui`. |
 | `invalid_token` | `1` | `changes --since` got something that isn't a change token. Call `changes` without `--since`. |

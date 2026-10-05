@@ -10,6 +10,10 @@ a new `cynapse.label` entry in the same channel that references the target; the 
 set is the tags it was written with, adjusted by those label entries. Tags are namespaced strings such
 as `truss.criteria-v2`. Adding a tag the entry already has, or removing one it does not, is harmless.
 
+`cynapse.handled` is [reserved](/cynapse/concepts/types-tags-traits/#reserved-tags): only the
+owner of an address channel may add or remove it. Anyone else fails with `not_owner`, and on a work
+channel it fails with `not_address`, both with exit `1` and no label entry written.
+
 With neither tags nor `--remove` it exits `2`. Additions are applied before removals. The result is the
 target entry, so you see its tags after the change.
 
