@@ -21,7 +21,7 @@ time by people and tools that never pass through cynapse. So **each fact has one
 | Discussions between agents, such as arbitrations | Code review: pull requests |
 | Coordination and leases | Design discussion: GitHub discussions |
 | Read state: who has read what | Decisions worth keeping: ADRs in the repository |
-| Messages between participants, and the `live` or `retired` status a runtime asserts (not built yet) | A subject's metadata and its relations |
+| Messages between participants, and the `live` or `retired` status a runtime asserts | A subject's metadata and its relations |
 
 cynapse's store is used only where no external store fits, or where the one available
 lacks a capability that is needed. GitHub comments and Asana stories can be edited and

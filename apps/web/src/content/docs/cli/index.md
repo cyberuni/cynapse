@@ -165,6 +165,6 @@ The same constants are exported as `EXIT_OK`, `EXIT_FAILURE`, `EXIT_USAGE`, `EXI
 | [`dev load-test`](/cynapse/cli/dev/#cynapse-dev-load-test) | Concurrent writers append to one channel; check `seq` and integrity. |
 
 :::note
-Registering participants and syncing between machines are designed but not built;
+Syncing between machines is designed but not built;
 there are no commands for them yet.
 :::

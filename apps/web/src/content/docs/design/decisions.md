@@ -22,7 +22,7 @@ changed by a new record that supersedes the old one, never by rewriting it. ADRs
 | [0010](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0010-a-network-of-subjects-across-stores.md) | A network of subjects across stores | Accepted, not built | [Subjects across stores](/cynapse/concepts/subjects/) |
 | [0011](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0011-cynapse-stores-only-what-no-other-store-can.md) | Store only what no other store can; guide and compose | Accepted, not built | [What cynapse stores](/cynapse/design/scope/) |
 | [0012](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0012-channels-are-keyed-by-subject.md) | Channels are keyed by subject: address and work channels | Built | [Subjects across stores](/cynapse/concepts/subjects/#channels-keyed-by-subject) |
-| [0013](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0013-messaging-between-participants.md) | Messaging between participants on work and address channels | Partly built: followed threads, `excludeTags` and `excludeAuthors`, `entry wait`, the change token, owner-only `cynapse.handled`. Not yet the participant registry | [Messaging](/cynapse/concepts/messaging/), [cynapse and the runtime](/cynapse/design/runtime/) |
+| [0013](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0013-messaging-between-participants.md) | Messaging between participants on work and address channels | Built | [Messaging](/cynapse/concepts/messaging/), [cynapse and the runtime](/cynapse/design/runtime/) |
 
 The status words are defined on [Status](/cynapse/design/status/). Which of these
 decisions are expensive to unwind is listed on
