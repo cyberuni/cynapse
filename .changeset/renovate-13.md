@@ -1,5 +1,5 @@
 ---
-'cynapse': major
+'cynapse': minor
 ---
 
 Update runtime dependencies.
