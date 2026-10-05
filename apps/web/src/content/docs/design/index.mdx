@@ -73,8 +73,7 @@ or a reconciled channel's summary, reach a repository. See
 7. **A message goes on the channel of what it is about.** Work traffic on the work
    channel, direct traffic on the addressee's address channel. cynapse never wakes anyone;
    the dependency runs one way, from the runtime to cynapse
-   ([ADR-0013](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0013-messaging-between-participants.md),
-   proposed).
+   ([ADR-0013](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0013-messaging-between-participants.md)).
 8. **Raw conversation stays out of repositories.** Agents reach it through narrow CLI reads,
    never by searching files (ADR-0007).
 
@@ -87,11 +86,11 @@ every entry or relied on by every consumer:
 - channel identity as a UUID, derived from an anchor or a key;
 - the channel key: a subject's native ID, with no type;
 - the key format cynapse builds from a store and a native ID;
-- participant IDs derived from registration keys (proposed);
+- participant IDs derived from registration keys (accepted, not built yet);
 - where traffic goes: work traffic on the work channel, direct traffic on the address
-  channel (proposed);
+  channel;
 - cynapse holding no credentials and never calling another store;
-- cynapse never waking anyone and never measuring session liveness (proposed).
+- cynapse never waking anyone and never measuring session liveness.
 
 Cheap to revisit: relation names, the write-back triggers, how a reference shorthand
 renders, the storage engine and the hub technology behind the `Store` interface.

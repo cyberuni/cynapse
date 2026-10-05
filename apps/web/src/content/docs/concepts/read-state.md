@@ -69,10 +69,11 @@ Every other change to a channel is written as a `cynapse.*` entry. Moving a curs
 because logging every read would bloat the channel with entries that say nothing about
 the work.
 
-## Planned
+## Messaging builds on cursors
 
-[Messaging](/cynapse/concepts/messaging/) (accepted in ADR-0013) builds on cursors:
-a change token lets a runtime poll cheaply, and a `cynapse.handled` tag separates handled from seen.
+[Messaging](/cynapse/concepts/messaging/) (ADR-0013) builds on cursors: a change token
+(`cynapse changes`) lets a runtime poll cheaply, and the `cynapse.handled` tag, which only an
+address channel's owner may set, separates handled from seen.
 
 ## Related
 
