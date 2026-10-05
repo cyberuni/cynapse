@@ -15,6 +15,17 @@
 	},
 	"overrides": [
 		{
+			"includes": ["**/*.astro"],
+			"linter": {
+				"rules": {
+					"correctness": {
+						"noUnusedVariables": "off",
+						"noUnusedImports": "off"
+					}
+				}
+			}
+		},
+		{
 			"includes": ["packages/cynapse/src/**/*.ts"],
 			"linter": {
 				"rules": {
