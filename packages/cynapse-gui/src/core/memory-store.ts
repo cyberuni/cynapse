@@ -4,7 +4,9 @@
 import type {
 	AppendInput,
 	Channel,
+	ConditionalAppend,
 	Entry,
+	EntryMatch,
 	EntryQuery,
 	Participant,
 	SearchQuery,
@@ -209,6 +211,14 @@ export function createMemoryStore(options: { now?: () => Date } = {}): MemorySto
 			list.push(created)
 			channel.stats = { entries: list.length, lastSeq: created.seq, lastAt: at }
 			return created
+		},
+		appendUnless(ref, input: AppendInput, unless: EntryMatch): ConditionalAppend {
+			const parent = unless.parent ? entry(unless.parent)?.id : undefined
+			const existing = (entries.get(mustChannel(ref).id) ?? []).find(
+				(e) => (!unless.parent || e.parent === parent) && matches(e, unless),
+			)
+			if (existing && existing.id !== input.id) return { appended: false, existing }
+			return { appended: true, entry: store.append(ref, input) }
 		},
 		markRead(ref, participant, seq) {
 			const channel = mustChannel(ref)

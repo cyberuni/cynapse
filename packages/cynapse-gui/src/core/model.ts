@@ -6,7 +6,9 @@ import type { Store as CynapseStore } from 'cynapse'
 export type {
 	AppendInput,
 	Channel,
+	ConditionalAppend,
 	Entry,
+	EntryMatch,
 	EntryQuery,
 	Participant,
 	SearchQuery,
@@ -29,6 +31,7 @@ export type Store = Pick<
 	| 'views'
 	| 'participants'
 	| 'append'
+	| 'appendUnless'
 	| 'markRead'
 	| 'setState'
 >

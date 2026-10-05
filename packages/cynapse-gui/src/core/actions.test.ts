@@ -66,6 +66,18 @@ describe('ruleOnDecision', () => {
 		expect(store.search({ types: ['truss.ratify', 'truss.override'] })).toHaveLength(1)
 	})
 
+	it('refuses the loser of a race whose read missed the winning ruling', () => {
+		const store = createFixtureStore()
+		ruleOnDecision(store, { ref: 'truss-auth#5', ruling: 'ratify' })
+		// A read taken before the winner landed: it sees no ruling yet.
+		const stale = { ...store, entries: () => [], search: () => [] }
+		const loser = () => ruleOnDecision(stale, { ref: 'truss-auth#5', ruling: 'override', body: 'No.' })
+		expect(loser).toThrow(
+			expect.objectContaining({ code: 'already_ruled', message: expect.stringMatching(/ratified/) }),
+		)
+		expect(store.search({ types: ['truss.ratify', 'truss.override'] })).toHaveLength(1)
+	})
+
 	it('rules in the namespace of the decision', () => {
 		const entry = ruleOnDecision(createFixtureStore(), { ref: 'm-login#3', ruling: 'ratify' })
 		expect(entry.type).toBe('sdd.ratify')

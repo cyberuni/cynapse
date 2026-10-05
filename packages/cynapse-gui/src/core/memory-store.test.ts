@@ -35,6 +35,21 @@ describe('memory store', () => {
 		expect(nested.root).toBe(root.id)
 	})
 
+	it('appends unless a reply of the given types already exists', () => {
+		const store = storeWithMission()
+		const decision = store.append('m-auth', { author: 'builder', type: 'sdd.decision', body: 'JWT' })
+		const unless = { parent: 'm-auth#1', types: ['sdd.ratify', 'sdd.override'] }
+		const first = store.appendUnless('m-auth', { author: 'council', type: 'sdd.ratify', parent: decision.id }, unless)
+		expect(first).toMatchObject({ appended: true, entry: { seq: 2, parentSeq: 1 } })
+		const second = store.appendUnless(
+			'm-auth',
+			{ author: 'council', type: 'sdd.override', parent: decision.id },
+			unless,
+		)
+		expect(second).toEqual({ appended: false, existing: first.appended && first.entry })
+		expect(store.getChannel('m-auth')?.stats.lastSeq).toBe(2)
+	})
+
 	it('counts unread for members, not their own entries', () => {
 		const store = storeWithMission()
 		store.append('m-auth', { author: 'builder', type: 'sdd.note', body: 'x' })
