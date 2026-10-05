@@ -98,10 +98,11 @@ The `code` is the contract; the `message` is for people and may change. These co
 | Code | Exit | Meaning |
 | --- | --- | --- |
 | `usage` | `2` | Any usage error listed under [Exit codes](#exit-codes). Fix the call. |
-| `not_found` | `1` | The channel, entry or view named doesn't exist. Fix the reference. |
+| `not_found` | `1` | The channel, entry, view or subject key named doesn't exist. Fix the reference. |
 | `id_conflict` | `1` | A record with that id already exists and differs. Don't retry; investigate. |
 | `not_owner` | `1` | Only the address channel's owner may add or remove `cynapse.handled`. Ask the owner. |
 | `not_address` | `1` | `cynapse.handled` was given on a work channel; it is defined on address channels only. |
+| `schema_too_new` | `1` | The database was written by a newer cynapse than this one. Upgrade cynapse; don't write to it with this version. |
 | `port_in_use` | `1` | `cynapse gui` can't bind its port. Pass `--port`. |
 | `gui_not_installed` | `1` | `cynapse gui` can't find `@cyberuni/cynapse-gui`. |
 | `invalid_token` | `1` | `changes --since` got something that isn't a change token. Call `changes` without `--since`. |
@@ -118,8 +119,8 @@ A failure that gets its own code later moves out of `failure`; a code above neve
 | Code | Meaning |
 | --- | --- |
 | `0` | Success, including `--help` and `--version`. |
-| `1` | The command ran and failed: no such channel or entry (`not_found`), an id conflict (`id_conflict`), a taken handle, a failed load test. |
-| `2` | Usage error: unknown flag or subcommand, a command group run without a subcommand (its usage goes to stderr), missing `--as`, an option value that does not parse (`--data`, `--value`, `--after`, `--limit`, `--port`, …), `--membership`, `--kind` or `--status` outside its set, `tag` with nothing to do, `dev seed --reset` without `--db`. |
+| `1` | The command ran and failed: no such channel or entry (`not_found`), an id conflict (`id_conflict`), a database newer than this cynapse (`schema_too_new`), a taken handle, a subject key that already keys another channel, `--owner` on a work channel, a failed load test. |
+| `2` | Usage error: unknown flag or subcommand, a command group run without a subcommand (its usage goes to stderr), missing `--as`, an option value that does not parse (`--data`, `--value`, `--after`, `--limit`, `--port`, …), `--membership`, `--kind` or `--status` outside its set, `--store` without `--native-id` (or the reverse), `--kind address` without `--owner`, `tag` with nothing to do, `dev seed --reset` without `--db`. |
 | `3` | Timed out: `entry wait` saw no reply within `--timeout` (`timeout`). |
 | `4` | Ambiguous address: `participant resolve` or `entry send` named more than one live participant (`ambiguous_address`). |
 | `5` | Unknown address: `participant resolve` or `entry send` named no live participant (`unknown_address`). |
@@ -132,11 +133,14 @@ The same constants are exported as `EXIT_OK`, `EXIT_FAILURE`, `EXIT_USAGE`, `EXI
 
 | Command | What it does |
 | --- | --- |
-| [`channel create`](/cynapse/cli/channel/#cynapse-channel-create) | Create a channel; idempotent for `--anchor` and `--key`. |
+| [`channel create`](/cynapse/cli/channel/#cynapse-channel-create) | Create a channel; idempotent for `--store`/`--native-id`, `--anchor` and `--key`. |
 | [`channel show`](/cynapse/cli/channel/#cynapse-channel-show) | The briefing: purpose, members, context, open state, pinned entries, views, children. |
 | [`channel list`](/cynapse/cli/channel/#cynapse-channel-list) | List channels, filtered by type, parent or lifecycle state. |
 | [`channel tree`](/cynapse/cli/channel/#cynapse-channel-tree) | Channels with the child channels anchored in them. |
 | [`channel rename`](/cynapse/cli/channel/#cynapse-channel-rename) | Rename a channel; the old handle stays as an alias. |
+| [`channel resolve`](/cynapse/cli/channel/#cynapse-channel-resolve) | Find the channel keyed by a subject's store and native id. |
+| [`channel add-key`](/cynapse/cli/channel/#cynapse-channel-add-key) | Add an alias key to a channel, such as a subject's new native id. |
+| [`channel owner`](/cynapse/cli/channel/#cynapse-channel-owner) | Change an address channel's owner. |
 | [`channel pin`](/cynapse/cli/channel/#cynapse-channel-pin) | Pin an entry in its channel. |
 | [`channel view`](/cynapse/cli/channel/#cynapse-channel-view) | Save a filter as a named view. |
 | [`entry append`](/cynapse/cli/entry/#cynapse-entry-append) | Append an entry; re-appending the same `--id` is a no-op. |
@@ -161,6 +165,6 @@ The same constants are exported as `EXIT_OK`, `EXIT_FAILURE`, `EXIT_USAGE`, `EXI
 | [`dev load-test`](/cynapse/cli/dev/#cynapse-dev-load-test) | Concurrent writers append to one channel; check `seq` and integrity. |
 
 :::note
-Mail between participants, address channels and syncing between machines are designed but not built;
+Registering participants and syncing between machines are designed but not built;
 there are no commands for them yet.
 :::
