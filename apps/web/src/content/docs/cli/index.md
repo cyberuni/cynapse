@@ -75,14 +75,38 @@ matches nothing says so — `0 channels found`, `0 unread entries found` — rat
 blank line; under `--json` it is `{ "count": 0, "entity": "channels", "items": [] }`. A non-empty
 listing under `--json` is `{ "count": n, "items": [...] }`.
 
-Errors go to stderr as one line, with no stack trace. They are plain text even under `--json`.
+Errors go to stderr as one line, with no stack trace. In text mode the line is the message; under
+`--json` it is one JSON object carrying a stable code. See [Errors](#errors).
+
+## Errors
+
+Under `--json`, a failure — including a usage error — prints `{"error":{"code","message"}}` on stderr,
+so a caller branches on the reason without parsing prose:
+
+```console
+$ cynapse --json entry show nope#9
+{"error":{"code":"not_found","message":"no entry found for \"nope#9\""}}
+```
+
+The `code` is the contract; the `message` is for people and may change. These codes are stable:
+
+| Code | Exit | Meaning |
+| --- | --- | --- |
+| `usage` | `2` | Any usage error listed under [Exit codes](#exit-codes). Fix the call. |
+| `not_found` | `1` | The channel, entry or view named doesn't exist. Fix the reference. |
+| `id_conflict` | `1` | A record with that id already exists and differs. Don't retry; investigate. |
+| `port_in_use` | `1` | `cynapse gui` can't bind its port. Pass `--port`. |
+| `gui_not_installed` | `1` | `cynapse gui` can't find `@cyberuni/cynapse-gui`. |
+| `failure` | `1` | Any failure not yet given its own code. Read it only as "failed". |
+
+A failure that gets its own code later moves out of `failure`; a code above never changes meaning.
 
 ## Exit codes
 
 | Code | Meaning |
 | --- | --- |
 | `0` | Success, including `--help` and `--version`. |
-| `1` | The command ran and failed: no such channel or entry, a taken handle, an id conflict, a failed load test. |
+| `1` | The command ran and failed: no such channel or entry (`not_found`), an id conflict (`id_conflict`), a taken handle, a failed load test. |
 | `2` | Usage error: unknown flag or subcommand, a command group run without a subcommand (its usage goes to stderr), missing `--as`, an option value that does not parse (`--data`, `--value`, `--after`, `--limit`, `--port`, …), `--membership` or `--status` outside its set, `tag` with nothing to do, `dev seed --reset` without `--db`. |
 
 The same constants are exported as `EXIT_OK`, `EXIT_FAILURE` and `EXIT_USAGE` — see

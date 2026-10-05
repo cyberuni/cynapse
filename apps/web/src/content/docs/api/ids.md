@@ -6,7 +6,7 @@ description: UUIDv7 and UUIDv5 helpers, the fixed namespace, and CynapseError wi
 ```ts
 import {
   uuidv7, uuidv5, timestampOf, isUuid, CYNAPSE_NAMESPACE,
-  CynapseError, EXIT_OK, EXIT_FAILURE, EXIT_USAGE, exitCodeFor, renderCliError,
+  CynapseError, EXIT_OK, EXIT_FAILURE, EXIT_USAGE, errorCodeFor, exitCodeFor, renderCliError,
 } from 'cynapse'
 ```
 
@@ -64,8 +64,9 @@ class CynapseError extends Error {
 ```
 
 `exitCode` defaults to `EXIT_FAILURE`. The store throws `CynapseError` for a missing channel or entry,
-a taken or invalid handle, a missing view, a cross-channel parent and a non-UUID id. Conflicts carry
-`code: 'id_conflict'`; `cynapse gui` adds `port_in_use` and `gui_not_installed`.
+a taken or invalid handle, a missing view, a cross-channel parent and a non-UUID id. A missing channel,
+entry or view carries `code: 'not_found'` and a conflict `code: 'id_conflict'`; `cynapse gui` adds
+`port_in_use` and `gui_not_installed`. The stable codes are listed in the [CLI overview](/cynapse/cli/#errors).
 
 ```ts
 try {
@@ -93,7 +94,13 @@ the [CLI overview](/cynapse/cli/#exit-codes).
 The exit code for any thrown value: a `CynapseError`'s own, and `EXIT_FAILURE` for everything else
 (unknown throws are ordinary failures, never usage).
 
-### `renderCliError(error)` → `string`
+### `errorCodeFor(error)` → `string`
+
+The machine-readable reason for any thrown value: a `CynapseError`'s own `code`, otherwise `usage` when
+its exit code is `EXIT_USAGE` and `failure` for everything else.
+
+### `renderCliError(error, format?)` → `string`
 
 One line, no stack. The message of an `Error`, with its cause's message appended after a colon when the
-cause adds information; `String(error)` for anything else. This is what the CLI prints to stderr.
+cause adds information; `String(error)` for anything else. With `format` `'json'` the line is
+`{"error":{"code","message"}}`, the code from `errorCodeFor`. This is what the CLI prints to stderr.

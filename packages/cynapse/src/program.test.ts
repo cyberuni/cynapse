@@ -27,6 +27,26 @@ describe(createProgram.name, () => {
 		expect((error as CynapseError).exitCode).toBe(EXIT_USAGE)
 	})
 
+	it('codes a usage error usage', async () => {
+		const error = await parse('--nope').catch((e: unknown) => e)
+		expect((error as CynapseError).code).toBe('usage')
+	})
+
+	it('switches to JSON before a usage error under --json, so the error renders as JSON', async () => {
+		await parse('--json', '--nope').catch(() => {})
+		expect(getOutputFormat()).toBe('json')
+	})
+
+	it('switches to JSON before an unknown subcommand under --json', async () => {
+		await parse('--json', 'anneal').catch(() => {})
+		expect(getOutputFormat()).toBe('json')
+	})
+
+	it('switches to JSON before an unknown subcommand flag under --json', async () => {
+		await parse('--json', 'entry', 'list', 'x', '--nope').catch(() => {})
+		expect(getOutputFormat()).toBe('json')
+	})
+
 	it('raises an unknown subcommand as a usage error', async () => {
 		const error = await parse('anneal').catch((e: unknown) => e)
 		expect(error).toBeInstanceOf(CynapseError)

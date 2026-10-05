@@ -79,7 +79,7 @@ export function registerEntry(program: Command): void {
 		.action(async (ref: string, _opts, command: Command) => {
 			await withStore(command, (store) => {
 				const found = store.entry(ref)
-				if (!found) throw new CynapseError(`no entry found for "${ref}"`)
+				if (!found) throw new CynapseError(`no entry found for "${ref}"`, { code: 'not_found' })
 				output({ ...found, links: found.refs.map(renderRef) }, () => entryDetail(found))
 			})
 		})

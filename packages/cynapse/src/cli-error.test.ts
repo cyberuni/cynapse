@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CynapseError, EXIT_FAILURE, EXIT_USAGE, exitCodeFor, renderCliError } from './cli-error.js'
+import { CynapseError, EXIT_FAILURE, EXIT_USAGE, errorCodeFor, exitCodeFor, renderCliError } from './cli-error.js'
 
 describe(exitCodeFor.name, () => {
 	it('returns the code a CynapseError carries', () => {
@@ -40,5 +40,41 @@ describe(renderCliError.name, () => {
 
 	it('stringifies a non-Error throw', () => {
 		expect(renderCliError({ toString: () => 'weird' })).toBe('weird')
+	})
+})
+
+describe(errorCodeFor.name, () => {
+	it('returns the code a CynapseError carries', () => {
+		expect(errorCodeFor(new CynapseError('clash', { code: 'id_conflict' }))).toBe('id_conflict')
+	})
+
+	it('names an uncoded usage error usage', () => {
+		expect(errorCodeFor(new CynapseError('bad flag', { exitCode: EXIT_USAGE }))).toBe('usage')
+	})
+
+	it('names any other uncoded failure failure', () => {
+		expect(errorCodeFor(new CynapseError('boom'))).toBe('failure')
+		expect(errorCodeFor(new Error('boom'))).toBe('failure')
+		expect(errorCodeFor('boom')).toBe('failure')
+	})
+})
+
+describe(`${renderCliError.name} as json`, () => {
+	it('renders one JSON object with the code and the message', () => {
+		const error = new CynapseError('channel id x already exists', { code: 'id_conflict' })
+		expect(JSON.parse(renderCliError(error, 'json'))).toEqual({
+			error: { code: 'id_conflict', message: 'channel id x already exists' },
+		})
+	})
+
+	it('keeps the cause in the message, as text mode does', () => {
+		const error = new CynapseError('cannot read mailbox', { cause: new Error('ENOENT') })
+		expect(JSON.parse(renderCliError(error, 'json'))).toEqual({
+			error: { code: 'failure', message: 'cannot read mailbox: ENOENT' },
+		})
+	})
+
+	it('stays on one line', () => {
+		expect(renderCliError(new Error('boom'), 'json')).not.toContain('\n')
 	})
 })

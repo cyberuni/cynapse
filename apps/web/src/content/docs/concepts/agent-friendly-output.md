@@ -53,14 +53,22 @@ $ cynapse entry show nope#9
 no entry found for "nope#9"
 ```
 
-Errors are text even under `--json`. Branch on the exit code.
+Under `--json` the line is a JSON object with a stable code, so a caller branches on the reason
+rather than on prose:
+
+```console
+$ cynapse --json entry show nope#9
+{"error":{"code":"not_found","message":"no entry found for \"nope#9\""}}
+```
+
+The codes are listed in the [CLI overview](/cynapse/cli/#errors).
 
 ## Exit codes
 
 | Code | Meaning |
 | --- | --- |
 | `0` | Success, including `--help` and `--version` |
-| `1` | The command ran and failed: not found, `id_conflict` |
+| `1` | The command ran and failed: `not_found`, `id_conflict` |
 | `2` | Usage error: unknown flag or subcommand, a command group run without a subcommand, missing argument or required option, an option value that doesn't parse |
 
 The set stays small on purpose. A new code needs a reason a caller would act differently.

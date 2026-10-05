@@ -395,7 +395,7 @@ export class SqliteStore implements Store {
 				id,
 				query.view,
 			)
-			if (!view) throw new CynapseError(`no view named "${query.view}" on channel ${ref}`)
+			if (!view) throw new CynapseError(`no view named "${query.view}" on channel ${ref}`, { code: 'not_found' })
 			filter = mergeFilters(JSON.parse(view.filter) as ViewFilter, query)
 		}
 		applyFilter(filter, where, params)
@@ -695,7 +695,7 @@ export class SqliteStore implements Store {
 
 	#requireChannelId(ref: string): string {
 		const id = this.#findChannelId(ref)
-		if (!id) throw new CynapseError(`no channel found for "${ref}"`)
+		if (!id) throw new CynapseError(`no channel found for "${ref}"`, { code: 'not_found' })
 		return id
 	}
 
@@ -714,13 +714,13 @@ export class SqliteStore implements Store {
 
 	#requireEntryRow(ref: string): EntryRow {
 		const row = this.#findEntryRow(ref)
-		if (!row) throw new CynapseError(`no entry found for "${ref}"`)
+		if (!row) throw new CynapseError(`no entry found for "${ref}"`, { code: 'not_found' })
 		return row
 	}
 
 	#loadChannel(id: string, as?: string): Channel {
 		const row = this.#get<ChannelRow>('SELECT * FROM channels WHERE id = ?', id)
-		if (!row) throw new CynapseError(`no channel found for "${id}"`)
+		if (!row) throw new CynapseError(`no channel found for "${id}"`, { code: 'not_found' })
 		const aliases = this.#all<{ handle: string }>(
 			'SELECT handle FROM channel_handles WHERE channel = ? AND handle <> ? ORDER BY handle',
 			id,
