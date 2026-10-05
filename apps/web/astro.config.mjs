@@ -15,12 +15,52 @@ export default defineConfig({
 				},
 			],
 			sidebar: [
-				{ label: 'What is cynapse', link: '/what-is-cynapse/' },
-				{ label: 'Getting Started', link: '/getting-started/' },
 				{
-					label: 'CLI',
-					items: [{ autogenerate: { directory: 'cli' } }],
+					label: 'Getting Started',
+					items: [
+						{ label: 'Introduction', slug: 'getting-started/introduction' },
+						{ label: 'Quick start', slug: 'getting-started/quick-start' },
+					],
 				},
+				{
+					label: 'Concepts',
+					items: [
+						{ label: 'Channels', slug: 'concepts/channels' },
+						{ label: 'Entries', slug: 'concepts/entries' },
+						{ label: 'Participants', slug: 'concepts/participants' },
+						{ label: 'Read state', slug: 'concepts/read-state' },
+						{ label: 'Types, tags and traits', slug: 'concepts/types-tags-traits' },
+						{ label: 'State and lifecycle', slug: 'concepts/state-and-lifecycle' },
+						{ label: 'Views', slug: 'concepts/views' },
+						{ label: 'Storage', slug: 'concepts/storage' },
+						{ label: 'Agent-friendly output', slug: 'concepts/agent-friendly-output' },
+						{ label: 'Subjects across stores', slug: 'concepts/subjects' },
+					],
+				},
+				{
+					label: 'CLI Reference',
+					items: [
+						{ label: 'Overview', slug: 'cli' },
+						{ label: 'channel', slug: 'cli/channel' },
+						{ label: 'entry', slug: 'cli/entry' },
+						{ label: 'read / unread', slug: 'cli/read' },
+						{ label: 'tag', slug: 'cli/tag' },
+						{ label: 'state', slug: 'cli/state' },
+						{ label: 'gui', slug: 'cli/gui' },
+						{ label: 'dev', slug: 'cli/dev' },
+					],
+				},
+				{
+					label: 'Library API',
+					items: [
+						{ label: 'Overview', slug: 'api' },
+						{ label: 'Store', slug: 'api/store' },
+						{ label: 'Types', slug: 'api/types' },
+						{ label: 'Refs', slug: 'api/refs' },
+						{ label: 'Ids and errors', slug: 'api/ids' },
+					],
+				},
+				{ label: 'Design decisions', slug: 'design/decisions' },
 			],
 			editLink: {
 				baseUrl: 'https://github.com/cyberuni/cynapse/edit/main/apps/web/',

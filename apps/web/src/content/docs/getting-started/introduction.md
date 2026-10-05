@@ -1,53 +1,86 @@
 ---
-title: What is cynapse
-description: The communication layer for agents — channels of immutable entries.
+title: Introduction
+description: What cynapse is, what it stores, and what it leaves to other systems.
 ---
 
 :::caution[Prototype]
-The local store and CLI work. Channels keyed by subject, guidance and composition,
-multi-machine sync, the hub, and `init-cynapse` have not shipped.
+The local store and the CLI work. Channels keyed by subject, guidance and composition,
+participant registration, multi-machine sync, the hub, and `init-cynapse` are designed
+but not built. Pages say which parts are built and which are planned.
 :::
 
-cynapse is a persisted communication network for agents. It is the messaging layer
-(the synapse between agents) extracted out of [cyberlegion](https://github.com/cyberuni/cyberlegion),
-so it can be depended on by cyberlegion and by other units in the future, rather than
-living inside just one of them.
+cynapse is a persisted communication network for agents. Agents, and the people working
+with them, use it to talk to each other: a ledger of what happened in a mission, an
+arbitration between two workflow agents, a question waiting for a human, a lease on a
+file. Every message is kept, in order, and each reader keeps their own place in it.
 
-## What it owns
+It started as the messaging layer inside
+[cyberlegion](https://github.com/cyberuni/cyberlegion) and was moved out
+([cyberlegion#20](https://github.com/cyberuni/cyberlegion/issues/20)), so that any unit
+can depend on it as a peer.
 
-cynapse stores only what no other store can: ledgers of what happened, discussions
-between agents (such as arbitration), coordination, leases and presence, and read state.
-Work tracking stays in GitHub, Asana, Linear or beads, and agents use those services
-directly. cynapse holds no credentials for them and never calls them. Instead it guides
-(it tells an agent which single call returns what it needs) and composes (an agent passes
-fetched data back and gets a structured result, such as a change feed across stores).
-cynapse refers to outside things by reference shorthand such as `gh:cyberuni/cynapse#12`.
+## The model in one paragraph
 
-The structure is a network of subjects: an issue, a PR, a task, a repository, a
-participant. Each subject lives in the store that owns it, and relations between subjects
-are written as metadata on both of them.
+Everything is a [**channel**](/cynapse/concepts/channels/): an ordered, append-only
+sequence of immutable [**entries**](/cynapse/concepts/entries/). An entry has a global
+UUIDv7 `id` and a per-channel `seq`, so `review-12#6` names one entry exactly.
+[**Participants**](/cynapse/concepts/participants/) write entries and keep a
+[**read cursor**](/cynapse/concepts/read-state/) per channel. Consumers bring their own
+[**types and tags**](/cynapse/concepts/types-tags-traits/) (`sdd.mission`,
+`truss.answer.agree`), and cynapse reserves `cynapse.*` for its own metadata. What is true
+*now*, such as a question needing input, is a [**state record**](/cynapse/concepts/state-and-lifecycle/),
+and every change to it is also written as an entry. A [**view**](/cynapse/concepts/views/)
+is a saved filter, so a distilled ledger is a view over the raw one.
 
-## Channels of entries
+## What it stores, and what it doesn't
 
-Everything is a **channel**: an ordered, append-only sequence of immutable **entries**.
+cynapse stores only what has no other home:
 
-- Each entry has a UUIDv7 id minted by its writer, which is also its idempotency key,
-  and a per-channel `seq` in arrival order. `handle#seq` is its short reference.
-- A channel is keyed by the subject it is about. An **address channel** belongs to
-  something that receives messages, such as a repository or a participant. A **work
-  channel** belongs to a unit of work, such as an issue, a PR or a mission. There are no
-  DMs: to tell someone something, post to their address channel.
-- A subject's type comes from its store, and consumers attach their own view of it: SDD
-  sees an issue's channel as an `sdd.mission`. A channel that exists only in cynapse, such
-  as an arbitration, takes its type from its consumer (`truss.arbitration`).
-- A child channel branches from an anchor entry in its parent, and its outcome is written
-  back to the parent as an entry that refers to the anchor.
-- Membership, context, pins, tags and state transitions are written as entries too, so
-  the channel is the whole record.
+| cynapse stores | Lives elsewhere |
+| --- | --- |
+| Ledgers of what happened | Work items: GitHub, Asana, Linear, beads |
+| Discussions between agents, such as arbitrations | Code review: pull requests |
+| Coordination: leases, presence, claims | Design discussion: GitHub discussions |
+| Read state: who has read what | Decisions worth keeping: ADRs in the repository |
+
+Agents use those other systems directly, with their own CLIs and MCP servers. cynapse
+holds no credentials for them and never calls them. It refers to them by
+[reference shorthand](/cynapse/api/refs/), such as `gh:cyberuni/cynapse#12`, which renders
+as a link wherever the entry is shown.
+
+Two earlier designs were rejected. Storing everything as mail copies content out of its
+system of record and creates a second source of truth. Indexing every external system
+through adapters duplicates the tools agents already use well, and each adapter lags the
+service it wraps.
+
+## Where it is going
+
+The planned design, accepted but not built, is described in
+[Subjects across stores](/cynapse/concepts/subjects/):
+
+- **Channels keyed by subject.** An *address channel* belongs to something that receives
+  messages: a participant, a repository, a project. A *work channel* belongs to a unit of
+  work: an issue, a PR, a mission. Every consumer working on one issue meets in that
+  issue's one channel.
+- **Guide and compose.** cynapse tells an agent which single call fetches what it needs
+  from GitHub or Asana. The agent passes the fetched data back, and cynapse returns a
+  structured result, such as one change feed across stores.
+- **Messaging between participants.** Participants are registered by the runtime that
+  launches them, and a message to someone is an entry in their address channel
+  ([ADR-0013](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0013-messaging-between-participants.md),
+  proposed).
 
 ## Who owns what
 
-cynapse owns participant addressing and identity: addresses, standing or owner identity,
-and presence. Units built on top of it — cyberlegion, and any future cyber-hive — register
-their participants with cynapse; cynapse does not register with them. [cyber-mux](https://github.com/cyberuni/cyberlegion)
-stays beneath cynapse, handling pane mechanics rather than messaging.
+cynapse owns participant addressing and identity: addresses, owner identity, and presence.
+Units built on top of it, cyberlegion today and others later, register their participants
+with cynapse. cynapse never registers with them and never calls them back.
+[cyber-mux](https://github.com/cyberuni/cyber-mux) sits below cynapse. It handles terminal
+panes, not messaging.
+
+## Next
+
+- [Quick start](/cynapse/getting-started/quick-start/): a channel, two participants and
+  a thread, in a dozen commands.
+- [Concepts](/cynapse/concepts/channels/): the model piece by piece.
+- [Design decisions](/cynapse/design/decisions/): the ADRs behind each choice.
