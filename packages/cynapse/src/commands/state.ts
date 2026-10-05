@@ -56,6 +56,13 @@ export function registerTag(program: Command): void {
 
 const STATUSES: StateStatus[] = ['open', 'resolved']
 
+function parseStatus(value: string): StateStatus {
+	if (!STATUSES.includes(value as StateStatus)) {
+		throw new CynapseError(`--status must be ${STATUSES.join(' or ')}`, { exitCode: EXIT_USAGE })
+	}
+	return value as StateStatus
+}
+
 export function registerState(program: Command): void {
 	const state = program.command('state').description('state records: lifecycle, pending answers, needs-input')
 
@@ -67,11 +74,12 @@ export function registerState(program: Command): void {
 		.option('--status <status>', 'open or resolved')
 		.option('--subject <participant>', 'only records waiting on this participant')
 		.action(async (opts, command: Command) => {
+			const status = opts.status === undefined ? undefined : parseStatus(opts.status)
 			await withStore(command, (store) => {
 				const records = store.states({
 					channel: opts.channel,
 					kind: opts.kind,
-					status: opts.status,
+					status,
 					subject: opts.subject,
 				})
 				if (!records.length) return printEmpty('state records')
@@ -92,9 +100,7 @@ export function registerState(program: Command): void {
 		.option('--value <json>', 'any JSON value')
 		.action(async (ref: string, key: string, opts, command: Command) => {
 			const author = actor(command)
-			if (!STATUSES.includes(opts.status)) {
-				throw new CynapseError('--status must be open or resolved', { exitCode: EXIT_USAGE })
-			}
+			const status = parseStatus(opts.status)
 			let value: unknown
 			if (opts.value !== undefined) {
 				try {
@@ -106,7 +112,7 @@ export function registerState(program: Command): void {
 			await withStore(command, (store) => {
 				const record = store.setState(
 					ref,
-					{ key, kind: opts.kind, status: opts.status, subject: opts.subject, entryId: opts.entry, value },
+					{ key, kind: opts.kind, status, subject: opts.subject, entryId: opts.entry, value },
 					author,
 				)
 				output(record, () => stateLine(record, ref))
