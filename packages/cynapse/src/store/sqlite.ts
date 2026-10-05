@@ -11,8 +11,10 @@ import type {
 	Channel,
 	ChannelTraits,
 	ChannelTree,
+	ConditionalAppend,
 	CreateChannelInput,
 	Entry,
+	EntryMatch,
 	EntryQuery,
 	ListChannelsQuery,
 	Member,
@@ -374,6 +376,28 @@ export class SqliteStore implements Store {
 
 	append(ref: string, input: AppendInput): Entry {
 		return this.#writeEntry(() => this.#appendIn(this.#requireChannelId(ref), input))
+	}
+
+	appendUnless(ref: string, input: AppendInput, unless: EntryMatch): ConditionalAppend {
+		const result = this.#write((): { appended: boolean; id: string } => {
+			const channelId = this.#requireChannelId(ref)
+			const where = ['e.channel = ?']
+			const params: SQLInputValue[] = [channelId]
+			if (unless.parent) {
+				where.push('e.parent = ?')
+				params.push(this.#requireEntryRow(unless.parent).id)
+			}
+			applyFilter(unless, where, params)
+			const match = this.#all<{ id: string }>(
+				`SELECT e.id FROM entries e WHERE ${where.join(' AND ')} ORDER BY e.seq LIMIT 1`,
+				...params,
+			)[0]
+			// A retry of the write that already landed is that write, not a conflict with it.
+			if (match && match.id !== input.id) return { appended: false, id: match.id }
+			return { appended: true, id: this.#appendIn(channelId, input).id }
+		})
+		const entry = this.entry(result.id) as Entry
+		return result.appended ? { appended: true, entry } : { appended: false, existing: entry }
 	}
 
 	entry(ref: string, seq?: number): Entry | undefined {

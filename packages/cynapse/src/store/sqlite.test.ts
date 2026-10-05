@@ -218,6 +218,58 @@ describe('entries', () => {
 	})
 })
 
+describe('appendUnless', () => {
+	function decision() {
+		mission()
+		return store.append('auth', { author: 'alice', type: 'sdd.decision', body: 'JWT' })
+	}
+
+	it('appends when no entry matches', () => {
+		const d = decision()
+		const result = store.appendUnless(
+			'auth',
+			{ author: 'council', type: 'sdd.ratify', parent: d.id },
+			{ parent: d.id, types: ['sdd.ratify', 'sdd.override'] },
+		)
+		expect(result).toMatchObject({ appended: true, entry: { type: 'sdd.ratify', parentSeq: d.seq } })
+		expect(store.getChannel('auth')?.stats.lastSeq).toBe(3)
+	})
+
+	it('writes nothing and returns the earliest match when one exists', () => {
+		const d = decision()
+		const unless = { parent: `auth#${d.seq}`, types: ['sdd.ratify', 'sdd.override'] }
+		const first = store.appendUnless('auth', { author: 'council', type: 'sdd.ratify', parent: d.id }, unless)
+		const second = store.appendUnless(
+			'auth',
+			{ author: 'council', type: 'sdd.override', parent: d.id, body: 'No.' },
+			unless,
+		)
+		expect(second).toEqual({ appended: false, existing: first.appended && first.entry })
+		expect(store.getChannel('auth')?.stats.lastSeq).toBe(3)
+	})
+
+	it('ignores entries that match the types but reply to another entry, or match the parent but not the types', () => {
+		const d = decision()
+		const other = store.append('auth', { author: 'alice', type: 'sdd.decision', body: 'Sessions' })
+		store.append('auth', { author: 'council', type: 'sdd.ratify', parent: other.id })
+		store.append('auth', { author: 'bob', type: 'note', parent: d.id, body: 'agreed' })
+		const result = store.appendUnless(
+			'auth',
+			{ author: 'council', type: 'sdd.ratify', parent: d.id },
+			{ parent: d.id, types: ['sdd.ratify', 'sdd.override'] },
+		)
+		expect(result.appended).toBe(true)
+	})
+
+	it('treats a retry of the write that landed as that write, not as a conflict', () => {
+		const d = decision()
+		const write = { id: uuidv7(), author: 'council', type: 'sdd.ratify', parent: d.id }
+		const unless = { parent: d.id, types: ['sdd.ratify'] }
+		const first = store.appendUnless('auth', write, unless)
+		expect(store.appendUnless('auth', write, unless)).toEqual(first)
+	})
+})
+
 describe('read state and state records', () => {
 	it('moves a cursor forward only', () => {
 		mission()

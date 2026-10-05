@@ -194,6 +194,6 @@ interface UnreadCount {
 
 ## Inputs and queries
 
-`CreateChannelInput`, `AppendInput`, `SetStateInput`, `ListChannelsQuery`, `EntryQuery`, `SearchQuery`
-and `StateQuery` are documented with the methods that take them on the [Store](/cynapse/api/store/)
+`CreateChannelInput`, `AppendInput`, `EntryMatch`, `ConditionalAppend`, `SetStateInput`,
+`ListChannelsQuery`, `EntryQuery`, `SearchQuery` and `StateQuery` are documented with the methods that take them on the [Store](/cynapse/api/store/)
 page.

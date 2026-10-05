@@ -160,6 +160,18 @@ export interface AppendInput {
 	data?: Record<string, unknown>
 }
 
+/**
+ * Which of a channel's entries an `appendUnless` looks for. The filter fields mean what
+ * they mean in a view; the fields are ANDed.
+ */
+export interface EntryMatch extends ViewFilter {
+	/** Only direct replies to this entry. */
+	parent?: string
+}
+
+/** What `appendUnless` did: wrote the entry, or found one already matching and wrote nothing. */
+export type ConditionalAppend = { appended: true; entry: Entry } | { appended: false; existing: Entry }
+
 export interface EntryQuery extends ViewFilter {
 	afterSeq?: number
 	limit?: number
@@ -249,6 +261,12 @@ export interface Store {
 
 	// entries
 	append(ref: string, input: AppendInput): Entry
+	/**
+	 * Appends only if no entry in the channel matches `unless`, checked in the same write
+	 * transaction that assigns `seq`, so of two racing writers at most one lands. For the
+	 * at-most-once writes, such as ruling on a decision.
+	 */
+	appendUnless(ref: string, input: AppendInput, unless: EntryMatch): ConditionalAppend
 	entry(entryRef: string): Entry | undefined
 	entry(ref: string, seq: number): Entry | undefined
 	entries(ref: string, query?: EntryQuery): Entry[]

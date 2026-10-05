@@ -124,6 +124,7 @@ Unlike the CLI, `createChannel` does not add members or context; call `addMember
 | Method | Returns | Notes |
 | --- | --- | --- |
 | `append(ref, input: AppendInput)` | `Entry` | Idempotent when `input.id` is given. |
+| `appendUnless(ref, input: AppendInput, unless: EntryMatch)` | `ConditionalAppend` | Appends only if no entry matches `unless`; for at-most-once writes. |
 | `entry(entryRef)` | `Entry \| undefined` | By UUID or `handle#seq`. |
 | `entry(ref, seq)` | `Entry \| undefined` | A channel and a `seq`. |
 | `entries(ref, query?: EntryQuery)` | `Entry[]` | In `seq` order. |
@@ -154,6 +155,35 @@ throws. A non-UUID `id` throws.
 Tags are stored as a sorted set. The `tags` on a returned `Entry` are the *current* set — those given at
 write time adjusted by later `cynapse.label` entries — but the idempotency comparison uses only the tags
 given at write time.
+
+### `appendUnless(ref, input, unless)`
+
+```ts
+interface EntryMatch extends ViewFilter {   // types, excludeTypes, tags, authors
+  parent?: string      // only direct replies to this entry
+}
+
+type ConditionalAppend =
+  | { appended: true; entry: Entry }       // the entry written
+  | { appended: false; existing: Entry }   // the earliest entry that matched; nothing written
+```
+
+Appends `input` as `append` does, unless an entry in the channel already matches `unless`. The check runs
+inside the same write transaction that assigns `seq`, so when several writers race — separate
+processes included — at most one of them lands. Use it for writes that may happen only once, such as
+ruling on a decision:
+
+```ts
+store.appendUnless(
+  'truss-auth',
+  { author: 'council', type: 'truss.ratify', parent: 'truss-auth#5' },
+  { parent: 'truss-auth#5', types: ['truss.ratify', 'truss.override'] },
+)
+```
+
+The filter fields mean what they mean in a [view](/cynapse/api/types/#view-and-viewfilter), and all the
+given fields must hold. A retry of the write that already landed (the same `input.id`) returns
+`appended: true` with that entry, as `append` would.
 
 ### `entries(ref, query)`
 
