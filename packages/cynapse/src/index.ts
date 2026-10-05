@@ -1,3 +1,4 @@
+export { channelIdOf, channelKey, type SubjectId } from './channel-key.js'
 export {
 	CynapseError,
 	EXIT_FAILURE,
