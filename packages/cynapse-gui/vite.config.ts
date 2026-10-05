@@ -1,8 +1,12 @@
 import { getRequestListener } from '@hono/node-server'
 import react from '@vitejs/plugin-react'
+import { silenceSqliteWarning } from 'cynapse/sqlite-warning'
 import { defineConfig, type Plugin } from 'vite'
-import { createApi } from './src/server/api.ts'
-import { openGuiStore } from './src/server/store.ts'
+
+// The API is imported after the filter is in place, because loading it loads node:sqlite.
+silenceSqliteWarning()
+const { createApi } = await import('./src/server/api.ts')
+const { openGuiStore } = await import('./src/server/store.ts')
 
 // Mounts the API inside Vite's dev server, so `pnpm gui dev` is one process. The
 // store opens on the first API request, so a missing database is reported there

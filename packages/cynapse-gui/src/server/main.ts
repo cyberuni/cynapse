@@ -1,7 +1,11 @@
 // `pnpm gui start`: the built UI and the API from this checkout, without the cynapse CLI.
 import { fileURLToPath } from 'node:url'
-import { start } from './start.ts'
-import { openGuiStore } from './store.ts'
+import { silenceSqliteWarning } from 'cynapse/sqlite-warning'
+
+// The server is imported after the filter is in place, because loading it loads node:sqlite.
+silenceSqliteWarning()
+const { start } = await import('./start.ts')
+const { openGuiStore } = await import('./store.ts')
 
 const { store, label } = openGuiStore()
 const gui = await start({
