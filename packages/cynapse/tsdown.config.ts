@@ -22,7 +22,9 @@ export default defineConfig([
 		...shared,
 		// `refs` is its own entry so a browser bundle can render references without
 		// pulling in node:sqlite through the index.
-		entry: { index: 'src/index.ts', refs: 'src/refs.ts' },
+		// `sqlite-warning` is one too, so an entry point can install the filter before
+		// anything it imports loads node:sqlite.
+		entry: { index: 'src/index.ts', refs: 'src/refs.ts', 'sqlite-warning': 'src/sqlite-warning.ts' },
 		dts: true,
 	},
 	{

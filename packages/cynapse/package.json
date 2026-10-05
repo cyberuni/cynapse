@@ -26,6 +26,10 @@
 		"./refs": {
 			"import": "./dist/refs.js",
 			"types": "./dist/refs.d.ts"
+		},
+		"./sqlite-warning": {
+			"import": "./dist/sqlite-warning.js",
+			"types": "./dist/sqlite-warning.d.ts"
 		}
 	},
 	"bin": {
