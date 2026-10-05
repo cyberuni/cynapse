@@ -61,17 +61,19 @@ export function ruleOnDecision(
 ): Entry {
 	const decision = store.entry(input.ref)
 	if (!decision?.type.endsWith('.decision')) throw new ActionError(`${input.ref} is not a decision`)
-	const existing = rulings(store, decision.channelId)[decision.seq]
-	if (existing) {
-		const verb = existing.type.endsWith('.ratify') ? 'ratified' : 'overridden'
-		throw new ActionError(`${input.ref} was already ${verb} in #${existing.seq}`, 'already_ruled')
-	}
 	const note = input.body?.trim()
 	if (input.ruling === 'override' && !note) throw new ActionError('an override needs the Council outcome')
-	return store.append(decision.channelId, {
-		author: COUNCIL,
-		type: `${decision.type.slice(0, -'.decision'.length)}.${input.ruling}`,
-		body: note || 'Ratified.',
-		parent: decision.id,
-	})
+	const namespace = decision.type.slice(0, -'.decision'.length)
+	// The check and the write are one store transaction, so of two rulings racing on the
+	// same decision only one lands.
+	const result = store.appendUnless(
+		decision.channelId,
+		{ author: COUNCIL, type: `${namespace}.${input.ruling}`, body: note || 'Ratified.', parent: decision.id },
+		{ parent: decision.id, types: [`${namespace}.ratify`, `${namespace}.override`] },
+	)
+	if (!result.appended) {
+		const verb = result.existing.type.endsWith('.ratify') ? 'ratified' : 'overridden'
+		throw new ActionError(`${input.ref} was already ${verb} in #${result.existing.seq}`, 'already_ruled')
+	}
+	return result.entry
 }
