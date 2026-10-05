@@ -1,6 +1,6 @@
 {
 	"name": "@cyberuni/cynapse-gui",
-	"version": "0.0.0",
+	"version": "0.1.0",
 	"description": "The Council's web viewer for cynapse channels, started by `cynapse gui`",
 	"repository": {
 		"type": "git",
