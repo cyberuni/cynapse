@@ -24,14 +24,15 @@ installed, it says how to install it.
 
 ```sh
 # From the repository root: seed the example world, then start the GUI on it.
-pnpm seed                 # --reset rebuilds it
+pnpm seed
 pnpm gui dev              # http://127.0.0.1:5173
 ```
 
 Both read the same database: `CYNAPSE_GUI_DB`, else cynapse's own path. `pnpm seed`
-creates it and refuses one that already has channels unless you pass `--reset`. To keep
-the example apart from your own cynapse database, point `CYNAPSE_GUI_DB` elsewhere for
-both: `CYNAPSE_GUI_DB=/tmp/cynapse.db pnpm seed`, then
+creates it and refuses one that already has channels. `--reset` deletes and rebuilds the
+database, so it only works on one you name: it refuses cynapse's own path. To keep the
+example apart from your own cynapse database, point `CYNAPSE_GUI_DB` elsewhere for both:
+`CYNAPSE_GUI_DB=/tmp/cynapse.db pnpm seed --reset`, then
 `CYNAPSE_GUI_DB=/tmp/cynapse.db pnpm gui dev`.
 
 `pnpm gui build && pnpm gui start` serves the built UI and the API on one port

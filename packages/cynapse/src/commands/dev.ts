@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Command } from 'commander'
-import { CynapseError } from '../cli-error.js'
+import { CynapseError, EXIT_USAGE } from '../cli-error.js'
 import { runLoadTest, runLoadWorker } from '../dev/load.js'
 import { SEED_START, SeedClock, seed } from '../dev/seed.js'
 import { output } from '../output.js'
@@ -15,15 +15,24 @@ export function registerDev(program: Command): void {
 	dev
 		.command('seed')
 		.description('build the example world: SDD hierarchy and graph, cyber-truss arbitration, coordination, feed')
-		.option('--reset', 'delete the database first')
+		.option('--reset', 'delete the database first (needs an explicit --db)')
 		.action((opts, command: Command) => {
-			const db = command.optsWithGlobals<{ db?: string }>().db ?? resolveDbPath()
+			const explicit = command.optsWithGlobals<{ db?: string }>().db
+			// Never delete the real store by default: --reset only touches a database named on the command line.
+			if (opts.reset && !explicit) {
+				throw new CynapseError(
+					`--reset deletes the database; pass --db <path> to name it (refusing to delete the default ${resolveDbPath()})`,
+					{ exitCode: EXIT_USAGE },
+				)
+			}
+			const db = explicit ?? resolveDbPath()
 			if (opts.reset) for (const suffix of ['', '-wal', '-shm']) rmSync(`${db}${suffix}`, { force: true })
 			const clock = new SeedClock(SEED_START)
 			const store = openStore({ path: db, clock: clock.now })
 			try {
 				if (store.listChannels().length) {
-					throw new CynapseError(`${db} already has channels; pass --reset to rebuild it`)
+					const rebuild = explicit ? '--reset' : '--db <path> --reset'
+					throw new CynapseError(`${db} already has channels; pass ${rebuild} to rebuild it`)
 				}
 				const summary = seed(store, clock)
 				output({ db, ...summary }, () =>
