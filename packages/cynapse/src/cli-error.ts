@@ -1,3 +1,5 @@
+import type { OutputFormat } from './output.js'
+
 /**
  * Exit codes the CLI is allowed to return. Agents branch on these, so the set stays
  * small and stable: anything new needs a reason a caller can act on differently.
@@ -20,16 +22,35 @@ export class CynapseError extends Error {
 	}
 }
 
+/**
+ * The machine-readable reason for any thrown value. A coded CynapseError keeps its code;
+ * anything else is `usage` or `failure`, matching its exit code, so a caller under
+ * `--json` always gets a code to branch on.
+ */
+export function errorCodeFor(error: unknown): string {
+	if (error instanceof CynapseError && error.code) return error.code
+	return exitCodeFor(error) === EXIT_USAGE ? 'usage' : 'failure'
+}
+
 /** Exit code for any thrown value. Unknown throws are ordinary failures, never usage. */
 export function exitCodeFor(error: unknown): number {
 	return error instanceof CynapseError ? error.exitCode : EXIT_FAILURE
 }
 
 /**
- * One line on stderr, no stack. Agents read this text, so it names what failed rather
- * than dumping a trace; the cause is appended when it adds information.
+ * What the CLI prints to stdout on failure, no stack. Agents read stdout, not stderr, so
+ * an error goes where the data would have (axi principle 6): `error: <message>` in text,
+ * `{ "error": { code, message } }` under `--json`, formatted like any other output so a
+ * caller branches on the code, not prose. The cause is appended when it adds information.
  */
-export function renderCliError(error: unknown): string {
+export function renderCliError(error: unknown, format: OutputFormat = 'text'): string {
+	const message = describe(error)
+	return format === 'json'
+		? JSON.stringify({ error: { code: errorCodeFor(error), message } }, null, 2)
+		: `error: ${message}`
+}
+
+function describe(error: unknown): string {
 	if (error instanceof Error) {
 		const cause = error.cause
 		const detail = cause instanceof Error ? cause.message : typeof cause === 'string' ? cause : undefined

@@ -131,7 +131,8 @@ function runProcess(command: string, args: string[]): Promise<string> {
 		child.on('error', reject)
 		child.on('close', (code) => {
 			if (code === 0) resolve(stdout)
-			else reject(new Error(`load worker exited ${code}: ${stderr.trim()}`))
+			// The CLI reports its own errors on stdout; stderr carries anything else that broke.
+			else reject(new Error(`load worker exited ${code}: ${`${stdout}\n${stderr}`.trim()}`))
 		})
 	})
 }

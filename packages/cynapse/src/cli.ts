@@ -12,6 +12,7 @@ process.emitWarning = ((warning: string | Error, ...rest: unknown[]) => {
 	return (emitWarning as (...args: unknown[]) => void)(warning, ...rest)
 }) as typeof process.emitWarning
 const { createProgram } = await import('./program.js')
+const { getOutputFormat } = await import('./output.js')
 
 // `--version` and `--help` reach here as throws because the program runs with
 // exitOverride; they have already written their output and are a success, not a fault.
@@ -23,7 +24,7 @@ async function run(argv: string[]): Promise<number> {
 		return EXIT_OK
 	} catch (error) {
 		if (error instanceof CommanderError && CLEAN_EXITS.has(error.code)) return EXIT_OK
-		console.error(renderCliError(error))
+		console.log(renderCliError(error, getOutputFormat()))
 		return exitCodeFor(error)
 	}
 }

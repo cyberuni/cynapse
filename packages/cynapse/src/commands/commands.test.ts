@@ -139,6 +139,8 @@ describe('cynapse entry', () => {
 
 	it('fails with a named error for an unknown channel', async () => {
 		await expect(cli('entry', 'list', 'nope')).rejects.toThrow('no channel found for "nope"')
+		await expect(cli('entry', 'list', 'nope')).rejects.toMatchObject({ code: 'not_found' })
+		await expect(cli('entry', 'show', 'nope#9')).rejects.toMatchObject({ code: 'not_found' })
 	})
 })
 
