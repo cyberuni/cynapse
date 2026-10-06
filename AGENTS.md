@@ -107,7 +107,8 @@ ADR-0012 (channels keyed by subject: address and work channels, owners, alias ke
 built. ADR-0013 (messaging between participants) is built: schema migrations, the
 participant registry (`cynapse participant`, `resolveAddress`, `entry send`), followed
 threads, `excludeTags`/`excludeAuthors`, `entry wait`, the change token
-(`cynapse changes`) and owner-only `cynapse.handled`. ADR-0010 and ADR-0011 (subjects across stores, guide and compose) are
+(`cynapse changes`) and owner-only `cynapse.handled`. ADR-0014 (deleting an entry,
+purging a retired participant's address channel) is built. ADR-0010 and ADR-0011 (subjects across stores, guide and compose) are
 accepted but not built yet. `cynapse dev seed` builds an example world and
 `cynapse dev load-test` checks `seq` under concurrent writer processes. Sync, the hub,
 `init-cynapse`, and skills have not shipped yet.

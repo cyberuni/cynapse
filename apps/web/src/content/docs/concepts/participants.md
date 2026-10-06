@@ -102,6 +102,12 @@ makes the participant a first-class record with a history ([`cynapse participant
 - **Participants are retired, never deleted,** because entries name them as authors. A retired
   participant stops resolving, and its address channel stays readable. Registering the same key
   revives it.
+- **Purging is a separate step after retiring** (ADR-0014). `purgeParticipant` erases every entry
+  in a retired participant's address channel outside `cynapse.*`, leaving
+  [tombstones](/cynapse/concepts/entries/#deleting-an-entry), and logs
+  `cynapse.participant.purged`. Only the participant or the unit that registered it may purge.
+  Retiring stays reversible; purging does not, so a revived participant starts with an empty
+  inbox and its history.
 - **Liveness is asserted by the runtime.** A runtime that crashed lists what it registered
   (`participants({ registeredBy, status: 'live' })`) and retires what it no longer runs.
 

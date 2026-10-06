@@ -1,6 +1,6 @@
 ---
 title: participant
-description: Register, retire, rename and resolve participants, and list them for reconciliation.
+description: Register, retire, purge, rename and resolve participants, and list them for reconciliation.
 ---
 
 A [participant](/cynapse/concepts/participants/) registered by a unit has an id derived from a key, a
@@ -55,6 +55,21 @@ address channel and can't be retired.
 
 ```bash
 cynapse --as <unit> participant retire <participant>
+```
+
+## `cynapse participant purge`
+
+Erase every entry in a retired participant's address channel outside `cynapse.*`, leaving tombstones,
+and write `cynapse.participant.purged` with the count
+([Entries](/cynapse/concepts/entries/#deleting-an-entry)). Purging is a separate step from retiring,
+because retiring is reversible and purging is not: retire first, then purge. Only the participant or the
+unit that registered it may purge; anyone else fails with `not_owner`. Purging again with nothing new
+prints the last purge. Entries the participant wrote in other channels are left alone.
+
+```bash
+cynapse --as <unit> participant retire <participant>
+cynapse --as <unit> participant purge <participant>
+# purged 2 entries from reviewer  logged reviewer#7
 ```
 
 ## `cynapse participant rename`

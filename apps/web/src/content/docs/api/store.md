@@ -70,6 +70,7 @@ Closes the database connection.
 | --- | --- | --- |
 | `registerParticipant(input: RegisterParticipantInput)` | `RegisteredParticipant` | `{ key, kind, name, registeredBy? }`. The id is `UUIDv5(key)`. Creates or revives the participant and its address channel, and logs `cynapse.participant.registered`. A live key again is a no-op; another `kind` fails with `id_conflict`. Omit `registeredBy` for a unit registering itself, which must be a `service`. |
 | `retireParticipant(id, author)` | `Participant` | Status `retired`, logged as `cynapse.participant.retired`. Never deleted. |
+| `purgeParticipant(id, author)` | `Entry` | Erases every entry in a retired participant's address channel outside `cynapse.*`, leaving tombstones, and returns the `cynapse.participant.purged` entry (`{ participant, count }`). By the participant or the unit that registered it, else `not_owner`; a live participant fails. Nothing new to purge returns the last purge. |
 | `renameParticipant(id, name, author)` | `Participant` | Renames it and its address handle; the old handle stays as an alias. Logs `cynapse.participant.renamed`. |
 | `resolveAddress(name, options?: { kinds? })` | `ResolvedAddress` | `{ participant, channel? }`: the one live participant whose id, name, or address handle or alias is exactly `name`. Throws `ambiguous_address` (exit `4`, `details.candidates`) or `unknown_address` (exit `5`). |
 | `participants(query?: { status?, registeredBy? })` | `Participant[]` | Ordered by id, for reconciliation. |
@@ -130,6 +131,7 @@ Unlike the CLI, `createChannel` does not add members or context; call `addMember
 | `search(query?: SearchQuery)` | `Entry[]` | Across channels, in id (so creation-time) order. |
 | `addTags(entryRef, tags, author)` | `Entry` | Writes a `cynapse.label` entry; returns it. |
 | `removeTags(entryRef, tags, author)` | `Entry` | Same, removing. |
+| `deleteEntry(entryRef, author)` | `Entry` | Erases the entry's content and leaves a tombstone; returns the `cynapse.entry.deleted` entry (`{ target, seq }`). Address channels only (`not_address`), by their owner (`not_owner`); `cynapse.*` entries cannot be deleted. Again on a tombstone returns the entry that logged its delete. |
 
 ### `append(ref, input)`
 
@@ -195,6 +197,7 @@ interface EntryQuery extends ViewFilter {   // types, excludeTypes, tags, exclud
   fromSummary?: boolean// start at the latest `cynapse.summary` entry, if any
   metaOnly?: boolean   // no body, no data
   root?: string        // only this thread: the root entry and every reply under it
+  includeDeleted?: boolean // include tombstones, hidden by default
 }
 ```
 

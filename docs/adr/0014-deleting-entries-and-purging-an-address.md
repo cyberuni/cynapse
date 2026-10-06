@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted, 2026-10-06. Answers [#60](https://github.com/cyberuni/cynapse/issues/60).
+Accepted, 2026-10-06. Answers [#60](https://github.com/cyberuni/cynapse/issues/60). Built.
 
 ## Context
 
@@ -59,8 +59,8 @@ A tombstone, not a removed row, because each of these depends on the row staying
 Reads hide tombstones unless asked: `entries` skips them unless `includeDeleted` is set
 (`--include-deleted`), `search` and unread counts skip them, and `appendUnless` does not
 match them. `entry(ref)` returns the tombstone, so a reference never dangles. A tombstone
-cannot be replied to, tagged or pinned, and deleting it again returns the first
-`cynapse.entry.deleted` entry, so a runtime may retry.
+cannot be replied to, tagged or pinned, and deleting it again returns the entry that
+logged its delete, so a runtime may retry.
 
 Entries in the `cynapse.*` namespace are not deletable. They are the channel's record of
 its own metadata (registrations, labels, renames, the deletes themselves), and deleting

@@ -109,6 +109,7 @@ cynapse entry list <channel> [options]
 | `--root <entry>` | Only this thread: the root entry and every reply under it. |
 | `--after <seq>` | Only entries with a `seq` greater than this. |
 | `--limit <n>` | At most this many entries. |
+| `--include-deleted` | Include tombstones, entries deleted since they were written. Their line reads `(deleted by <participant>)`. |
 
 `--after` and `--limit` take whole numbers; anything else exits `2`. A view's filter is combined with
 the options you pass, so `--view distilled --author alice` narrows the view further.
@@ -171,6 +172,29 @@ data: {"participant":"sdd-conductor","role":"owner"}
 
 `created` is when the writer minted the entry (read from its UUIDv7); `recorded` is when it arrived in
 the channel.
+
+## `cynapse entry delete`
+
+Erase one entry's content on your address channel and leave a tombstone in its place
+([Entries](/cynapse/concepts/entries/#deleting-an-entry)). The tombstone keeps its `seq`, `parent` and
+`root`, so replies still resolve, and the delete is logged as a `cynapse.entry.deleted` entry. Needs
+`--as`, as the channel's owner.
+
+A work channel fails with `not_address`, anyone but the owner with `not_owner`, and a `cynapse.*` entry
+can't be deleted. Deleting a tombstone again prints the entry that logged its delete.
+
+**Usage**
+
+```bash
+cynapse --as <owner> entry delete <entry>
+```
+
+**Examples**
+
+```bash
+cynapse --as reviewer entry delete reviewer#3
+# deleted reviewer#3  logged reviewer#5
+```
 
 ## `cynapse entry wait`
 
