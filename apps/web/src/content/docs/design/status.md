@@ -54,6 +54,6 @@ designed and not yet built. Status as of October 2026.
 | Messaging reads: followed threads in `unread`, `excludeTags` and `excludeAuthors`, `entry wait` | Built (ADR-0013) | [Messaging](/cynapse/concepts/messaging/) |
 | The change token, `changes` | Built (ADR-0013) | [Messaging](/cynapse/concepts/messaging/) |
 | Owner-only `cynapse.handled` on address channels | Built (ADR-0013) | [Messaging](/cynapse/concepts/messaging/) |
-| Deleting an entry, purging a retired participant's address channel | Built (ADR-0014) | [Entries](/cynapse/concepts/entries/#deleting-an-entry) |
+| Deleting an entry or a channel | Built (ADR-0014) | [Entries](/cynapse/concepts/entries/#deleting-an-entry) |
 | The boundary with a runtime | Accepted (ADR-0013). It says what stays with the runtime, so cynapse has nothing to build for it | [cynapse and the runtime](/cynapse/design/runtime/) |
 | Access control | Planned with the hub. Today `--as` is local trust | [Participants](/cynapse/concepts/participants/#how-a-participant-gets-into-a-channel) |

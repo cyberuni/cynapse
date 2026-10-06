@@ -54,17 +54,17 @@ channel. Because the row stays, a `seq` is never handed out twice, replies still
 their `parent` and `root`, and a reader can tell an entry removed on purpose from one not
 received yet.
 
-- Deleting is defined on **address channels**, and only their owner may do it, like
-  `cynapse.handled`. A work channel fails with `not_address`, anyone else with `not_owner`.
-  A sender takes a message back with a retraction instead.
+- **Anyone may delete, on any channel.** No layer can tell whether the caller is the person
+  or an agent acting for them, so cynapse doesn't pretend to check. The
+  `cynapse.entry.deleted` entry records who claimed the delete.
 - `cynapse.*` entries are the channel's record of itself and cannot be deleted.
 - Listings hide tombstones unless asked (`includeDeleted`, `--include-deleted`); `search`,
   unread counts and `appendUnless` skip them. `entry(ref)` still returns the tombstone.
 - A tombstone cannot be replied to, tagged or pinned. Deleting it again returns the entry
   that logged the delete.
 
-`purgeParticipant` does the same for every entry in a retired participant's address channel
-([Participants](/cynapse/concepts/participants/#registration)).
+`deleteChannel` does the same for every entry in a channel, and hides the channel
+([State and lifecycle](/cynapse/concepts/state-and-lifecycle/#deleting-a-channel)).
 
 ## Threads
 

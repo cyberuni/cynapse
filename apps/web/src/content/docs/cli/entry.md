@@ -175,18 +175,17 @@ the channel.
 
 ## `cynapse entry delete`
 
-Erase one entry's content on your address channel and leave a tombstone in its place
+Erase one entry's content, on any channel, and leave a tombstone in its place
 ([Entries](/cynapse/concepts/entries/#deleting-an-entry)). The tombstone keeps its `seq`, `parent` and
 `root`, so replies still resolve, and the delete is logged as a `cynapse.entry.deleted` entry. Needs
-`--as`, as the channel's owner.
+`--as`, which the log records; anyone may delete, since no caller can be verified.
 
-A work channel fails with `not_address`, anyone but the owner with `not_owner`, and a `cynapse.*` entry
-can't be deleted. Deleting a tombstone again prints the entry that logged its delete.
+A `cynapse.*` entry can't be deleted. Deleting a tombstone again prints the entry that logged its delete.
 
 **Usage**
 
 ```bash
-cynapse --as <owner> entry delete <entry>
+cynapse --as <participant> entry delete <entry>
 ```
 
 **Examples**

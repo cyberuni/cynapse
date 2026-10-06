@@ -70,7 +70,6 @@ Closes the database connection.
 | --- | --- | --- |
 | `registerParticipant(input: RegisterParticipantInput)` | `RegisteredParticipant` | `{ key, kind, name, registeredBy? }`. The id is `UUIDv5(key)`. Creates or revives the participant and its address channel, and logs `cynapse.participant.registered`. A live key again is a no-op; another `kind` fails with `id_conflict`. Omit `registeredBy` for a unit registering itself, which must be a `service`. |
 | `retireParticipant(id, author)` | `Participant` | Status `retired`, logged as `cynapse.participant.retired`. Never deleted. |
-| `purgeParticipant(id, author)` | `Entry` | Erases every entry in a retired participant's address channel outside `cynapse.*`, leaving tombstones, and returns the `cynapse.participant.purged` entry (`{ participant, count }`). By the participant or the unit that registered it, else `not_owner`; a live participant fails. Nothing new to purge returns the last purge. |
 | `renameParticipant(id, name, author)` | `Participant` | Renames it and its address handle; the old handle stays as an alias. Logs `cynapse.participant.renamed`. |
 | `resolveAddress(name, options?: { kinds? })` | `ResolvedAddress` | `{ participant, channel? }`: the one live participant whose id, name, or address handle or alias is exactly `name`. Throws `ambiguous_address` (exit `4`, `details.candidates`) or `unknown_address` (exit `5`). |
 | `participants(query?: { status?, registeredBy? })` | `Participant[]` | Ordered by id, for reconciliation. |
@@ -82,7 +81,7 @@ Closes the database connection.
 | --- | --- | --- |
 | `createChannel(input: CreateChannelInput)` | `Channel` | See below. |
 | `getChannel(ref, options?: { as?: string })` | `Channel \| undefined` | `as` fills `stats.unread` for that participant. |
-| `listChannels(query?: ListChannelsQuery)` | `Channel[]` | Oldest first. Filters: `type`, `parent`, `state`. |
+| `listChannels(query?: ListChannelsQuery)` | `Channel[]` | Oldest first. Filters: `kind`, `type`, `parent`, `state`. Hides deleted channels unless `includeDeleted` is set or `state` is `deleted`. |
 | `children(ref)` | `Channel[]` | Channels anchored directly in this channel. |
 | `tree(ref?)` | `ChannelTree[]` | From `ref`, or from every channel with no parent. |
 | `brief(ref, options?: { as?: string })` | `Briefing` | The one-call briefing: channel, open state records, pinned entries, views, children. |
@@ -90,7 +89,8 @@ Closes the database connection.
 | `addMember(ref, participant, role, author)` | `Entry` | Re-adding a member updates the role. |
 | `addContext(ref, contextRef, author)` | `Entry` | Adds a [reference shorthand](/cynapse/api/refs/) to the channel's context. |
 | `pin(entryRef, author)` | `Entry` | Pins the entry in its own channel. |
-| `setLifecycle(ref, state, author)` | `Entry` | Moves the channel to a lifecycle state. |
+| `setLifecycle(ref, state, author)` | `Entry` | Moves the channel to a lifecycle state. `deleted` is reserved for `deleteChannel`; any other state restores a deleted channel. |
+| `deleteChannel(ref, author)` | `Entry` | Erases every entry outside `cynapse.*`, leaving tombstones, moves the channel to `deleted`, and returns the `cynapse.channel.deleted` entry (`{ count, from? }`). Anyone may delete. Nothing new to erase on a deleted channel returns the last delete. |
 | `defineView(ref, name, filter, author)` | `Entry` | Saves or replaces a named [`ViewFilter`](/cynapse/api/types/#view-and-viewfilter). |
 | `views(ref)` | `View[]` | The channel's saved views, ordered by name. |
 
@@ -131,7 +131,7 @@ Unlike the CLI, `createChannel` does not add members or context; call `addMember
 | `search(query?: SearchQuery)` | `Entry[]` | Across channels, in id (so creation-time) order. |
 | `addTags(entryRef, tags, author)` | `Entry` | Writes a `cynapse.label` entry; returns it. |
 | `removeTags(entryRef, tags, author)` | `Entry` | Same, removing. |
-| `deleteEntry(entryRef, author)` | `Entry` | Erases the entry's content and leaves a tombstone; returns the `cynapse.entry.deleted` entry (`{ target, seq }`). Address channels only (`not_address`), by their owner (`not_owner`); `cynapse.*` entries cannot be deleted. Again on a tombstone returns the entry that logged its delete. |
+| `deleteEntry(entryRef, author)` | `Entry` | Erases the entry's content and leaves a tombstone; returns the `cynapse.entry.deleted` entry (`{ target, seq }`). Anyone may delete, since no caller can be verified; `cynapse.*` entries cannot be deleted. Again on a tombstone returns the entry that logged its delete. |
 
 ### `append(ref, input)`
 
