@@ -256,41 +256,6 @@ export class SqliteStore implements Store {
 		return this.#requireParticipant(id)
 	}
 
-	purgeParticipant(id: string, author: string): Entry {
-		return this.#writeEntry(() => {
-			const participant = this.#requireParticipant(id)
-			const channelId = this.#requireAddress(participant, 'purged')
-			if (author !== participant.id && author !== participant.registeredBy) {
-				throw new CynapseError(
-					`only the participant or the unit that registered it, ${participant.registeredBy}, may purge its address channel`,
-					{ code: 'not_owner', help: `purge as the registering unit with --as ${participant.registeredBy}` },
-				)
-			}
-			if (participant.status !== 'retired') {
-				throw new CynapseError(`participant ${participant.id} is live; retire it before purging its address channel`, {
-					help: `run \`cynapse participant retire ${participant.id}\` first`,
-				})
-			}
-			const targets = this.#all<{ id: string }>(
-				"SELECT id FROM entries WHERE channel = ? AND deleted_at IS NULL AND type NOT LIKE 'cynapse.%' ORDER BY seq",
-				channelId,
-			)
-			if (!targets.length) {
-				const last = this.#get<{ id: string }>(
-					"SELECT id FROM entries WHERE channel = ? AND type = 'cynapse.participant.purged' ORDER BY seq DESC LIMIT 1",
-					channelId,
-				)
-				if (last) return this.#toEntry(this.#findEntryRow(last.id) as EntryRow)
-			}
-			for (const target of targets) this.#tombstone(target.id, author)
-			return this.#appendIn(channelId, {
-				author,
-				type: 'cynapse.participant.purged',
-				data: { participant: participant.id, count: targets.length },
-			})
-		})
-	}
-
 	renameParticipant(id: string, name: string, author: string): Participant {
 		const to = validateParticipantName(name)
 		this.#write(() => {
@@ -567,6 +532,9 @@ export class SqliteStore implements Store {
 		if (query.state) {
 			where.push('state = ?')
 			params.push(query.state)
+		} else if (!query.includeDeleted) {
+			where.push('state <> ?')
+			params.push(DELETED_STATE)
 		}
 		if (query.parent) {
 			where.push('parent_channel = ?')
@@ -590,7 +558,8 @@ export class SqliteStore implements Store {
 		})
 		if (ref) return [build(this.#requireChannel(this.#requireChannelId(ref)))]
 		const roots = this.#all<{ id: string }>(
-			'SELECT id FROM channels WHERE parent_channel IS NULL ORDER BY created_at, id',
+			'SELECT id FROM channels WHERE parent_channel IS NULL AND state <> ? ORDER BY created_at, id',
+			DELETED_STATE,
 		)
 		return roots.map((row) => build(this.#loadChannel(row.id)))
 	}
@@ -673,6 +642,11 @@ export class SqliteStore implements Store {
 	}
 
 	setLifecycle(ref: string, state: string, author: string): Entry {
+		if (state === DELETED_STATE) {
+			throw new CynapseError('the deleted lifecycle is set by deleteChannel, which also erases the entries', {
+				help: 'run `cynapse channel delete <channel>` instead',
+			})
+		}
 		return this.#writeEntry(() => {
 			const id = this.#requireChannelId(ref)
 			const from = this.#get<{ state: string }>('SELECT state FROM channels WHERE id = ?', id)?.state
@@ -681,6 +655,32 @@ export class SqliteStore implements Store {
 				author,
 				type: 'cynapse.state.changed',
 				data: { key: 'lifecycle', kind: 'lifecycle', from, to: state },
+			})
+		})
+	}
+
+	deleteChannel(ref: string, author: string): Entry {
+		return this.#writeEntry(() => {
+			const id = this.#requireChannelId(ref)
+			const from = (this.#get<{ state: string }>('SELECT state FROM channels WHERE id = ?', id) as { state: string })
+				.state
+			const targets = this.#all<{ id: string }>(
+				"SELECT id FROM entries WHERE channel = ? AND deleted_at IS NULL AND type NOT LIKE 'cynapse.%' ORDER BY seq",
+				id,
+			)
+			if (!targets.length && from === DELETED_STATE) {
+				const last = this.#get<{ id: string }>(
+					"SELECT id FROM entries WHERE channel = ? AND type = 'cynapse.channel.deleted' ORDER BY seq DESC LIMIT 1",
+					id,
+				) as { id: string }
+				return this.#toEntry(this.#findEntryRow(last.id) as EntryRow)
+			}
+			for (const target of targets) this.#tombstone(target.id, author)
+			this.#run('UPDATE channels SET state = ? WHERE id = ?', DELETED_STATE, id)
+			return this.#appendIn(id, {
+				author,
+				type: 'cynapse.channel.deleted',
+				data: { count: targets.length, ...(from === DELETED_STATE ? {} : { from }) },
 			})
 		})
 	}
@@ -805,23 +805,8 @@ export class SqliteStore implements Store {
 
 	deleteEntry(entryRef: string, author: string): Entry {
 		return this.#writeEntry(() => {
+			// No permission check: no caller can be verified, so the log naming who deleted is the record.
 			const target = this.#requireEntryRow(entryRef)
-			const channel = this.#get<{ kind: ChannelKind; owner: string | null }>(
-				'SELECT kind, owner FROM channels WHERE id = ?',
-				target.channel,
-			) as { kind: ChannelKind; owner: string | null }
-			if (channel.kind !== 'address') {
-				throw new CynapseError('entries are deleted on address channels only; this is a work channel', {
-					code: 'not_address',
-					help: 'append a retraction that refers to the entry instead',
-				})
-			}
-			if (channel.owner !== author) {
-				throw new CynapseError(`only the channel's owner, ${channel.owner}, may delete its entries`, {
-					code: 'not_owner',
-					help: `delete as the owner with --as ${channel.owner}; a sender takes a message back with a retraction`,
-				})
-			}
 			if (target.deleted_at) return this.#deletionOf(target)
 			if (target.type.startsWith('cynapse.')) {
 				throw new CynapseError(
@@ -1227,13 +1212,13 @@ export class SqliteStore implements Store {
 
 	/**
 	 * The entry that logged a tombstone's delete: its own `cynapse.entry.deleted`, or the
-	 * first purge after it, whichever came first.
+	 * first channel delete after it, whichever came first.
 	 */
 	#deletionOf(target: EntryRow): Entry {
 		const log = this.#get<{ id: string }>(
 			`SELECT id FROM entries WHERE channel = ?1 AND seq > ?2 AND (
 				(type = 'cynapse.entry.deleted' AND json_extract(data, '$.target') = ?3)
-				OR type = 'cynapse.participant.purged')
+				OR type = 'cynapse.channel.deleted')
 			ORDER BY seq LIMIT 1`,
 			target.channel,
 			target.seq,
@@ -1528,6 +1513,9 @@ function applyFilter(filter: ViewFilter, where: string[], params: SQLInputValue[
 		params.push(...filter.excludeAuthors)
 	}
 }
+
+/** The lifecycle state `deleteChannel` sets; listings hide it unless asked. */
+const DELETED_STATE = 'deleted'
 
 /** The reserved tag that marks an entry on an address channel as handled by its owner. */
 export const HANDLED_TAG = 'cynapse.handled'

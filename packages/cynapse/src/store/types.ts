@@ -315,6 +315,8 @@ export interface ListChannelsQuery {
 	/** Channels anchored in this channel. */
 	parent?: string
 	state?: string
+	/** Include channels in the `deleted` lifecycle, hidden by default unless `state` asks for them. */
+	includeDeleted?: boolean
 }
 
 export interface ChannelTree {
@@ -372,12 +374,6 @@ export interface Store {
 	registerParticipant(input: RegisterParticipantInput): RegisteredParticipant
 	/** Marks the participant retired and logs `cynapse.participant.retired`. It is never deleted. */
 	retireParticipant(id: string, author: string): Participant
-	/**
-	 * Erases the entries in a retired participant's address channel outside `cynapse.*`, as
-	 * `deleteEntry` would, and logs `cynapse.participant.purged` with the count (ADR-0014).
-	 * Only the participant or the unit that registered it may purge.
-	 */
-	purgeParticipant(id: string, author: string): Entry
 	/** Renames the participant and its address handle; the old handle stays as an alias. */
 	renameParticipant(id: string, name: string, author: string): Participant
 	/**
@@ -406,7 +402,15 @@ export interface Store {
 	addMember(ref: string, participant: string, role: string, author: string): Entry
 	addContext(ref: string, contextRef: string, author: string): Entry
 	pin(entryRef: string, author: string): Entry
+	/** Moves the channel to a lifecycle state; `deleted` is reserved for `deleteChannel`. */
 	setLifecycle(ref: string, state: string, author: string): Entry
+	/**
+	 * Erases every entry in the channel outside `cynapse.*`, as `deleteEntry` would, moves it to
+	 * the `deleted` lifecycle, which listings hide, and logs `cynapse.channel.deleted` with the
+	 * count (ADR-0014). The channel still resolves, and `setLifecycle` restores it. Deleting it
+	 * again with nothing new to erase returns the last log entry.
+	 */
+	deleteChannel(ref: string, author: string): Entry
 	defineView(ref: string, name: string, filter: ViewFilter, author: string): Entry
 	views(ref: string): View[]
 
@@ -424,8 +428,9 @@ export interface Store {
 	search(query?: SearchQuery): Entry[]
 	/**
 	 * Erases an entry's content and leaves a tombstone in its place, logged as
-	 * `cynapse.entry.deleted` (ADR-0014). Address channels only, by their owner; `cynapse.*`
-	 * entries cannot be deleted. Deleting a tombstone again returns the first log entry.
+	 * `cynapse.entry.deleted` (ADR-0014). Anyone may delete, since no caller can be verified;
+	 * the log names who did. `cynapse.*` entries cannot be deleted. Deleting a tombstone again
+	 * returns the entry that logged its delete.
 	 */
 	deleteEntry(entryRef: string, author: string): Entry
 	addTags(entryRef: string, tags: string[], author: string): Entry

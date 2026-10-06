@@ -165,18 +165,14 @@ describe('deleteEntry', () => {
 		expect(store.entry(message.id)?.deleted).toBeDefined()
 	})
 
-	it("lets only the address channel's owner delete", () => {
-		const message = send('mine')
-
-		expect(captureError(() => store.deleteEntry(message.id, 'alice'))).toMatchObject({ code: 'not_owner' })
-		expect(store.entry(message.id)?.body).toBe('mine')
-	})
-
-	it('is not defined on a work channel', () => {
+	it('lets anyone delete on any channel, since no caller can be verified, and logs who did', () => {
+		const message = send('mail')
 		store.createChannel({ handle: 'auth', type: 'sdd.mission', title: 'Auth', author: 'alice' })
 		const note = store.append('auth', { author: 'alice', type: 'note', body: 'x' })
 
-		expect(captureError(() => store.deleteEntry(note.id, 'alice'))).toMatchObject({ code: 'not_address' })
+		expect(store.deleteEntry(message.id, 'alice').author).toBe('alice')
+		expect(store.deleteEntry(note.id, 'bob').author).toBe('bob')
+		expect(store.entry(note.id)?.deleted).toMatchObject({ by: 'bob' })
 	})
 
 	it('refuses to delete a cynapse.* entry, the record of the channel itself', () => {
@@ -221,71 +217,101 @@ describe('deleteEntry', () => {
 	})
 })
 
-describe('purgeParticipant', () => {
-	it("tombstones every entry in a retired participant's address channel outside cynapse.*", () => {
-		const one = send('one')
-		const two = send('two')
-		store.retireParticipant(reviewer.id, legion.id)
+describe('deleteChannel', () => {
+	function workChannel() {
+		const channel = store.createChannel({ handle: 'auth', type: 'sdd.mission', title: 'Auth', author: 'alice' })
+		const one = store.append('auth', { author: 'alice', type: 'note', body: 'one' })
+		const two = store.append('auth', { author: 'bob', type: 'note', body: 'two', parent: one.id })
+		return { channel, one, two }
+	}
 
-		const logged = store.purgeParticipant(reviewer.id, legion.id)
+	it('erases every entry outside cynapse.* and logs cynapse.channel.deleted with the count', () => {
+		const { channel, one, two } = workChannel()
+
+		const logged = store.deleteChannel('auth', 'carol')
 
 		expect(logged).toMatchObject({
-			author: legion.id,
-			type: 'cynapse.participant.purged',
-			data: { participant: reviewer.id, count: 2 },
+			channelId: channel.id,
+			author: 'carol',
+			type: 'cynapse.channel.deleted',
+			data: { count: 2 },
 		})
-		expect(store.entry(one.id)?.deleted).toMatchObject({ by: legion.id })
-		expect(store.entry(two.id)?.body).toBe('')
-		const kept = store.entries(inbox.id).map((e) => e.type)
-		expect(kept).toEqual(expect.arrayContaining(['cynapse.participant.registered', 'cynapse.participant.retired']))
-		expect(kept).not.toContain('cyberlegion.mail')
+		expect(store.entry(one.id)).toMatchObject({ body: '', deleted: { by: 'carol' } })
+		expect(store.entry(two.id)).toMatchObject({ parent: one.id, deleted: { by: 'carol' } })
+		expect(store.entries('auth', { types: ['note'] })).toEqual([])
+		expect(store.entries('auth').map((e) => e.type)).toContain('cynapse.channel.created')
 	})
 
-	it('needs the participant retired first', () => {
-		send('live mail')
+	it('moves the channel to the deleted lifecycle and hides it from listings', () => {
+		workChannel()
 
-		expect(() => store.purgeParticipant(reviewer.id, legion.id)).toThrow(/retire/)
+		store.deleteChannel('auth', 'carol')
+
+		expect(store.getChannel('auth')?.state).toBe('deleted')
+		expect(store.listChannels().map((c) => c.handle)).not.toContain('auth')
+		expect(store.listChannels({ includeDeleted: true }).map((c) => c.handle)).toContain('auth')
+		expect(store.listChannels({ state: 'deleted' }).map((c) => c.handle)).toEqual(['auth'])
+		expect(store.tree().map((t) => t.channel.handle)).not.toContain('auth')
 	})
 
-	it('lets the participant itself or the unit that registered it purge, and no one else', () => {
+	it('keeps the channel resolvable, so a subject recreated returns it, and setLifecycle restores it', () => {
+		const subject = { store: 'gh', nativeId: 'I_kwDOabc' }
+		const channel = store.createChannel({ handle: 'gh:x/y/1', type: 'gh.issue', title: 'x', author: 'alice', subject })
+		store.deleteChannel(channel.id, 'carol')
+
+		expect(store.createChannel({ handle: 'gh:x/y/1', type: 'gh.issue', title: 'x', author: 'alice', subject }).id).toBe(
+			channel.id,
+		)
+		store.setLifecycle(channel.id, 'active', 'carol')
+		expect(store.listChannels().map((c) => c.id)).toContain(channel.id)
+	})
+
+	it('reserves the deleted lifecycle for deleteChannel', () => {
+		workChannel()
+
+		expect(() => store.setLifecycle('auth', 'deleted', 'carol')).toThrow(/deleteChannel/)
+	})
+
+	it("deletes an address channel too, such as a participant's inbox", () => {
 		send('mail')
-		store.retireParticipant(reviewer.id, legion.id)
 
-		expect(captureError(() => store.purgeParticipant(reviewer.id, 'alice'))).toMatchObject({ code: 'not_owner' })
-		expect(store.purgeParticipant(reviewer.id, reviewer.id).data).toMatchObject({ count: 1 })
+		expect(store.deleteChannel(inbox.id, 'alice').data).toMatchObject({ count: 1 })
 	})
 
-	it('does not touch what the participant wrote in other channels', () => {
-		store.createChannel({ handle: 'auth', type: 'sdd.mission', title: 'Auth', author: 'alice' })
-		const elsewhere = store.append('auth', { author: reviewer.id, type: 'note', body: 'still here' })
-		store.retireParticipant(reviewer.id, legion.id)
-
-		store.purgeParticipant(reviewer.id, legion.id)
-
-		expect(store.entry(elsewhere.id)?.body).toBe('still here')
-	})
-
-	it('returns the last purge again when there is nothing new to purge', () => {
-		send('mail')
-		store.retireParticipant(reviewer.id, legion.id)
-		const first = store.purgeParticipant(reviewer.id, legion.id)
-
-		expect(store.purgeParticipant(reviewer.id, legion.id).id).toBe(first.id)
-	})
-
-	it('leaves a revived participant with an empty inbox and its history', () => {
-		send('old mail')
-		store.retireParticipant(reviewer.id, legion.id)
-		store.purgeParticipant(reviewer.id, legion.id)
-
-		const revived = store.registerParticipant({
-			key: 'cyberlegion:role/reviewer',
-			kind: 'agent',
-			name: 'reviewer',
-			registeredBy: legion.id,
+	it('leaves child channels and their entries alone', () => {
+		const { one } = workChannel()
+		const child = store.createChannel({
+			handle: 'auth-review',
+			type: 'sdd.review',
+			title: 'r',
+			author: 'alice',
+			anchor: one.id,
 		})
+		const kept = store.append(child.id, { author: 'alice', type: 'note', body: 'still here' })
 
-		expect(revived.channel.id).toBe(inbox.id)
-		expect(store.entries(inbox.id, { excludeTypes: ['cynapse.*'] })).toEqual([])
+		store.deleteChannel('auth', 'carol')
+
+		expect(store.entry(kept.id)?.body).toBe('still here')
+		expect(store.getChannel(child.id)?.parent).toMatchObject({ entryId: one.id, seq: one.seq })
+	})
+
+	it('returns the last delete again when there is nothing new to erase', () => {
+		workChannel()
+		const first = store.deleteChannel('auth', 'carol')
+
+		expect(store.deleteChannel('auth', 'carol').id).toBe(first.id)
+	})
+
+	it('erases what arrived since, when deleted again', () => {
+		workChannel()
+		store.deleteChannel('auth', 'carol')
+		const late = store.append('auth', { author: 'alice', type: 'note', body: 'late' })
+
+		expect(store.deleteChannel('auth', 'carol').data).toMatchObject({ count: 1 })
+		expect(store.entry(late.id)?.deleted).toBeDefined()
+	})
+
+	it('fails with not_found for an unknown channel', () => {
+		expect(captureError(() => store.deleteChannel('nope', 'carol'))).toMatchObject({ code: 'not_found' })
 	})
 })

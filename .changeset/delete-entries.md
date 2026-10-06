@@ -2,11 +2,11 @@
 'cynapse': minor
 ---
 
-Delete an entry, and purge a retired participant's address channel (ADR-0014).
-`Store.deleteEntry` and `cynapse entry delete` erase one entry's content on an address
-channel, by its owner, and leave a tombstone that keeps its `seq`, `parent` and `root`
-resolving, logged as `cynapse.entry.deleted`. `Store.purgeParticipant` and
-`cynapse participant purge` do the same for every entry in a retired participant's address
-channel outside `cynapse.*`, by the participant or the unit that registered it, logged as
-`cynapse.participant.purged`. `Entry` gains `deleted`, and listings hide tombstones unless
+Delete an entry or a channel (ADR-0014). `Store.deleteEntry` and `cynapse entry delete`
+erase one entry's content and leave a tombstone that keeps its `seq`, `parent` and `root`
+resolving, logged as `cynapse.entry.deleted`. `Store.deleteChannel` and
+`cynapse channel delete` do the same for every entry in a channel outside `cynapse.*` and move
+it to the reserved lifecycle state `deleted`, logged as `cynapse.channel.deleted`; any other
+lifecycle restores it. Anyone may delete, since no caller can be verified; the log records who
+did. `Entry` gains `deleted`, and `entries` and `listChannels` hide what was deleted unless
 `includeDeleted` (`--include-deleted`) is set.

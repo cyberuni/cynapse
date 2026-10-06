@@ -546,9 +546,8 @@ describe('cynapse entry send', () => {
 	})
 })
 
-describe('cynapse entry delete and participant purge', () => {
+describe('cynapse entry delete and channel delete', () => {
 	const unit = uuidv5('cyberlegion:unit/1')
-	const reviewer = uuidv5('cyberlegion:role/reviewer')
 
 	beforeEach(async () => {
 		await cli('participant', 'register', 'cyberlegion:unit/1', '--kind', 'service', '--name', 'cyberlegion', '--self')
@@ -565,48 +564,48 @@ describe('cynapse entry delete and participant purge', () => {
 		)
 	})
 
-	it('deletes one entry as the owner, leaving a tombstone that entry list hides', async () => {
+	it('deletes one entry, leaving a tombstone that entry list hides', async () => {
 		const sent = await json('--as', 'alice', 'entry', 'send', 'reviewer', '--type', 'note', '--body', 'secret')
 
-		expect(await cli('--as', reviewer, 'entry', 'delete', `reviewer#${sent.seq}`)).toMatch(
+		expect(await cli('--as', 'bob', 'entry', 'delete', `reviewer#${sent.seq}`)).toMatch(
 			new RegExp(`^deleted reviewer#${sent.seq}`),
 		)
 
-		expect(await json('entry', 'show', sent.id)).toMatchObject({ body: '', deleted: { by: reviewer } })
-		const notes = await json('entry', 'list', 'reviewer', '--type', 'note')
-		expect(notes).toMatchObject({ count: 0 })
+		expect(await json('entry', 'show', sent.id)).toMatchObject({ body: '', deleted: { by: 'bob' } })
+		expect(await json('entry', 'list', 'reviewer', '--type', 'note')).toMatchObject({ count: 0 })
 		expect(await json('entry', 'list', 'reviewer', '--type', 'note', '--include-deleted')).toMatchObject({
 			count: 1,
 			items: [{ id: sent.id }],
 		})
-		expect(await cli('entry', 'list', 'reviewer', '--type', 'note', '--include-deleted')).toContain(
-			`(deleted by ${reviewer})`,
-		)
+		expect(await cli('entry', 'list', 'reviewer', '--type', 'note', '--include-deleted')).toContain('(deleted by bob)')
 	})
 
-	it('prints the cynapse.entry.deleted entry under --json, and refuses anyone but the owner', async () => {
+	it('prints the cynapse.entry.deleted entry under --json', async () => {
 		const sent = await json('--as', 'alice', 'entry', 'send', 'reviewer', '--type', 'note', '--body', 'secret')
 
-		await expect(cli('--as', 'alice', 'entry', 'delete', sent.id)).rejects.toMatchObject({ code: 'not_owner' })
-		expect(await json('--as', reviewer, 'entry', 'delete', sent.id)).toMatchObject({
+		expect(await json('--as', 'alice', 'entry', 'delete', sent.id)).toMatchObject({
 			type: 'cynapse.entry.deleted',
+			author: 'alice',
 			data: { target: sent.id, seq: sent.seq },
 		})
 	})
 
-	it("purges a retired participant's address channel, as the unit that registered it", async () => {
-		await cli('--as', 'alice', 'entry', 'send', 'reviewer', '--type', 'note', '--body', 'one')
-		await cli('--as', 'alice', 'entry', 'send', 'reviewer', '--type', 'note', '--body', 'two')
-		await expect(cli('--as', unit, 'participant', 'purge', reviewer)).rejects.toThrow(/retire/)
-		await cli('--as', unit, 'participant', 'retire', reviewer)
+	it('deletes a channel, hiding it from channel list unless asked', async () => {
+		await cli('--as', 'alice', 'channel', 'create', 'auth', '--type', 'sdd.mission', '--title', 'Add auth')
+		await cli('--as', 'alice', 'entry', 'append', 'auth', '--type', 'note', '--body', 'one')
 
-		expect(await cli('--as', unit, 'participant', 'purge', reviewer)).toMatch(
-			/^purged 2 entries from reviewer {2}logged reviewer#\d+/,
+		expect(await cli('--as', 'bob', 'channel', 'delete', 'auth')).toMatch(
+			/^deleted auth, erasing 1 entry {2}logged auth#\d+/,
 		)
-		expect(await json('entry', 'list', 'reviewer', '--type', 'note')).toMatchObject({ count: 0 })
-		expect(await json('--as', unit, 'participant', 'purge', reviewer)).toMatchObject({
-			type: 'cynapse.participant.purged',
-			data: { participant: reviewer, count: 2 },
+		expect(await json('--as', 'bob', 'channel', 'delete', 'auth')).toMatchObject({
+			type: 'cynapse.channel.deleted',
+			data: { count: 1 },
 		})
+		const listed = await json('channel', 'list')
+		expect(listed.items.map((c: { handle: string }) => c.handle)).not.toContain('auth')
+		expect(await json('channel', 'list', '--include-deleted')).toMatchObject({
+			items: expect.arrayContaining([expect.objectContaining({ handle: 'auth', state: 'deleted' })]),
+		})
+		expect(await json('entry', 'list', 'auth', '--type', 'note')).toMatchObject({ count: 0 })
 	})
 })

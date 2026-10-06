@@ -83,6 +83,7 @@ export function registerChannel(program: Command): void {
 		.option('--type <type>', 'only this channel type')
 		.option('--parent <channel>', 'only channels anchored in this channel')
 		.option('--state <state>', 'only this lifecycle state')
+		.option('--include-deleted', 'include deleted channels, hidden by default')
 		.action(async (opts, command: Command) => {
 			await withStore(command, (store) => {
 				const channels = store.listChannels({
@@ -90,6 +91,7 @@ export function registerChannel(program: Command): void {
 					type: opts.type,
 					parent: opts.parent,
 					state: opts.state,
+					includeDeleted: Boolean(opts.includeDeleted),
 				})
 				if (!channels.length) return printEmpty('channels')
 				output({ count: channels.length, items: channels }, () => channels.map(channelLine).join('\n'))
@@ -104,6 +106,24 @@ export function registerChannel(program: Command): void {
 				const trees = store.tree(ref)
 				if (!trees.length) return printEmpty('channels')
 				output(trees, () => treeLines(trees).join('\n'))
+			})
+		})
+
+	channel
+		.command('delete <channel>')
+		.description(
+			'erase every entry outside cynapse.*, leaving tombstones, and hide the channel; `state lifecycle` restores it (needs --as)',
+		)
+		.action(async (ref: string, _opts, command: Command) => {
+			const author = actor(command)
+			await withStore(command, (store) => {
+				const logged = store.deleteChannel(ref, author)
+				const count = (logged.data?.count as number | undefined) ?? 0
+				output(
+					logged,
+					() =>
+						`deleted ${logged.channel}, erasing ${count} ${count === 1 ? 'entry' : 'entries'}  logged ${logged.channel}#${logged.seq}`,
+				)
 			})
 		})
 

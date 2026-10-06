@@ -92,6 +92,7 @@ listing is `{ count: 0, entity, items: [] }`, where `entity` names what was empt
 | `channel owner` | `Entry` (the `cynapse.channel.owner-changed` entry) |
 | `channel pin` | `Entry` (the `cynapse.pinned` entry) |
 | `channel view` | `Entry` (the `cynapse.view.defined` entry) |
+| `channel delete` | `Entry` (the `cynapse.channel.deleted` entry) |
 | `entry append` | `Entry` |
 | `entry send` | `Entry` |
 | `entry list` | `{ count, items: Entry[] }` |
@@ -100,7 +101,6 @@ listing is `{ count: 0, entity, items: [] }`, where `entity` names what was empt
 | `entry delete` | `Entry` (the `cynapse.entry.deleted` entry) |
 | `participant register` | `RegisteredParticipant` |
 | `participant retire` | `Participant` |
-| `participant purge` | `Entry` (the `cynapse.participant.purged` entry) |
 | `participant rename` | `Participant` |
 | `participant resolve` | `ResolvedAddress` |
 | `participant list` | `{ count, items: Participant[] }` |
@@ -146,13 +146,19 @@ their `data`.
 | `cynapse.participant.registered` | `registerParticipant` | `{ participant, key, kind, name, registeredBy }` |
 | `cynapse.participant.retired` | `retireParticipant` | `{ participant }` |
 | `cynapse.participant.renamed` | `renameParticipant` | `{ participant, from, to }` |
-| `cynapse.participant.purged` | `purgeParticipant` | `{ participant, count }` |
 | `cynapse.entry.deleted` | `deleteEntry` | `{ target, seq }` |
+| `cynapse.channel.deleted` | `deleteChannel` | `{ count, from? }` |
 
 A deleted entry keeps its place as a tombstone: its `id`, `seq`, author, type, `parent`
 and `root` stay, its body, data, refs and tags are erased, and it carries
 `deleted: { at, by }`. Listings hide tombstones unless `includeDeleted` is set, and
-`cynapse.*` entries cannot be deleted (ADR-0014).
+`cynapse.*` entries cannot be deleted. A deleted channel has every other entry erased and
+the lifecycle state `deleted`, which `listChannels` hides unless `includeDeleted` is set
+or `state: 'deleted'` is asked for. Anyone may delete, since no caller can be verified
+(ADR-0014).
+
+The lifecycle state `deleted` is reserved: `setLifecycle` refuses it, and only
+`deleteChannel` sets it.
 
 The participant entries land on the participant's address channel. That channel has the
 type `cynapse.participant`.
@@ -198,8 +204,8 @@ The `code` string under `--json`, and `CynapseError.code` in the library.
 | `ambiguous_address` | `4` | A name matched more than one live participant; `details.candidates` lists them. |
 | `unknown_address` | `5` | A name matched no live participant. |
 | `timeout` | `3` | `entry wait` ran out of time. |
-| `not_address` | `1` | `cynapse.handled` was used, or an entry deleted, on a work channel. |
-| `not_owner` | `1` | Someone other than the owner added or removed `cynapse.handled` or deleted an entry, or someone other than the participant or its registering unit purged its address channel. |
+| `not_address` | `1` | `cynapse.handled` was used on a work channel. |
+| `not_owner` | `1` | Someone other than the owner added or removed `cynapse.handled`. |
 | `invalid_token` | `1` | A change token could not be read. |
 | `foreign_token` | `1` | A change token came from another store; call `changes` without `--since` to start over. |
 | `schema_too_new` | `1` | The database is newer than the installed cynapse. |
@@ -228,7 +234,7 @@ From the first release, each of these is a breaking change:
   or making an optional field required in an input.
 - Removing or renaming a `cynapse.*` entry type, or removing or changing the meaning of a
   field in its `data`.
-- Changing who may add or remove a reserved tag, or delete or purge entries.
+- Changing who may add or remove a reserved tag, or what deleting an entry or a channel erases.
 - Changing an exit code's value or meaning, or moving an existing failure to a different
   exit code or `code` string.
 - Changing how `$CYNAPSE_HOME` resolves to a database path, or how the id of a

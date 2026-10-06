@@ -93,7 +93,7 @@ export function registerEntry(program: Command): void {
 	entry
 		.command('delete <entry>')
 		.description(
-			"erase an entry's content on your address channel, leaving a tombstone; deleting it again is a no-op (needs --as)",
+			"erase an entry's content, leaving a tombstone that keeps its seq and thread; deleting it again is a no-op (needs --as)",
 		)
 		.action(async (ref: string, _opts, command: Command) => {
 			const author = actor(command)
