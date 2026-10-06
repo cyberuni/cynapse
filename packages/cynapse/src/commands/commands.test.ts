@@ -545,3 +545,68 @@ describe('cynapse entry send', () => {
 		})
 	})
 })
+
+describe('cynapse entry delete and participant purge', () => {
+	const unit = uuidv5('cyberlegion:unit/1')
+	const reviewer = uuidv5('cyberlegion:role/reviewer')
+
+	beforeEach(async () => {
+		await cli('participant', 'register', 'cyberlegion:unit/1', '--kind', 'service', '--name', 'cyberlegion', '--self')
+		await cli(
+			'--as',
+			unit,
+			'participant',
+			'register',
+			'cyberlegion:role/reviewer',
+			'--kind',
+			'agent',
+			'--name',
+			'reviewer',
+		)
+	})
+
+	it('deletes one entry as the owner, leaving a tombstone that entry list hides', async () => {
+		const sent = await json('--as', 'alice', 'entry', 'send', 'reviewer', '--type', 'note', '--body', 'secret')
+
+		expect(await cli('--as', reviewer, 'entry', 'delete', `reviewer#${sent.seq}`)).toMatch(
+			new RegExp(`^deleted reviewer#${sent.seq}`),
+		)
+
+		expect(await json('entry', 'show', sent.id)).toMatchObject({ body: '', deleted: { by: reviewer } })
+		const notes = await json('entry', 'list', 'reviewer', '--type', 'note')
+		expect(notes).toMatchObject({ count: 0 })
+		expect(await json('entry', 'list', 'reviewer', '--type', 'note', '--include-deleted')).toMatchObject({
+			count: 1,
+			items: [{ id: sent.id }],
+		})
+		expect(await cli('entry', 'list', 'reviewer', '--type', 'note', '--include-deleted')).toContain(
+			`(deleted by ${reviewer})`,
+		)
+	})
+
+	it('prints the cynapse.entry.deleted entry under --json, and refuses anyone but the owner', async () => {
+		const sent = await json('--as', 'alice', 'entry', 'send', 'reviewer', '--type', 'note', '--body', 'secret')
+
+		await expect(cli('--as', 'alice', 'entry', 'delete', sent.id)).rejects.toMatchObject({ code: 'not_owner' })
+		expect(await json('--as', reviewer, 'entry', 'delete', sent.id)).toMatchObject({
+			type: 'cynapse.entry.deleted',
+			data: { target: sent.id, seq: sent.seq },
+		})
+	})
+
+	it("purges a retired participant's address channel, as the unit that registered it", async () => {
+		await cli('--as', 'alice', 'entry', 'send', 'reviewer', '--type', 'note', '--body', 'one')
+		await cli('--as', 'alice', 'entry', 'send', 'reviewer', '--type', 'note', '--body', 'two')
+		await expect(cli('--as', unit, 'participant', 'purge', reviewer)).rejects.toThrow(/retire/)
+		await cli('--as', unit, 'participant', 'retire', reviewer)
+
+		expect(await cli('--as', unit, 'participant', 'purge', reviewer)).toMatch(
+			/^purged 2 entries from reviewer {2}logged reviewer#\d+/,
+		)
+		expect(await json('entry', 'list', 'reviewer', '--type', 'note')).toMatchObject({ count: 0 })
+		expect(await json('--as', unit, 'participant', 'purge', reviewer)).toMatchObject({
+			type: 'cynapse.participant.purged',
+			data: { participant: reviewer, count: 2 },
+		})
+	})
+})

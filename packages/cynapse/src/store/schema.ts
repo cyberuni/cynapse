@@ -169,6 +169,12 @@ CREATE UNIQUE INDEX participants_key ON participants (key);
 CREATE INDEX participants_name ON participants (name);
 CREATE INDEX participants_registered_by ON participants (registered_by);
 `,
+	// 5: deleted entries (ADR-0014). A deleted entry keeps its row, with its content erased, as
+	// a tombstone: `seq` is never reused and replies still resolve their parent and root.
+	`
+ALTER TABLE entries ADD COLUMN deleted_at TEXT;
+ALTER TABLE entries ADD COLUMN deleted_by TEXT;
+`,
 ]
 
 /** The version a database is at once every migration has run. */

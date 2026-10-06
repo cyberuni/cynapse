@@ -171,6 +171,11 @@ export interface Entry {
 	createdAt: string
 	/** When it arrived in the channel. */
 	recordedAt: string
+	/**
+	 * Present on a tombstone: the entry was deleted, its body, data, refs and tags erased, and
+	 * its place kept so `seq`, `parent` and `root` still resolve (ADR-0014).
+	 */
+	deleted?: { at: string; by: string }
 }
 
 export type StateStatus = 'open' | 'resolved'
@@ -273,6 +278,8 @@ export interface EntryQuery extends ViewFilter {
 	metaOnly?: boolean
 	/** Only entries in this thread (the root and every reply under it). */
 	root?: string
+	/** Include tombstones, the entries deleted since they were written; hidden by default. */
+	includeDeleted?: boolean
 }
 
 export interface SearchQuery extends ViewFilter {
@@ -365,6 +372,12 @@ export interface Store {
 	registerParticipant(input: RegisterParticipantInput): RegisteredParticipant
 	/** Marks the participant retired and logs `cynapse.participant.retired`. It is never deleted. */
 	retireParticipant(id: string, author: string): Participant
+	/**
+	 * Erases the entries in a retired participant's address channel outside `cynapse.*`, as
+	 * `deleteEntry` would, and logs `cynapse.participant.purged` with the count (ADR-0014).
+	 * Only the participant or the unit that registered it may purge.
+	 */
+	purgeParticipant(id: string, author: string): Entry
 	/** Renames the participant and its address handle; the old handle stays as an alias. */
 	renameParticipant(id: string, name: string, author: string): Participant
 	/**
@@ -409,6 +422,12 @@ export interface Store {
 	entry(ref: string, seq: number): Entry | undefined
 	entries(ref: string, query?: EntryQuery): Entry[]
 	search(query?: SearchQuery): Entry[]
+	/**
+	 * Erases an entry's content and leaves a tombstone in its place, logged as
+	 * `cynapse.entry.deleted` (ADR-0014). Address channels only, by their owner; `cynapse.*`
+	 * entries cannot be deleted. Deleting a tombstone again returns the first log entry.
+	 */
+	deleteEntry(entryRef: string, author: string): Entry
 	addTags(entryRef: string, tags: string[], author: string): Entry
 	removeTags(entryRef: string, tags: string[], author: string): Entry
 

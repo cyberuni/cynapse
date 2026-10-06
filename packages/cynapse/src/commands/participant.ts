@@ -41,6 +41,22 @@ export function registerParticipant(program: Command): void {
 		})
 
 	participant
+		.command('purge <participant>')
+		.description("erase every entry in a retired participant's address channel outside cynapse.*, leaving tombstones")
+		.action(async (id: string, _opts, command: Command) => {
+			const author = actor(command)
+			await withStore(command, (store) => {
+				const logged = store.purgeParticipant(id, author)
+				const count = (logged.data?.count as number | undefined) ?? 0
+				output(
+					logged,
+					() =>
+						`purged ${count} ${count === 1 ? 'entry' : 'entries'} from ${logged.channel}  logged ${logged.channel}#${logged.seq}`,
+				)
+			})
+		})
+
+	participant
 		.command('rename <participant> <name>')
 		.description('rename a participant and its address handle; the old handle stays as an alias')
 		.action(async (id: string, name: string, _opts, command: Command) => {
