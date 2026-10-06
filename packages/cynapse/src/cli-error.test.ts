@@ -8,6 +8,7 @@ import {
 	EXIT_USAGE,
 	errorCodeFor,
 	exitCodeFor,
+	helpFor,
 	renderCliError,
 } from './cli-error.js'
 
@@ -34,22 +35,30 @@ describe(CynapseError.name, () => {
 })
 
 describe(renderCliError.name, () => {
+	/** The first line, the error itself, without the help line under it. */
+	const firstLine = (text: string) => text.split('\n')[0]
+
 	it('renders the message behind an error: label, so it reads as an error on stdout', () => {
-		expect(renderCliError(new Error('no address found'))).toBe('error: no address found')
+		expect(firstLine(renderCliError(new Error('no address found')))).toBe('error: no address found')
 	})
 
 	it('appends a cause that adds information', () => {
 		const error = new CynapseError('cannot read mailbox', { cause: new Error('ENOENT') })
-		expect(renderCliError(error)).toBe('error: cannot read mailbox: ENOENT')
+		expect(firstLine(renderCliError(error))).toBe('error: cannot read mailbox: ENOENT')
 	})
 
 	it('does not repeat a cause identical to the message', () => {
 		const error = new CynapseError('ENOENT', { cause: 'ENOENT' })
-		expect(renderCliError(error)).toBe('error: ENOENT')
+		expect(firstLine(renderCliError(error))).toBe('error: ENOENT')
 	})
 
 	it('stringifies a non-Error throw', () => {
-		expect(renderCliError({ toString: () => 'weird' })).toBe('error: weird')
+		expect(firstLine(renderCliError({ toString: () => 'weird' }))).toBe('error: weird')
+	})
+
+	it('suggests the next step on a help: line under the error', () => {
+		const error = new CynapseError('boom', { help: 'run it again' })
+		expect(renderCliError(error)).toBe('error: boom\nhelp: run it again')
 	})
 })
 
@@ -73,20 +82,27 @@ describe(`${renderCliError.name} as json`, () => {
 	it('renders one JSON object with the code and the message', () => {
 		const error = new CynapseError('channel id x already exists', { code: 'id_conflict' })
 		expect(JSON.parse(renderCliError(error, 'json'))).toEqual({
-			error: { code: 'id_conflict', message: 'channel id x already exists' },
+			error: { code: 'id_conflict', message: 'channel id x already exists', help: helpFor(error) },
 		})
 	})
 
 	it('keeps the cause in the message, as text mode does', () => {
 		const error = new CynapseError('cannot read mailbox', { cause: new Error('ENOENT') })
 		expect(JSON.parse(renderCliError(error, 'json'))).toEqual({
-			error: { code: 'failure', message: 'cannot read mailbox: ENOENT' },
+			error: { code: 'failure', message: 'cannot read mailbox: ENOENT', help: helpFor(error) },
 		})
 	})
 
 	it('is formatted like any other --json output', () => {
-		const error = new CynapseError('boom')
-		expect(renderCliError(error, 'json')).toBe(JSON.stringify({ error: { code: 'failure', message: 'boom' } }, null, 2))
+		const error = new CynapseError('boom', { help: 'retry' })
+		expect(renderCliError(error, 'json')).toBe(
+			JSON.stringify({ error: { code: 'failure', message: 'boom', help: 'retry' } }, null, 2),
+		)
+	})
+
+	it('carries the next step as help, matching the text help: line', () => {
+		const error = new CynapseError('boom', { help: 'run it again' })
+		expect(JSON.parse(renderCliError(error, 'json')).error.help).toBe('run it again')
 	})
 })
 
@@ -111,7 +127,45 @@ describe('error details', () => {
 
 	it('renders the details beside code and message under --json', () => {
 		expect(JSON.parse(renderCliError(error, 'json'))).toEqual({
-			error: { code: 'ambiguous_address', message: '"reviewer" names 1 participant', candidates },
+			error: {
+				code: 'ambiguous_address',
+				message: '"reviewer" names 1 participant',
+				help: helpFor(error),
+				candidates,
+			},
 		})
+	})
+})
+
+describe(helpFor.name, () => {
+	it('returns the help a CynapseError carries', () => {
+		expect(helpFor(new CynapseError('boom', { help: 'run it again' }))).toBe('run it again')
+	})
+
+	it.each([
+		'usage',
+		'failure',
+		'not_found',
+		'id_conflict',
+		'ambiguous_address',
+		'unknown_address',
+		'timeout',
+		'not_address',
+		'not_owner',
+		'invalid_token',
+		'foreign_token',
+		'schema_too_new',
+		'port_in_use',
+		'gui_not_installed',
+	])('suggests a next step for a %s error that carries none', (code) => {
+		expect(helpFor(new CynapseError('boom', { code }))).toMatch(/\S/)
+	})
+
+	it('points an uncoded usage error at --help', () => {
+		expect(helpFor(new CynapseError('bad flag', { exitCode: EXIT_USAGE }))).toContain('--help')
+	})
+
+	it('asks for a bug report on a throw cynapse did not raise on purpose', () => {
+		expect(helpFor(new Error('boom'))).toContain('github.com/cyberuni/cynapse/issues')
 	})
 })

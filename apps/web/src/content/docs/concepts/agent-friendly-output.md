@@ -52,7 +52,12 @@ trace. stderr is left for diagnostics an agent doesn't need to read.
 ```console
 $ cynapse entry show nope#9
 error: no entry found for "nope#9"
+help: check the reference: `cynapse channel list`, `cynapse entry list <channel>` and `cynapse participant list` show what exists
 ```
+
+Every error suggests a next step on a `help:` line, so an agent is never left at a dead end. A usage
+error names what the command accepts: an unknown flag lists the command's flags, and a command group
+run without a subcommand lists its subcommands, on stdout rather than as usage on stderr.
 
 Under `--json` the error is a JSON object formatted like any other output, with a stable code, so a
 caller branches on the reason rather than on prose:
@@ -62,7 +67,8 @@ $ cynapse --json entry show nope#9
 {
   "error": {
     "code": "not_found",
-    "message": "no entry found for \"nope#9\""
+    "message": "no entry found for \"nope#9\"",
+    "help": "check the reference: `cynapse channel list`, `cynapse entry list <channel>` and `cynapse participant list` show what exists"
   }
 }
 ```

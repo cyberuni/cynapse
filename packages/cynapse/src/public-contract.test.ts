@@ -64,4 +64,12 @@ describe('the Public contract page', () => {
 		// `errorCodeFor` gives an uncoded failure one of these two.
 		expect(sorted(firstColumn('Error codes'))).toEqual(sorted([...raised, 'usage', 'failure']))
 	})
+
+	it('gives every error code a next step of its own, not the generic one', () => {
+		const generic = cliError.helpFor(new cliError.CynapseError('boom'))
+		for (const code of firstColumn('Error codes').filter((code) => code !== 'failure')) {
+			const help = cliError.helpFor(new cliError.CynapseError('boom', { code }))
+			expect(help, code).not.toBe(generic)
+		}
+	})
 })

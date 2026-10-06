@@ -52,9 +52,10 @@ too, as it is re-exported from `src/store/types.ts`, `src/channel-key.ts`, `src/
 | `isUuid` | Whether a string is a UUID. |
 | `CYNAPSE_NAMESPACE` | The fixed UUIDv5 namespace every derived id uses. |
 | `renderRef` | Renders a reference shorthand, such as `gh:cyberuni/cynapse#12`, as a link. |
-| `CynapseError` | The error the CLI and the store raise on purpose, with `exitCode`, `code` and `details`. |
+| `CynapseError` | The error the CLI and the store raise on purpose, with `exitCode`, `code`, `details` and `help`. |
 | `errorCodeFor` | The `code` string for any thrown value. |
 | `exitCodeFor` | The exit code for any thrown value. |
+| `helpFor` | The suggested next step for any thrown value. |
 | `renderCliError` | What the CLI prints for an error, as text or `--json`. |
 | `EXIT_OK` | Exit code `0`. |
 | `EXIT_FAILURE` | Exit code `1`. |
@@ -111,8 +112,13 @@ listing is `{ count: 0, entity, items: [] }`, where `entity` names what was empt
 | `gui` | `{ url }` |
 
 A failure under `--json`, including a usage error, prints
-`{ "error": { "code", "message", ...details } }` to stdout. `ambiguous_address` adds
-`candidates`: `{ id, kind, name, registeredBy? }[]`.
+`{ "error": { "code", "message", "help", ...details } }` to stdout. `help` is the
+suggested next step, such as the command to run, and is always present; in text mode it
+is the `help:` line under the `error:` line. Its wording is prose, like `message`.
+`ambiguous_address` adds `candidates`: `{ id, kind, name, registeredBy? }[]`. A `usage`
+error for an unknown flag adds `options`, the flags that command accepts (`string[]`);
+one for a missing or unknown subcommand adds `subcommands`, the group's subcommands
+(`string[]`).
 
 The `dev` commands (`dev seed`, `dev load-test`) are development tools, and their output is
 not part of the contract.

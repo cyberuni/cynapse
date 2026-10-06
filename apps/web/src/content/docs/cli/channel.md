@@ -8,7 +8,7 @@ A [channel](/cynapse/concepts/channels/) is an ordered log of immutable
 appends a `cynapse.*` entry to the channel in the same transaction, so the channel's own history
 records how it changed. Writes act as `--as` / `$CYNAPSE_PARTICIPANT`.
 
-Bare `cynapse channel` prints its usage to stderr and exits `2`; `cynapse channel --help` prints it to stdout and exits `0`.
+Bare `cynapse channel` exits `2` with an error that lists its subcommands; `cynapse channel --help` prints it to stdout and exits `0`.
 
 ## `cynapse channel create`
 

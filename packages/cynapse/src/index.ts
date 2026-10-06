@@ -9,6 +9,7 @@ export {
 	EXIT_USAGE,
 	errorCodeFor,
 	exitCodeFor,
+	helpFor,
 	renderCliError,
 } from './cli-error.js'
 export { SEED_START, SeedClock, type SeedSummary, seed } from './dev/seed.js'
