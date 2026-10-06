@@ -9,7 +9,9 @@ const KINDS: readonly ParticipantKind[] = ['agent', 'human', 'service']
 const STATUSES: readonly ParticipantStatus[] = ['live', 'retired']
 
 export function registerParticipant(program: Command): void {
-	const participant = program.command('participant').description('register, retire, rename and resolve participants')
+	const participant = program
+		.command('participant')
+		.description('register, retire, purge, rename and resolve participants')
 
 	participant
 		.command('register <key>')
