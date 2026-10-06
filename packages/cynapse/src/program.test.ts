@@ -43,7 +43,6 @@ describe(createProgram.name, () => {
 	})
 
 	it('switches to JSON before a bare command group under --json', async () => {
-		vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
 		await parse('--json', 'channel').catch(() => {})
 		expect(getOutputFormat()).toBe('json')
 	})
@@ -64,13 +63,68 @@ describe(createProgram.name, () => {
 		expect((error as CynapseError).exitCode).toBe(EXIT_USAGE)
 	})
 
-	it.each(groupPaths(createProgram('1.2.3')))('prints help and raises a usage error for bare `%s`', async (path) => {
+	it.each(groupPaths(createProgram('1.2.3')))(
+		'raises a usage error naming the subcommands for bare `%s`',
+		async (path) => {
+			const error = await parse(...path.split(' ').filter(Boolean)).catch((e: unknown) => e)
+			expect(error).toBeInstanceOf(CynapseError)
+			expect((error as CynapseError).exitCode).toBe(EXIT_USAGE)
+			const subcommands = (error as CynapseError).details?.subcommands as string[]
+			expect(subcommands.length).toBeGreaterThan(0)
+			expect((error as CynapseError).help).toContain(`cynapse${path ? ` ${path}` : ''} <subcommand>`)
+			for (const name of subcommands) expect((error as CynapseError).help).toContain(name)
+		},
+	)
+
+	it('writes nothing to stderr for a bare command group, which agents do not read', async () => {
 		const stderr = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
-		const error = await parse(...path.split(' ').filter(Boolean)).catch((e: unknown) => e)
-		expect(error).toBeInstanceOf(CynapseError)
-		expect((error as CynapseError).exitCode).toBe(EXIT_USAGE)
-		const written = stderr.mock.calls.map(([chunk]) => String(chunk)).join('')
-		expect(written).toContain(`Usage: cynapse${path ? ` ${path}` : ''}`)
+		const stdout = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+		await parse('channel').catch(() => {})
+		expect(stderr).not.toHaveBeenCalled()
+		expect(stdout).not.toHaveBeenCalled()
+	})
+
+	it('lists the subcommands of a group beside an unknown one', async () => {
+		const error = (await parse('channel', 'anneal').catch((e: unknown) => e)) as CynapseError
+		expect(error.details?.subcommands).toContain('list')
+		expect(error.help).toContain('cynapse channel <subcommand>')
+	})
+
+	it("keeps Commander's suggestion on the message's one line", async () => {
+		const error = (await parse('channel', 'list', '--typ').catch((e: unknown) => e)) as CynapseError
+		expect(error.message).toBe("unknown option '--typ' (Did you mean --type?)")
+	})
+
+	it("lists the command's valid flags beside an unknown one", async () => {
+		const error = (await parse('channel', 'list', '--nope').catch((e: unknown) => e)) as CynapseError
+		expect(error.message).toContain("unknown option '--nope'")
+		expect(error.details?.options).toEqual(expect.arrayContaining(['--kind <kind>', '--state <state>', '--json']))
+		expect(error.help).toContain('`cynapse channel list` accepts')
+		expect(error.help).toContain('--kind <kind>')
+	})
+
+	it('points any other usage error at the help of the command it came from', async () => {
+		const error = (await parse('channel', 'show').catch((e: unknown) => e)) as CynapseError
+		expect(error.exitCode).toBe(EXIT_USAGE)
+		expect(error.help).toContain('cynapse channel show --help')
+	})
+
+	it("points a usage error a command raises at that command's help", async () => {
+		const error = (await parse(
+			'--as',
+			'u',
+			'channel',
+			'create',
+			'x',
+			'--type',
+			't',
+			'--title',
+			't',
+			'--membership',
+			'nope',
+		).catch((e: unknown) => e)) as CynapseError
+		expect(error.message).toBe('--membership must be open or fixed')
+		expect(error.help).toContain('cynapse channel create --help')
 	})
 
 	it('leaves the output format alone when --json is absent', () => {

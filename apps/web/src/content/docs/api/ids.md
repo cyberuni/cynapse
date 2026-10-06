@@ -6,7 +6,7 @@ description: UUIDv7 and UUIDv5 helpers, the fixed namespace, and CynapseError wi
 ```ts
 import {
   uuidv7, uuidv5, timestampOf, isUuid, CYNAPSE_NAMESPACE,
-  CynapseError, EXIT_OK, EXIT_FAILURE, EXIT_USAGE, EXIT_TIMEOUT, EXIT_AMBIGUOUS_ADDRESS, EXIT_UNKNOWN_ADDRESS, errorCodeFor, exitCodeFor, renderCliError,
+  CynapseError, EXIT_OK, EXIT_FAILURE, EXIT_USAGE, EXIT_TIMEOUT, EXIT_AMBIGUOUS_ADDRESS, EXIT_UNKNOWN_ADDRESS, errorCodeFor, exitCodeFor, helpFor, renderCliError,
 } from 'cynapse'
 ```
 
@@ -61,9 +61,11 @@ class CynapseError extends Error {
   readonly code?: string
   /** Structured facts a caller acts on, such as an ambiguous address's `candidates`. */
   readonly details?: Record<string, unknown>
+  /** The next step to suggest; without one, `helpFor` gives the code's default. */
+  readonly help?: string
   constructor(
     message: string,
-    options?: { exitCode?: number; cause?: unknown; code?: string; details?: Record<string, unknown> },
+    options?: { exitCode?: number; cause?: unknown; code?: string; details?: Record<string, unknown>; help?: string },
   )
 }
 ```
@@ -107,9 +109,15 @@ The exit code for any thrown value: a `CynapseError`'s own, and `EXIT_FAILURE` f
 The machine-readable reason for any thrown value: a `CynapseError`'s own `code`, otherwise `usage` when
 its exit code is `EXIT_USAGE` and `failure` for everything else.
 
+### `helpFor(error)` → `string`
+
+The suggested next step for any thrown value: a `CynapseError`'s own `help`, otherwise the default for
+its code. A throw cynapse did not raise on purpose is treated as a bug and points at the issue tracker.
+Every value gets one.
+
 ### `renderCliError(error, format?)` → `string`
 
 No stack. The message of an `Error`, with its cause's message appended after a colon when the
-cause adds information; `String(error)` for anything else, behind an `error: ` label. With `format`
-`'json'` it is `{ "error": { "code", "message" } }`, pretty-printed like other `--json` output, the code
-from `errorCodeFor`. This is what the CLI prints to stdout on failure.
+cause adds information; `String(error)` for anything else, behind an `error: ` label, then a
+`help: ` line from `helpFor`. With `format` `'json'` it is `{ "error": { "code", "message", "help", ...details } }`,
+pretty-printed like other `--json` output, the code from `errorCodeFor`. This is what the CLI prints to stdout on failure.

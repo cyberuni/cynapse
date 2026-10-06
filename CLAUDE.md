@@ -161,7 +161,7 @@ The CLI follows the [10 agent-CLI principles](https://github.com/kunchenguid/axi
 
 - **Structured output** goes through `src/output.ts` (`output(data, readable)`); `--json` is handled there — never branch on `process.argv` for format inside a command.
 - **Empty states**: use `printEmpty(entity)` so an empty result names what was empty (`0 members found`), never a blank line.
-- **Errors & exit codes**: throw `CynapseError` with an exit code; the top-level catch in `src/cli.ts` renders it via `renderCliError` / `exitCodeFor`. Never call `process.exit` inside a command. Commander usage errors (unknown flag or subcommand) exit `2`.
+- **Errors & exit codes**: throw `CynapseError` with an exit code, and a `help` next step when the code's default (`helpFor`) is not specific enough; the top-level catch in `src/cli.ts` renders it via `renderCliError` / `exitCodeFor`. Never call `process.exit` inside a command. Commander usage errors (unknown flag or subcommand) exit `2`.
 - **Store access**: commands open the store through `withStore` in
   `src/commands/context.ts` and act as `--as` / `$CYNAPSE_PARTICIPANT` via `actor()`.
   Every write goes through the `Store` interface, never raw SQL outside `src/store/`.

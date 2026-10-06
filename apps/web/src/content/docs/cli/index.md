@@ -75,25 +75,36 @@ matches nothing says so — `0 channels found`, `0 unread entries found` — rat
 blank line; under `--json` it is `{ "count": 0, "entity": "channels", "items": [] }`. A non-empty
 listing under `--json` is `{ "count": n, "items": [...] }`.
 
-Errors go to stdout too, with no stack trace: `error: <message>` in text, and a JSON object carrying a
-stable code under `--json`. stderr is left for diagnostics. See [Errors](#errors).
+Errors go to stdout too, with no stack trace: `error: <message>` and a `help: <next step>` line in
+text, and a JSON object carrying a stable code and the same `help` under `--json`. stderr is left for diagnostics. See [Errors](#errors).
 
 ## Errors
 
-Under `--json`, a failure — including a usage error — prints `{ "error": { "code", "message" } }` on
-stdout, so a caller branches on the reason without parsing prose:
+Under `--json`, a failure — including a usage error — prints `{ "error": { "code", "message", "help" } }`
+on stdout, so a caller branches on the reason without parsing prose. `help` is the suggested next step,
+the same text as the `help:` line in text mode:
 
 ```console
 $ cynapse --json entry show nope#9
 {
   "error": {
     "code": "not_found",
-    "message": "no entry found for \"nope#9\""
+    "message": "no entry found for \"nope#9\"",
+    "help": "check the reference: `cynapse channel list`, `cynapse entry list <channel>` and `cynapse participant list` show what exists"
   }
 }
 ```
 
-The `code` is the contract; the `message` is for people and may change. These codes are stable:
+A usage error names what the command accepts. An unknown flag adds `options`, the flags the command
+takes; a command group run without a subcommand, or with an unknown one, adds `subcommands`:
+
+```console
+$ cynapse channel
+error: missing subcommand
+help: run `cynapse channel <subcommand>` with one of create, show, list, tree, rename, resolve, add-key, owner, pin, view; `cynapse channel <subcommand> --help` shows its flags
+```
+
+The `code` is the contract; the `message` and `help` are for people and agents to read and may change. These codes are stable:
 
 | Code | Exit | Meaning |
 | --- | --- | --- |
@@ -120,7 +131,7 @@ A failure that gets its own code later moves out of `failure`; a code above neve
 | --- | --- |
 | `0` | Success, including `--help` and `--version`. |
 | `1` | The command ran and failed: no such channel or entry (`not_found`), an id conflict (`id_conflict`), a database newer than this cynapse (`schema_too_new`), `cynapse.handled` by someone other than the address channel's owner (`not_owner`) or on a work channel (`not_address`), a taken handle, a subject key that already keys another channel, `--owner` on a work channel, a failed load test. |
-| `2` | Usage error: unknown flag or subcommand, a command group run without a subcommand (its usage goes to stderr), missing `--as`, an option value that does not parse (`--data`, `--value`, `--after`, `--limit`, `--port`, …), `--membership`, `--kind` or `--status` outside its set, `--store` without `--native-id` (or the reverse), `--kind address` without `--owner`, `tag` with nothing to do, `dev seed --reset` without `--db`. |
+| `2` | Usage error: unknown flag or subcommand, a command group run without a subcommand (the error lists its subcommands), missing `--as`, an option value that does not parse (`--data`, `--value`, `--after`, `--limit`, `--port`, …), `--membership`, `--kind` or `--status` outside its set, `--store` without `--native-id` (or the reverse), `--kind address` without `--owner`, `tag` with nothing to do, `dev seed --reset` without `--db`. |
 | `3` | Timed out: `entry wait` saw no reply within `--timeout` (`timeout`). |
 | `4` | Ambiguous address: `participant resolve` or `entry send` named more than one live participant (`ambiguous_address`). |
 | `5` | Unknown address: `participant resolve` or `entry send` named no live participant (`unknown_address`). |
