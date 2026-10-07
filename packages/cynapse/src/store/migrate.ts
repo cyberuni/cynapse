@@ -15,24 +15,21 @@ export function schemaVersion(db: DatabaseSync): number {
 
 /**
  * Brings the database to `migrations.length`, running each step past its recorded
- * version in order. Every pending step and the new version commit in one `BEGIN
- * IMMEDIATE` transaction, so a failed step leaves the database where it was, and
- * concurrent openers queue on the write lock: the first migrates, the rest find the work
- * done. A database newer than the code is refused rather than written to.
+ * version in order. The version is read first without a lock, so opening a current
+ * database never waits on a writer. Only a database behind the code takes the write lock:
+ * every pending step and the new version commit in one `BEGIN IMMEDIATE` transaction, so
+ * a failed step leaves the database where it was, and concurrent openers queue on the
+ * lock, read the version again, and find the work done. A database newer than the code
+ * is refused rather than written to.
  *
  * @returns the version the database is at afterwards.
  */
 export function migrate(db: DatabaseSync, migrations: readonly Migration[]): number {
 	const latest = migrations.length
+	if (checkedVersion(db, latest) === latest) return latest
 	db.exec('BEGIN IMMEDIATE')
 	try {
-		const current = schemaVersion(db)
-		if (current > latest) {
-			throw new CynapseError(
-				`the database is at schema version ${current}, newer than this cynapse knows (${latest}); upgrade cynapse to open it`,
-				{ code: 'schema_too_new' },
-			)
-		}
+		const current = checkedVersion(db, latest)
 		for (const step of migrations.slice(current)) {
 			if (typeof step === 'string') db.exec(step)
 			else step(db)
@@ -44,4 +41,16 @@ export function migrate(db: DatabaseSync, migrations: readonly Migration[]): num
 		db.exec('ROLLBACK')
 		throw error
 	}
+}
+
+/** The recorded version, refusing one newer than the code's `latest`. */
+function checkedVersion(db: DatabaseSync, latest: number): number {
+	const current = schemaVersion(db)
+	if (current > latest) {
+		throw new CynapseError(
+			`the database is at schema version ${current}, newer than this cynapse knows (${latest}); upgrade cynapse to open it`,
+			{ code: 'schema_too_new' },
+		)
+	}
+	return current
 }

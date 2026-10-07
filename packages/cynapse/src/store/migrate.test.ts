@@ -130,6 +130,40 @@ describe('schema version', () => {
 		expect(readVersion(path)).toBe(SCHEMA_VERSION)
 	})
 
+	it('opens a current database while another connection holds the write lock', () => {
+		const path = join(dir, 'locked.db')
+		const first = new SqliteStore({ path })
+		first.createChannel({ handle: 'auth', type: 'sdd.mission', title: 'Add auth', author: 'alice' })
+		first.close()
+
+		const writer = new DatabaseSync(path)
+		writer.exec('BEGIN IMMEDIATE')
+		try {
+			const reader = new SqliteStore({ path, busyTimeoutMs: 50 })
+			expect(reader.entries('auth')).toHaveLength(1)
+			reader.close()
+		} finally {
+			writer.exec('ROLLBACK')
+			writer.close()
+		}
+	})
+
+	it('refuses a database newer than the code without taking the write lock', () => {
+		const path = join(dir, 'newer-locked.db')
+		new SqliteStore({ path }).close()
+		const db = new DatabaseSync(path)
+		db.exec(`PRAGMA user_version = ${SCHEMA_VERSION + 1}`)
+		db.exec('BEGIN IMMEDIATE')
+		try {
+			expect(() => new SqliteStore({ path, busyTimeoutMs: 50 })).toThrow(
+				expect.objectContaining({ code: 'schema_too_new' }),
+			)
+		} finally {
+			db.exec('ROLLBACK')
+			db.close()
+		}
+	})
+
 	it('refuses a database newer than the code knows', () => {
 		const path = join(dir, 'newer.db')
 		new SqliteStore({ path }).close()
