@@ -1,6 +1,6 @@
 ---
 title: Views
-description: Saved filters over a channel's entries — how a distilled ledger is a view, not a copy.
+description: "Saved filters over a channel's entries, and why a distilled ledger is a view rather than a copy."
 ---
 
 A **view** is a named, saved filter over one channel's entries. A mission's raw ledger is

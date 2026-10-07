@@ -1,157 +1,155 @@
 ---
 title: Quick start
-description: Run the CLI from source, then open a channel, write a thread, and read it as another participant.
+description: "Two participants hold one conversation: post, read what is new, reply, mark read, wait for a reply, and poll for changes."
 ---
 
-:::caution[Prototype]
-npm has only a `0.0.0` placeholder for `cynapse`. Run it from a clone until the first real
-release.
-:::
+Alice asks Bob a question in a channel, Bob answers, and Alice waits for the answer. Along
+the way you use every basic operation: post, read what is new, reply, mark read, wait,
+and poll for changes. It takes about five minutes.
 
-## Run it from source
+## Before you start
 
-```bash
-git clone https://github.com/cyberuni/cynapse.git
-cd cynapse
-pnpm install
-pnpm cynapse dev --help        # the CLI, run from source with tsx
-```
-
-In the examples below, `cynapse` stands for `pnpm cynapse dev`. Use a scratch database so
-you don't write to your real one:
+[Install](/cynapse/getting-started/install/) the CLI, then point cynapse at a scratch
+directory so you don't write to your real store:
 
 ```bash
-export CYNAPSE_HOME=/tmp/cynapse-demo   # the database goes to $CYNAPSE_HOME/cynapse.db
-export CYNAPSE_PARTICIPANT=alice        # who is acting, unless --as says otherwise
+npm install -g cynapse
+export CYNAPSE_HOME="$(mktemp -d)"
 ```
 
-Without `CYNAPSE_HOME`, the database is `~/.cynapse/cynapse.db`, outside any repository.
-See [Storage](/cynapse/concepts/storage/).
+Each command below says who acts with `--as`. Alice and Bob don't need to be registered:
+a name the store hasn't seen becomes a participant on first use.
 
 ## 1. Open a channel
 
-A channel needs a handle, a type and a title. The type is yours to name, under your own
-namespace ([Types, tags and traits](/cynapse/concepts/types-tags-traits/)).
+A channel is an ordered log of entries. It needs a handle, a type and a title. The type is
+yours to name, under a namespace of your own (`demo.*` here).
 
 ```console
-$ cynapse channel create review-12 --type demo.review --title "Review of #12" \
-    --purpose "Agree on the fix for #12" \
-    --member alice:owner --member bob:reviewer \
-    --context gh:cyberuni/cynapse#12
-created review-12  demo.review  active  4 entries  Review of #12
+$ cynapse --as alice channel create review-12 --type demo.review --title "Review of #12" \
+    --member alice:author --member bob:reviewer
+created review-12  demo.review  active  3 entries  Review of #12
 ```
 
-The new channel already has four entries. Creating it, adding each member and adding the
-context reference were all written as `cynapse.*` entries, so the channel is a complete
-record of itself.
+The new channel already holds three entries. Creating it and adding each member were
+written as `cynapse.*` entries, so the channel is a full record of itself.
 
-## 2. Ask a question
+## 2. Post a question
 
 ```console
-$ cynapse entry append review-12 --type demo.question \
-    --body "Should the cursor ever move backward?"
-appended review-12#5  01a10a46-3dca-70b3-bfb9-d2500f462bc4
+$ cynapse --as alice entry append review-12 --type demo.question \
+    --body "Can a read cursor move backward?"
+appended review-12#4  01a1146a-83f0-7064-99e2-cdc9b78695ab
 ```
 
-`review-12#5` is the entry's short reference: the channel handle and its `seq`. The UUID
-is its global `id`. See [Entries](/cynapse/concepts/entries/).
+`review-12#4` is the entry's short reference: the channel's handle and its `seq`, the
+entry's position in the channel. The UUID is its global `id`.
 
-## 3. Read it as someone else
-
-`--as` switches the participant for one command.
+## 3. Read what is new, as Bob
 
 ```console
 $ cynapse --as bob unread
-review-12  5 unread
+review-12  4 unread
 
 $ cynapse --as bob entry list review-12 --unread --exclude-type 'cynapse.*'
-review-12#5  2026-10-05T04:15:37.930Z  alice  demo.question  Should the cursor ever move backward?
+review-12#4  2026-10-07T03:31:27.344Z  alice  demo.question  Can a read cursor move backward?
 ```
 
-## 4. Reply, then mark it read
+`unread` counts the three `cynapse.*` entries too. `--exclude-type 'cynapse.*'` leaves
+only the messages.
 
-A reply names its parent. Bob's cursor moves only when Bob says so.
+## 4. Reply, then mark read
+
+A reply names the entry it answers with `--parent`. Then Bob moves his cursor to the last
+entry he dealt with.
 
 ```console
 $ cynapse --as bob entry append review-12 --type demo.answer \
-    --parent review-12#5 --body "No. Only forward."
-appended review-12#6  01a10a46-420d-7009-9a64-cd909820c978
+    --parent review-12#4 --body "No. It only moves forward."
+appended review-12#5  01a1146a-8676-7092-9bf6-fb8bf79b706b
 
-$ cynapse --as bob read review-12
-bob has read review-12 up to seq 6
+$ cynapse --as bob read review-12 --to 5
+bob has read review-12 up to seq 5
+
+$ cynapse --as bob unread
+0 unread channels found
 ```
 
-See [Read state](/cynapse/concepts/read-state/).
+Pass `--to` with the `seq` you processed. Without it, `read` also marks entries that
+arrived after you listed, and you would never see them
+([Read state](/cynapse/concepts/read-state/#reading-without-missing-an-entry)).
 
-## 5. Tag it, and record what is still open
-
-A tag added later is a new entry, because entries never change. A question waiting on
-someone is a state record.
+## 5. Wait for the reply, as Alice
 
 ```console
-$ cynapse tag review-12#6 demo.agreed
-review-12#6 tags: demo.agreed
+$ cynapse --as alice entry wait review-12#4 --timeout 30
+review-12#5  demo.answer  by bob
+id: 01a1146a-8676-7092-9bf6-fb8bf79b706b
+created: 2026-10-07T03:31:27.990Z  recorded: 2026-10-07T03:31:27.990Z
+parent: review-12#4  root: review-12#4
 
-$ cynapse state set review-12 cursor-rule --kind demo.needs-input --status open --subject carol
-review-12  cursor-rule  demo.needs-input  open → carol
-
-$ cynapse state list --status open
-review-12  cursor-rule  demo.needs-input  open → carol
+No. It only moves forward.
 ```
 
-## 6. Branch, distil, close
+The reply already exists, so `entry wait` returns at once. Without one, it checks the
+thread every half second until a reply from someone other than Alice arrives. If none
+arrives before `--timeout`, it exits with code `3`. To watch it wait, run this step in a
+second terminal before step 4.
 
-A child channel branches from an anchor entry. A view saves a filter. Reconciling a
-channel is a lifecycle state, not a deletion.
+## 6. Poll for changes
+
+A runtime that watches many channels doesn't list each one. It keeps a **change token**
+and asks which channels moved since:
 
 ```console
-$ cynapse channel create review-12-arb --anchor review-12#6 \
-    --type demo.arbitration --title "Arbitrate the cursor rule"
-created review-12-arb  demo.arbitration  active  1 entries  (child)  Arbitrate the cursor rule
+$ cynapse changes
+review-12  seq 5
+token: cyn1.ZTMxY2ZkNjQtODZkMi00Y2Y2LTk1ZmUtZTg3MDAzNWU1OGUxOjU
 
-$ cynapse channel tree
-review-12  demo.review  active  8 entries  Review of #12
-  review-12-arb  demo.arbitration  active  1 entries  (child)  Arbitrate the cursor rule
+$ cynapse --as bob entry append review-12 --type demo.note --body "Merged the fix."
+appended review-12#6  01a1146a-8c7c-70be-8610-58943fe2319b
 
-$ cynapse channel view review-12 distilled --type demo.answer --tag demo.agreed
-view distilled saved on review-12
-
-$ cynapse entry list review-12 --view distilled
-review-12#6  2026-10-05T04:15:39.021Z  bob  demo.answer  [demo.agreed]  ↳review-12#5  No. Only forward.
-
-$ cynapse state lifecycle review-12 reconciled
-review-12 is now reconciled
+$ cynapse changes --since cyn1.ZTMxY2ZkNjQtODZkMi00Y2Y2LTk1ZmUtZTg3MDAzNWU1OGUxOjU
+review-12  seq 6
+token: cyn1.ZTMxY2ZkNjQtODZkMi00Y2Y2LTk1ZmUtZTg3MDAzNWU1OGUxOjY
 ```
 
-## 7. Get the briefing
+Pass the newest token on each poll. Your tokens will differ: each belongs to one store.
 
-`channel show` is the one call an agent makes before working on a channel: purpose,
-members with their cursors, context, open state, pinned entries and stats.
+## 7. Get JSON
 
-```bash
-cynapse --as bob channel show review-12
+Add `--json` to any command for structured output, with the same shapes the library
+returns:
+
+```console
+$ cynapse --as alice --json entry list review-12 --after 5
+{
+  "count": 1,
+  "items": [
+    {
+      "id": "01a1146a-8c7c-70be-8610-58943fe2319b",
+      "channelId": "01a1146a-82c5-7070-b260-0fa2704b9add",
+      "channel": "review-12",
+      "seq": 6,
+      "author": "bob",
+      "type": "demo.note",
+      "tags": [],
+      "refs": [],
+      "body": "Merged the fix.",
+      "createdAt": "2026-10-07T03:31:29.532Z",
+      "recordedAt": "2026-10-07T03:31:29.532Z"
+    }
+  ]
+}
 ```
 
-Add `--json` to any command for structured output. See
-[Agent-friendly output](/cynapse/concepts/agent-friendly-output/).
+## Next
 
-## A bigger example
+- [Use the CLI](/cynapse/guides/cli/): registered participants, channels keyed by an
+  issue, direct messages, and errors to branch on.
+- [Use the library](/cynapse/guides/library/): the same flow from a Node runtime.
+- [The model](/cynapse/concepts/) and [Guarantees and limits](/cynapse/concepts/guarantees/):
+  what you just used, and what it promises.
 
-`cynapse dev seed` builds an example world: an SDD mission hierarchy, a cyber-truss
-arbitration, coordination channels and a feed.
-
-```bash
-cynapse dev seed --reset
-cynapse channel tree
-cynapse --as council channel show truss-pagination-arb-2
-cynapse entry list m-seq-order --view distilled
-```
-
-`pnpm gui dev` opens the same database in the Council's web viewer. See
-[`gui`](/cynapse/cli/gui/).
-
-## The plugin
-
-The npm package is also the agent plugin root, with manifests for Claude Code, Cursor,
-Codex and Agent Plugins clients. No skills have shipped yet, so installing the plugin adds
-nothing until the first release that includes them.
+For a larger example, `cynapse --db /tmp/cynapse-seed.db dev seed` builds a world of
+channels to explore ([`dev`](/cynapse/cli/dev/)).

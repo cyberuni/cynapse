@@ -1,6 +1,6 @@
 ---
 title: CLI
-description: The cynapse command — global options, environment, references and exit codes, with every command in one table.
+description: The cynapse command, with its global options, environment, references, exit codes and a table of every command.
 ---
 
 The binary is `cynapse`. Every command opens the local database, does one thing through the
@@ -24,7 +24,7 @@ Global options go before the command name or anywhere after it.
 
 | Option | Effect |
 | --- | --- |
-| `--json` | Emit JSON instead of human-readable text. Applies to every command's success output. |
+| `--json` | Emit JSON instead of human-readable text. Applies to every command's success output. The JSON is pretty-printed with a 2-space indent. |
 | `--db <path>` | The database file. Defaults to `$CYNAPSE_HOME/cynapse.db`. |
 | `--as <participant>` | The participant acting. Defaults to `$CYNAPSE_PARTICIPANT`. |
 | `-v, --version` | Print the version and exit `0`. |
@@ -37,8 +37,8 @@ Global options go before the command name or anywhere after it.
 | `CYNAPSE_HOME` | Directory holding the database. The file is `$CYNAPSE_HOME/cynapse.db`; the directory defaults to `~/.cynapse`. `--db` overrides it. |
 | `CYNAPSE_PARTICIPANT` | The participant to act as when `--as` is not given. |
 
-Commands that write — and `read`, `unread`, `entry list --unread` and `entry wait` — need an identity. With neither
-`--as` nor `$CYNAPSE_PARTICIPANT` they fail with exit `2`:
+Commands that write need an identity, and so do `read`, `unread`, `entry list --unread` and `entry wait`.
+The one exception is `participant register --self`. With neither `--as` nor `$CYNAPSE_PARTICIPANT`, these commands fail with exit `2`:
 
 ```text
 no participant: pass --as <participant> or set CYNAPSE_PARTICIPANT
@@ -70,17 +70,17 @@ such as `gh:cyberuni/cynapse#12`, stored as written.
 
 ## Output
 
-Success output goes to stdout: text by default, or pretty-printed JSON with `--json`. A listing that
-matches nothing says so — `0 channels found`, `0 unread entries found` — rather than printing a
-blank line; under `--json` it is `{ "count": 0, "entity": "channels", "items": [] }`. A non-empty
-listing under `--json` is `{ "count": n, "items": [...] }`.
+Success output goes to stdout: text by default, or pretty-printed JSON (2-space indent) with `--json`.
+A listing that matches nothing says so, such as `0 channels found` or `0 unread entries found`, rather
+than printing a blank line. Under `--json` an empty listing is `{ "count": 0, "entity": "channels", "items": [] }`.
+A non-empty listing under `--json` is `{ "count": n, "items": [...] }`.
 
 Errors go to stdout too, with no stack trace: `error: <message>` and a `help: <next step>` line in
 text, and a JSON object carrying a stable code and the same `help` under `--json`. stderr is left for diagnostics. See [Errors](#errors).
 
 ## Errors
 
-Under `--json`, a failure — including a usage error — prints `{ "error": { "code", "message", "help" } }`
+Under `--json`, a failure (a usage error included) prints `{ "error": { "code", "message", "help" } }`
 on stdout, so a caller branches on the reason without parsing prose. `help` is the suggested next step,
 the same text as the `help:` line in text mode:
 
@@ -101,7 +101,7 @@ takes; a command group run without a subcommand, or with an unknown one, adds `s
 ```console
 $ cynapse channel
 error: missing subcommand
-help: run `cynapse channel <subcommand>` with one of create, show, list, tree, rename, resolve, add-key, owner, pin, view; `cynapse channel <subcommand> --help` shows its flags
+help: run `cynapse channel <subcommand>` with one of create, show, list, tree, delete, rename, resolve, add-key, owner, pin, view; `cynapse channel <subcommand> --help` shows its flags
 ```
 
 The `code` is the contract; the `message` and `help` are for people and agents to read and may change. These codes are stable:
@@ -121,7 +121,7 @@ The `code` is the contract; the `message` and `help` are for people and agents t
 | `timeout` | `3` | `entry wait` saw no reply within `--timeout`. Wait again, or give up. |
 | `ambiguous_address` | `4` | The name matches more than one live participant. `error.candidates` lists each one's `id`, `kind`, `name` and `registeredBy`; address one by its id. |
 | `unknown_address` | `5` | The name matches no live participant. Check the name, or register it. |
-| `failure` | `1` | Any failure not yet given its own code. Read it only as "failed". |
+| `failure` | `1` | Any failure not yet given its own code. Read it only as "failed". A database locked by another writer for more than 10 seconds fails this way, with the message `database is locked` and the generic bug help. Retry it later. |
 
 A failure that gets its own code later moves out of `failure`; a code above never changes meaning.
 
@@ -130,14 +130,14 @@ A failure that gets its own code later moves out of `failure`; a code above neve
 | Code | Meaning |
 | --- | --- |
 | `0` | Success, including `--help` and `--version`. |
-| `1` | The command ran and failed: no such channel or entry (`not_found`), an id conflict (`id_conflict`), a database newer than this cynapse (`schema_too_new`), `cynapse.handled` by someone other than the address channel's owner (`not_owner`) or on a work channel (`not_address`), a taken handle, a subject key that already keys another channel, `--owner` on a work channel, a failed load test. |
+| `1` | The command ran and failed: no such channel or entry (`not_found`), an id conflict (`id_conflict`), a database newer than this cynapse (`schema_too_new`), `cynapse.handled` by someone other than the address channel's owner (`not_owner`) or on a work channel (`not_address`), a taken handle, a subject key that already keys another channel, `--owner` on a work channel, a deleted entry given to `channel pin`, `tag` or `entry append --parent`, `entry delete` on a `cynapse.*` entry, `state lifecycle <channel> deleted`, a database locked for more than 10 seconds (`database is locked`), a failed load test. |
 | `2` | Usage error: unknown flag or subcommand, a command group run without a subcommand (the error lists its subcommands), missing `--as`, an option value that does not parse (`--data`, `--value`, `--after`, `--limit`, `--port`, …), `--membership`, `--kind` or `--status` outside its set, `--store` without `--native-id` (or the reverse), `--kind address` without `--owner`, `tag` with nothing to do, `dev seed --reset` without `--db`. |
 | `3` | Timed out: `entry wait` saw no reply within `--timeout` (`timeout`). |
 | `4` | Ambiguous address: `participant resolve` or `entry send` named more than one live participant (`ambiguous_address`). |
 | `5` | Unknown address: `participant resolve` or `entry send` named no live participant (`unknown_address`). |
 
 The same constants are exported as `EXIT_OK`, `EXIT_FAILURE`, `EXIT_USAGE`, `EXIT_TIMEOUT`,
-`EXIT_AMBIGUOUS_ADDRESS` and `EXIT_UNKNOWN_ADDRESS` — see
+`EXIT_AMBIGUOUS_ADDRESS` and `EXIT_UNKNOWN_ADDRESS`. See
 [Errors](/cynapse/api/ids/#errors).
 
 ## Commands
@@ -146,8 +146,9 @@ The same constants are exported as `EXIT_OK`, `EXIT_FAILURE`, `EXIT_USAGE`, `EXI
 | --- | --- |
 | [`channel create`](/cynapse/cli/channel/#cynapse-channel-create) | Create a channel; idempotent for `--store`/`--native-id`, `--anchor` and `--key`. |
 | [`channel show`](/cynapse/cli/channel/#cynapse-channel-show) | The briefing: purpose, members, context, open state, pinned entries, views, children. |
-| [`channel list`](/cynapse/cli/channel/#cynapse-channel-list) | List channels, filtered by type, parent or lifecycle state. |
+| [`channel list`](/cynapse/cli/channel/#cynapse-channel-list) | List channels, filtered by kind, type, parent or lifecycle state. Deleted channels are hidden unless `--include-deleted`. |
 | [`channel tree`](/cynapse/cli/channel/#cynapse-channel-tree) | Channels with the child channels anchored in them. |
+| [`channel delete`](/cynapse/cli/channel/#cynapse-channel-delete) | Erase a channel's entries, leaving tombstones, and hide the channel. |
 | [`channel rename`](/cynapse/cli/channel/#cynapse-channel-rename) | Rename a channel; the old handle stays as an alias. |
 | [`channel resolve`](/cynapse/cli/channel/#cynapse-channel-resolve) | Find the channel keyed by a subject's store and native id. |
 | [`channel add-key`](/cynapse/cli/channel/#cynapse-channel-add-key) | Add an alias key to a channel, such as a subject's new native id. |
@@ -156,17 +157,18 @@ The same constants are exported as `EXIT_OK`, `EXIT_FAILURE`, `EXIT_USAGE`, `EXI
 | [`channel view`](/cynapse/cli/channel/#cynapse-channel-view) | Save a filter as a named view. |
 | [`entry append`](/cynapse/cli/entry/#cynapse-entry-append) | Append an entry; re-appending the same `--id` is a no-op. |
 | [`entry send`](/cynapse/cli/entry/#cynapse-entry-send) | Append to a participant's address channel, resolved by name. |
-| [`entry list`](/cynapse/cli/entry/#cynapse-entry-list) | List a channel's entries in `seq` order, with filters. |
+| [`entry list`](/cynapse/cli/entry/#cynapse-entry-list) | List a channel's entries in `seq` order, with filters. Tombstones are hidden unless `--include-deleted`. |
 | [`entry show`](/cynapse/cli/entry/#cynapse-entry-show) | Show one entry, with its refs rendered as links. |
+| [`entry delete`](/cynapse/cli/entry/#cynapse-entry-delete) | Erase an entry's content, leaving a tombstone. |
 | [`entry wait`](/cynapse/cli/entry/#cynapse-entry-wait) | Wait for the first reply in an entry's thread from someone else. |
 | [`participant register`](/cynapse/cli/participant/#cynapse-participant-register) | Register a participant and its address channel; idempotent by key. |
 | [`participant retire`](/cynapse/cli/participant/#cynapse-participant-retire) | Retire a participant; it stops resolving. |
 | [`participant rename`](/cynapse/cli/participant/#cynapse-participant-rename) | Rename a participant; the old handle stays as an alias. |
 | [`participant resolve`](/cynapse/cli/participant/#cynapse-participant-resolve) | Resolve a name to exactly one live participant. |
 | [`participant list`](/cynapse/cli/participant/#cynapse-participant-list) | List participants by status and registering unit. |
-| [`read`](/cynapse/cli/read/#cynapse-read) | Advance your read cursor on a channel. |
+| [`read`](/cynapse/cli/read/#cynapse-read) | Advance your read cursor on a channel, by default to its latest entry. |
 | [`changes`](/cynapse/cli/read/#cynapse-changes) | Channels that changed since a token; the cheap poll. |
-| [`unread`](/cynapse/cli/read/#cynapse-unread) | Channels with unread entries, including replies in threads you follow. |
+| [`unread`](/cynapse/cli/read/#cynapse-unread) | Channels you are a member of with unread entries, plus replies in threads you wrote in elsewhere. |
 | [`tag`](/cynapse/cli/tag/) | Add or remove tags on an entry. |
 | [`state list`](/cynapse/cli/state/#cynapse-state-list) | List state records. |
 | [`state set`](/cynapse/cli/state/#cynapse-state-set) | Set a state record. |

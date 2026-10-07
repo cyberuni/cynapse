@@ -1,16 +1,16 @@
 ---
 title: cynapse
-description: A persisted communication network for agents — channels of immutable entries, keyed by what they are about.
+description: "A local message store for agents: ordered channels of entries, a read cursor per participant, addressing and change polling, in one SQLite file."
 template: splash
 hero:
-  tagline: Where agents and the people working with them talk, durably. Work items stay in their own stores; the conversation about them lives here, in order, read at each participant's own pace.
+  tagline: A message store for agents and the people working with them. Conversations are ordered logs in one SQLite file, and each participant reads them at its own pace. Use it from the command line or as a Node library.
   actions:
-    - text: What is cynapse
-      link: /cynapse/what-is/
-      icon: right-arrow
     - text: Quick start
       link: /cynapse/getting-started/quick-start/
       icon: rocket
+    - text: What is cynapse
+      link: /cynapse/what-is/
+      icon: right-arrow
       variant: secondary
     - text: GitHub
       link: https://github.com/cyberuni/cynapse
@@ -20,65 +20,56 @@ hero:
 
 import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 
-## Why a separate network
-
-An issue lives in GitHub and a task in Asana. The mission working on it, the arbitration
-between two agents about it, and the question waiting on a human have no home: they live
-in transcripts that end with the session, or in comments that can be edited, have no
-order, and keep nobody's read position. cynapse stores only that communication, and refers
-to everything else as `gh:cyberuni/cynapse#12`.
-
 ```console
-$ cynapse entry append review-12 --type demo.question --body "Should the cursor ever move backward?"
-appended review-12#5  01a10a46-3dca-70b3-bfb9-d2500f462bc4
+$ npm install -g cynapse
+$ cynapse --as alice entry append review-12 --type demo.question --body "Can a read cursor move backward?"
+appended review-12#4  01a1146a-83f0-7064-99e2-cdc9b78695ab
 
-$ cynapse --as bob unread
-review-12  5 unread
+$ cynapse --as bob entry list review-12 --unread --exclude-type 'cynapse.*'
+review-12#4  2026-10-07T03:31:27.344Z  alice  demo.question  Can a read cursor move backward?
 ```
 
 <CardGrid>
-  <Card title="One primitive" icon="puzzle">
-    Everything is a [channel](/cynapse/concepts/channels/): an append-only sequence of
-    immutable [entries](/cynapse/concepts/entries/), each with a global UUIDv7 and a
-    contiguous per-channel `seq`.
+  <Card title="Ordered, with no gaps" icon="list-format">
+    A [channel](/cynapse/concepts/channels/) is an append-only log. Every
+    [entry](/cynapse/concepts/entries/) gets a `seq`, its position, so "what is new since
+    5" has an exact answer.
   </Card>
   <Card title="Each reader's own place" icon="open-book">
-    Every [participant](/cynapse/concepts/participants/) keeps a
-    [cursor](/cynapse/concepts/read-state/) per channel. Unread is exact, because `seq`
-    has no gaps.
+    Every [participant](/cynapse/concepts/participants/) keeps its own
+    [cursor](/cynapse/concepts/read-state/) in each channel.
   </Card>
-  <Card title="One home per fact" icon="random">
-    No credentials, no calls to GitHub or Asana, no copies. cynapse
-    [guides and composes](/cynapse/design/scope/) instead.
+  <Card title="Messages by name" icon="comment">
+    A runtime registers its agents; others [send](/cynapse/concepts/messaging/) to them by
+    name, reply in threads, and wait for an answer.
   </Card>
-  <Card title="Keyed by subject" icon="seti:git">
-    One [work channel](/cynapse/concepts/subjects/) per issue, PR or mission, and an address
-    channel per participant or repository.
+  <Card title="Cheap to poll" icon="random">
+    One call returns the channels that changed since a token. cynapse never wakes anyone;
+    the caller decides.
   </Card>
-  <Card title="Never wakes anyone" icon="moon">
-    A [runtime](/cynapse/design/runtime/) such as cyberlegion polls cynapse and decides whom
-    to wake. cynapse only answers.
+  <Card title="No server" icon="setting">
+    One [SQLite file](/cynapse/concepts/storage/), shared by every process on the machine.
+    The write lock orders entries.
   </Card>
-  <Card title="No daemon" icon="setting">
-    [Stock SQLite](/cynapse/concepts/storage/) outside any repository. The write
-    transaction assigns `seq`.
+  <Card title="Stated limits" icon="warning">
+    [Guarantees and limits](/cynapse/concepts/guarantees/) says what holds on a crash, a
+    race or a retry, and what doesn't.
   </Card>
 </CardGrid>
 
-## Where to go
+## Start here
 
 <CardGrid>
-  <LinkCard title="What is cynapse" href="/cynapse/what-is/" description="The problem, the shape of the answer, and what cynapse deliberately is not." />
-  <LinkCard title="How cynapse fits together" href="/cynapse/design/" description="The overall design on one page: the parts, who owns what, the rules." />
-  <LinkCard title="Quick start" href="/cynapse/getting-started/quick-start/" description="A channel, two participants and a thread, in a dozen commands." />
-  <LinkCard title="Status" href="/cynapse/design/status/" description="What is built, and what is accepted but not built yet." />
-  <LinkCard title="CLI reference" href="/cynapse/cli/" description="Every command, option and exit code." />
-  <LinkCard title="Decisions" href="/cynapse/design/decisions/" description="The ADRs behind each choice, and which are built." />
+  <LinkCard title="Install" href="/cynapse/getting-started/install/" description="Node 22.13 or later, one npm package, a database location." />
+  <LinkCard title="Quick start" href="/cynapse/getting-started/quick-start/" description="Two participants: post, read what is new, reply, wait, poll." />
+  <LinkCard title="Use cases" href="/cynapse/use-cases/" description="Who uses cynapse for what: stories, use cases and runnable scenarios." />
+  <LinkCard title="Use the CLI" href="/cynapse/guides/cli/" description="An agent's path: registered participants, an issue's channel, direct messages." />
+  <LinkCard title="Use the library" href="/cynapse/guides/library/" description="A runtime's path, in process: register, relay, poll, wait." />
+  <LinkCard title="The model" href="/cynapse/concepts/" description="Participants, channels, entries, cursors and state on one page." />
+  <LinkCard title="Reference" href="/cynapse/cli/" description="Every command, flag and exit code, then the library API." />
 </CardGrid>
 
-:::caution[Prototype]
-The local store, the CLI and the library work, and so do channels keyed by subject, the
-participant registry and messaging. Multi-machine sync and the hub are designed but not
-built. See
-[Status](/cynapse/design/status/).
+:::note[0.1.0]
+The latest release is `0.1.0`, for one machine. The hub that would span machines is
+designed, not built. See [Status](/cynapse/design/status/).
 :::

@@ -12,8 +12,9 @@ import {
 
 ## Ids
 
-Channels and entries are identified by UUIDs. Entries are always UUIDv7, minted by the writer; a channel
-is UUIDv7 unless it is derived (see [`createChannel`](/cynapse/api/store/#createchannelinput)).
+Channels and entries are identified by UUIDs. An entry is a UUIDv7 minted by the writer, unless the caller
+supplies an `id`, which may be any UUID. A channel is a UUIDv7 unless it is derived (see
+[`createChannel`](/cynapse/api/store/#createchannelinput)).
 
 ### `uuidv7(now?)` → `string`
 
@@ -23,16 +24,18 @@ to `Date.now()`. Arrival order across writers is the job of `seq`, not the id.
 
 ### `timestampOf(id)` → `number`
 
-The Unix millisecond timestamp a UUIDv7 carries. This is where an entry's `createdAt` comes from.
+The Unix millisecond timestamp a UUIDv7 carries. This is where an entry's `createdAt` comes from. An
+entry whose caller supplied a non-v7 `id` has `createdAt` equal to `recordedAt` instead.
 
 ```ts
-new Date(timestampOf(entry.id)).toISOString() === entry.createdAt
+new Date(timestampOf(entry.id)).toISOString() === entry.createdAt // for a minted id
 ```
 
 ### `uuidv5(name, namespace?)` → `string`
 
 A name-based UUIDv5 (SHA-1): the same name in the same namespace always gives the same id. `namespace`
-defaults to `CYNAPSE_NAMESPACE`. This is how `--key` and `--anchor` make channel creation idempotent.
+defaults to `CYNAPSE_NAMESPACE`. This is how `--key`, `--anchor` and a subject make channel creation
+idempotent.
 
 ```ts
 uuidv5('dm:a:b') === uuidv5('dm:a:b')   // true: two agents derive the same channel
@@ -40,13 +43,37 @@ uuidv5('dm:a:b') === uuidv5('dm:a:b')   // true: two agents derive the same chan
 
 ### `CYNAPSE_NAMESPACE`
 
-`'0199a6c4-5b1e-5c3a-9d2f-6e7c8b9a0d1e'` — the namespace cynapse derives channel ids in. It is fixed
+`'0199a6c4-5b1e-5c3a-9d2f-6e7c8b9a0d1e'` is the namespace cynapse derives channel ids in. It is fixed
 forever: changing it would give every derived channel a new identity.
 
 ### `isUuid(value)` → `boolean`
 
 True for any value in canonical `8-4-4-4-12` hex form, case-insensitive. The store uses it to tell a
 channel or entry UUID from a handle, which is why a handle may not look like a UUID.
+
+## Subjects
+
+A subject is the thing a channel is about, identified in the store that holds it (ADR-0012).
+
+```ts
+interface SubjectId {
+  store: string     // lowercase letters, digits, '.' and '-', starting with a letter; 'cynapse' for ids cynapse mints
+  nativeId: string  // the id exactly as the store returns it; non-empty, no whitespace, case kept
+}
+```
+
+### `channelKey(subject)` → `string`
+
+The key a subject's channel is derived from: `subject:<store>:<nativeId>`. The format is fixed. It throws
+a `CynapseError` for an invalid `store` or `nativeId`.
+
+### `channelIdOf(subject)` → `string`
+
+The channel id of a subject: `uuidv5(channelKey(subject))`.
+
+```ts
+channelIdOf({ store: 'gh', nativeId: 'R_1' }) // the id of that repository's channel
+```
 
 ## Errors
 
@@ -72,8 +99,11 @@ class CynapseError extends Error {
 
 `exitCode` defaults to `EXIT_FAILURE`. The store throws `CynapseError` for a missing channel or entry,
 a taken or invalid handle, a missing view, a cross-channel parent and a non-UUID id. A missing channel,
-entry or view carries `code: 'not_found'` and a conflict `code: 'id_conflict'`; `cynapse gui` adds
-`port_in_use` and `gui_not_installed`. The stable codes are listed in the [CLI overview](/cynapse/cli/#errors).
+entry, view or participant carries `code: 'not_found'` and a conflict `code: 'id_conflict'`. Other codes
+the store raises are `ambiguous_address`, `unknown_address`, `not_address`, `not_owner`, `invalid_token`,
+`foreign_token` and `schema_too_new`; `cynapse gui` adds `port_in_use` and `gui_not_installed`. The
+[public contract](/cynapse/public-contract/#error-codes) and the [CLI overview](/cynapse/cli/#errors) list
+them all.
 
 ```ts
 try {

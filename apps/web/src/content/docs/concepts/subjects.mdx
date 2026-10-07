@@ -1,78 +1,94 @@
 ---
-title: Subjects across stores
-description: The model — a network of subjects living in their own stores, relations kept on the subjects, and channels keyed by subject.
+title: Subjects and channel kinds
+description: "Channels keyed by the subject they are about: work channels and address channels, subject keys, alias keys after a move, and owners."
 ---
 
 import SubjectsDiagram from '../../../components/SubjectsDiagram.astro'
 
-:::note[Partly built]
-This page describes ADR-0010 to ADR-0012. Channels keyed by subject (ADR-0012) are built:
-address and work channels, owners, alias keys and the key format. Subjects and relations
-across stores (ADR-0010) and guide and compose (ADR-0011) are accepted, not built.
-:::
-
-Work for agents is spread across stores. An issue lives in GitHub, its task in Asana, the
-mission working on it in SDD, and the discussion about it in cynapse. cynapse's model of
-this is a **network of subjects**.
-
-## Subjects and relations
-
-A **subject** is anything a conversation can be about: an issue, a PR, a task, a
-repository, a participant, a mission. Each subject lives in the store that owns it.
-
-- **A relation is metadata on both ends.** "#15 closes #12" is written on #15 and on #12,
-  each in its own store: frontmatter, a label, a custom field. The two writes can't be
-  atomic, so a reader treats a relation as present if either end records it.
-- **Hierarchy is a view, not identity.** Parent and child, epic and story are relations.
-  Nothing's identity depends on its place in a hierarchy, so reorganising work doesn't
-  break anything.
-- **A subject's type comes from its store,** and each consumer attaches its own perceived
-  type. A GitHub issue is a `gh.issue`. When SDD works on it, SDD perceives it as an
-  `sdd.mission`.
-
-This follows [DNA](https://github.com/cyberuni/dna), the Datum Network Architecture.
-
-## Channels keyed by subject
-
-A channel is keyed by the subject it is about, and there are two kinds:
+A **subject** is what a conversation is about: an issue, a PR, a task, a repository, a
+participant. The subject lives in the store that owns it, such as GitHub or Asana. cynapse
+keeps the conversation about it, in a channel **keyed by the subject**. Everyone who works
+on the subject meets in that one channel.
 
 <SubjectsDiagram />
 
-| | Address channel | Work channel |
+## Two kinds of channel
+
+| | Work channel | Address channel |
 | --- | --- | --- |
-| Keyed by | Something that receives messages: a participant, a repository, a project, a folder | A unit of work: an issue, a PR, a task, a mission |
-| Owner | The subject's owner, who triages it and sets conventions | None. It has members. |
-| Used for | Direct traffic: a question to a role, mail for an owner | The shared working conversation about that piece of work, including the messages about it |
+| Keyed by | A unit of work: an issue, a PR, a task, a mission | Something that receives messages: a participant, a repository, a project, a folder |
+| Owner | None. It has members. | One participant, who triages it |
+| Used for | The shared conversation about that piece of work | Direct messages: a question to a role, mail for an owner |
+| Created with | `channel create` (the default kind) | `participant register`, or `channel create --kind address --owner <participant>` |
 
-- **The key is the subject's native ID** when the channel is created: GitHub's `node_id`,
-  Asana's `gid`, Linear's UUID. The readable reference (`gh:cyberuni/cynapse#12`) is a
-  handle, because it changes when an issue moves.
-- **A move adds an alias key.** If a transfer gives the issue a new native ID, the new ID
-  becomes another key of the same channel. The channel keeps its identity.
-- **The key has no type.** Every consumer working on an issue meets in its one channel,
-  instead of each opening its own.
-- **Each work item has its own channel.** A PR's channel isn't a child of its issue's.
-  Anchors still branch a conversation inside cynapse, such as an arbitration started from
-  a review comment.
-- **There are no DMs.** Traffic about a work item goes on its work channel. Direct
-  traffic to a participant goes on their address channel
-  ([Messaging](/cynapse/concepts/messaging/)).
-- **The key format is cynapse's.** A consumer resolves the native ID, because that needs
-  the store's API, and passes the store and the ID in. cynapse builds the key, so two
-  consumers resolving the same ID meet in the same channel.
+A work item's traffic goes on its work channel. Traffic addressed to a participant goes on
+the participant's address channel. There are no separate mailboxes or DMs
+([Messaging](/cynapse/concepts/messaging/)).
 
-## Reaching what lives elsewhere
+## Channels keyed by subject
 
-A channel holds the conversation, never the subject. cynapse doesn't fetch the issue or
-cache its metadata. It tells a consumer which one call returns it, and composes what the
-consumer passes back. What a consumer writes back to the issue is a short list of things
-that change it for the issue's readers. Both are on
-[What cynapse stores](/cynapse/design/scope/#guide-and-compose).
+A channel keyed by a subject gets its id from the subject's **native id** in its store:
+GitHub's `node_id`, Asana's `gid`, Linear's UUID. Pass the store and the native id, and
+cynapse builds the key `subject:<store>:<nativeId>` and the channel id `UUIDv5(key)`:
+
+```console
+$ cynapse --as builder channel create gh:acme/app/12 --store gh --native-id I_kwDOAbc012 \
+    --type demo.issue --title "Login fails after reset"
+created gh:acme/app/12  demo.issue  active  1 entries  Login fails after reset
+
+$ cynapse channel resolve --store gh --native-id I_kwDOAbc012
+gh:acme/app/12  demo.issue  active  1 entries  Login fails after reset
+```
+
+- **The key has no type.** Creating the channel again from the same subject returns it,
+  whatever type or title the second caller gives. Two consumers that see the same issue
+  differently still share one conversation.
+- **The readable reference is a handle, not the key.** `gh:acme/app/12` changes when the
+  issue moves to another repository; the native id doesn't change on a rename.
+- **cynapse never calls the store.** The caller resolves the native id, for example with
+  `gh issue view 12 --json id`, and passes it in. cynapse builds the key, so two callers
+  that resolve the same id meet in the same channel. Never spell the key yourself.
+- A store name is lowercase letters, digits, `.` and `-`, starting with a letter. A native
+  id is kept exactly as the store returns it, with no whitespace.
+
+## When the subject moves
+
+Some moves give a subject a new native id. A GitHub issue transferred to another repository
+does. Add the new id as an **alias key**, and the channel keeps its identity:
+
+```bash
+cynapse --as builder channel add-key gh:acme/app/12 --store gh --native-id I_kwDOXyz034
+```
+
+Both ids now resolve to the channel. Rename the handle with `channel rename` if the
+readable reference changed too; the old handle stays as an alias.
+
+## Address channels and owners
+
+An address channel has one **owner**, the participant who triages it. Only the owner may
+add or remove the `cynapse.handled` tag on its entries
+([Messaging](/cynapse/concepts/messaging/#seen-versus-handled)).
+
+- Registering a participant creates its address channel, keyed by the participant's id and
+  owned by it ([Participants](/cynapse/concepts/participants/#registration)).
+- A repository's address channel is keyed by its native id, such as
+  `--store gh --native-id R_kgDOAbc`.
+- Something with no native id, such as a folder, gets an address cynapse mints:
+  `channel create --kind address --owner <participant>` without `--store`. Each call makes a
+  new channel.
+- `channel owner <channel> <participant>` changes the owner, logged as
+  `cynapse.channel.owner-changed`.
+
+The owner of an address channel is not a member of it. The channel doesn't appear in the
+owner's `unread`; read it with `entry list <handle> --unread`
+([Read state](/cynapse/concepts/read-state/#unread)).
 
 ## Related
 
-- [ADR-0010](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0010-a-network-of-subjects-across-stores.md),
-  [ADR-0011](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0011-cynapse-stores-only-what-no-other-store-can.md),
-  [ADR-0012](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0012-channels-are-keyed-by-subject.md)
-- [Participants](/cynapse/concepts/participants/#registration): address channels
-  for participants
+- CLI: [`channel create`](/cynapse/cli/channel/#cynapse-channel-create),
+  [`channel resolve`](/cynapse/cli/channel/#cynapse-channel-resolve),
+  [`channel add-key`](/cynapse/cli/channel/#cynapse-channel-add-key)
+- API: [`channelKey`, `channelIdOf`](/cynapse/api/ids/#subjects), [`Store`](/cynapse/api/store/)
+- Design: [What cynapse stores](/cynapse/design/scope/), for subjects and relations across
+  stores
+- Decision: [ADR-0012](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0012-channels-are-keyed-by-subject.md)

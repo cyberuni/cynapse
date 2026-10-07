@@ -1,6 +1,6 @@
 ---
 title: dev
-description: Development tools — an example world to explore and a concurrent-writer load test.
+description: "Development tools: an example world to explore, and a load test with concurrent writers."
 ---
 
 The `dev` commands exist for working on cynapse and for trying it out. Neither is meant for a store
@@ -10,7 +10,7 @@ you care about.
 
 Build an example world in the database: an SDD work hierarchy and mission graph, a cyber-truss mission
 with two arbitration rounds, agent coordination with a lease, a change feed, and a direct-message
-channel — with unread entries and open `needs-input` records waiting for the `council` participant.
+channel. It leaves unread entries and open `needs-input` records waiting for the `council` participant.
 Timestamps come from a fixed clock starting 2026-09-21, so the world is the same every time.
 
 The command refuses to touch a database that already has channels: it fails with exit `1` unless you

@@ -17,8 +17,9 @@ author, type, parent, body, data, tags, refs) returns the stored entry and write
 with a *different* payload fails with an `id_conflict` error, since silently returning the old entry
 would hide the collision. Without `--id`, a UUIDv7 is minted.
 
-A `--parent` reply must be in the same channel. The entry records the parent and the root of its
-thread, which [`entry list --root`](#cynapse-entry-list) can filter by.
+A `--parent` reply must be in the same channel and must not be deleted; otherwise the command fails with
+exit `1`. The entry records the parent and the root of its thread, which
+[`entry list --root`](#cynapse-entry-list) can filter by.
 
 **Usage**
 
@@ -76,6 +77,9 @@ Sending never creates the addressee. A name that matches no live participant fai
 address channel and can't be sent to. Traffic about a work item belongs on that item's work channel,
 with `entry append`; `send` is for direct traffic.
 
+A participant is the owner of its address channel, not a member, so [`unread`](/cynapse/cli/read/#cynapse-unread)
+never lists that channel. To read what was sent, run `entry list <handle> --unread` as the owner.
+
 ```bash
 cynapse --as sdd-conductor entry send reviewer --type demo.question --body "Is the spec ready?"
 # sent reviewer#3  01a10a46-…
@@ -85,7 +89,7 @@ cynapse --as sdd-conductor entry send reviewer --type demo.question --body "Is t
 
 List a channel's entries in `seq` order. Filters combine with AND; the values of one repeatable filter
 combine with OR. Each text line is
-`handle#seq  created  author  type  [tags]  ↳parent  first line of body` — when the body is empty the
+`handle#seq  created  author  type  [tags]  ↳parent  first line of body`. When the body is empty the
 line shows the `data` payload instead, and long summaries are truncated at 100 characters.
 
 **Usage**
@@ -96,7 +100,7 @@ cynapse entry list <channel> [options]
 
 | Option | Effect |
 | --- | --- |
-| `--unread` | Only entries after your read cursor that you did not write. Needs `--as`. See [`read`](/cynapse/cli/read/). |
+| `--unread` | Only entries after your read cursor that you did not write, `cynapse.*` metadata entries included. Needs `--as`. See [`read`](/cynapse/cli/read/). |
 | `--meta-only` | Headers only: no body and no `data`. |
 | `--from-summary` | Start at the latest `cynapse.summary` entry, when the channel has one; otherwise list everything. |
 | `--type <type>` | Only this type, or every type under a prefix with `prefix.*`. Repeatable. |
@@ -149,7 +153,7 @@ cynapse --as council entry list notes-2 --view only-replies --meta-only
 
 Show one entry in full. Under text output the refs are rendered as Markdown links; under `--json` the
 entry gets an extra `links` array of [`RenderedRef`](/cynapse/api/refs/) objects alongside its fields.
-An unknown entry fails with exit `1`.
+An unknown entry fails with exit `1`. A deleted entry still shows, with its headers and a `deleted: <time> by <participant>` line.
 
 **Usage**
 
@@ -177,8 +181,10 @@ the channel.
 
 Erase one entry's content, on any channel, and leave a tombstone in its place
 ([Entries](/cynapse/concepts/entries/#deleting-an-entry)). The tombstone keeps its `seq`, `parent` and
-`root`, so replies still resolve, and the delete is logged as a `cynapse.entry.deleted` entry. Needs
-`--as`, which the log records; anyone may delete, since no caller can be verified.
+`root`, so replies still resolve, and the delete is logged as a `cynapse.entry.deleted` entry. The tombstone
+keeps the entry's `type` and `author`; the body, `data`, refs and tags are erased, and any pin on it is
+removed. A deleted entry can't be pinned, tagged or replied to. Needs `--as`, which the log records;
+anyone may delete, since no caller can be verified.
 
 A `cynapse.*` entry can't be deleted. Deleting a tombstone again prints the entry that logged its delete.
 

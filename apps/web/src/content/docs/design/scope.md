@@ -1,13 +1,14 @@
 ---
 title: What cynapse stores
-description: The one-home rule — what cynapse keeps, what it leaves to other stores, how it guides and composes instead of fetching, and what a consumer writes back.
+description: "The one-home rule: what cynapse keeps, what it leaves to other stores, the network of subjects, how it guides and composes instead of fetching, and what a consumer writes back."
 ---
 
 :::note[Partly built]
-The store for channels, entries, cursors and state is built. Guidance, composition and
-write-back are accepted ([ADR-0011](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0011-cynapse-stores-only-what-no-other-store-can.md)),
-not built. Today a reference such as `gh:cyberuni/cynapse#12` is stored as written and
-rendered as a link.
+The store for channels, entries, cursors and state is built, and so are channels keyed by
+subject. The network of subjects ([ADR-0010](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0010-a-network-of-subjects-across-stores.md)),
+guidance, composition and write-back ([ADR-0011](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0011-cynapse-stores-only-what-no-other-store-can.md))
+are accepted, not built. Today a reference such as `gh:cyberuni/cynapse#12` is stored as
+written and rendered as a link.
 :::
 
 Every fact written in two places can drift, and an external store can be changed at any
@@ -26,6 +27,27 @@ time by people and tools that never pass through cynapse. So **each fact has one
 cynapse's store is used only where no external store fits, or where the one available
 lacks a capability that is needed. GitHub comments and Asana stories can be edited and
 deleted, carry no order owner, and keep no per-reader cursor, so channels stay in cynapse.
+
+## A network of subjects
+
+Work for agents is spread across stores. An issue lives in GitHub, its task in Asana, the
+mission working on it in SDD, and the discussion about it in cynapse. The design models
+this as a **network of subjects**, following [DNA](https://github.com/cyberuni/dna), the
+Datum Network Architecture:
+
+- **A relation is metadata on both ends.** "#15 closes #12" is written on #15 and on #12,
+  each in its own store: frontmatter, a label, a custom field. The two writes can't be
+  atomic, so a reader treats a relation as present if either end records it.
+- **Hierarchy is a view, not identity.** Parent and child, epic and story are relations.
+  Nothing's identity depends on its place in a hierarchy, so reorganising work breaks
+  nothing.
+- **A subject's type comes from its store,** and each consumer attaches its own perceived
+  type. A GitHub issue is a `gh.issue`. When SDD works on it, SDD perceives it as an
+  `sdd.mission`.
+
+The built part is the channel side: each subject keys one channel
+([Subjects and channel kinds](/cynapse/concepts/subjects/)). Relations, and the guidance
+for reading them, are not built.
 
 ## Guide and compose
 
@@ -85,7 +107,7 @@ conversation through the CLI's narrow reads, never by searching files
 
 ## Related
 
-- [Subjects across stores](/cynapse/concepts/subjects/): subjects, relations and channels
-  keyed by subject.
+- [Subjects and channel kinds](/cynapse/concepts/subjects/): channels keyed by subject.
 - Decisions: [ADR-0002](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0002-own-only-communication-with-no-other-home.md),
+  [ADR-0010](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0010-a-network-of-subjects-across-stores.md),
   [ADR-0011](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0011-cynapse-stores-only-what-no-other-store-can.md)

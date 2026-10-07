@@ -1,6 +1,6 @@
 ---
 title: State and lifecycle
-description: State records for what is true now — needs-input, pending answers, leases — and a channel's lifecycle, where cleanup is a state and deleting a channel is a reserved one.
+description: "State records for what is true now (needs-input, pending answers) and a channel's lifecycle, where cleanup is a state and deleting a channel is a reserved one."
 ---
 
 A channel's entries say what happened. Some facts are about what is true **now**: a
@@ -34,6 +34,21 @@ records appear in the channel's [briefing](/cynapse/concepts/channels/#the-brief
 Nothing resolves a record automatically. A reply isn't always an answer, so whoever
 answers or gives up resolves it.
 
+**`state set` has no condition.** Two writers setting the same key both succeed, and the
+later write wins:
+
+```console
+$ cynapse --as alice state set f lock-1 --kind demo.lease --status open --subject alice
+f  lock-1  demo.lease  open → alice
+$ cynapse --as bob state set f lock-1 --kind demo.lease --status open --subject bob
+f  lock-1  demo.lease  open → bob
+```
+
+So a state record can't serve as a lock. For a write that may happen only once, such as a
+single ruling on a decision, use the library's `appendUnless`, which checks for a matching
+entry in the same transaction that writes
+([Store](/cynapse/api/store/#appendunlessref-input-unless)).
+
 ## Lifecycle
 
 A channel has one lifecycle state: `active` by default, and otherwise any string its
@@ -57,6 +72,7 @@ channel. So cleanup marks the channel `reconciled` and doesn't delete it.
 
 Deleting is for removing what was said, such as a secret pasted into a channel, or a
 channel nobody wants any more ([ADR-0014](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0014-deleting-entries-and-channels.md)).
+It was added after 0.1.0.
 `deleteChannel` erases every entry outside `cynapse.*`, leaving
 [tombstones](/cynapse/concepts/entries/#deleting-an-entry), and moves the channel to the
 reserved lifecycle state `deleted`, logged as one `cynapse.channel.deleted` entry.
@@ -72,6 +88,7 @@ cynapse channel list --include-deleted
 - `state lifecycle <channel> active` restores it, empty except for its `cynapse.*` history.
 - Child channels anchored in it are left alone; their anchor entries resolve as tombstones.
 - `setLifecycle` refuses `deleted`, so a channel is never marked deleted with its content still there.
+- Open state records on the channel stay open. Resolve them yourself if they no longer apply.
 
 What the design adds on top, not built yet:
 
@@ -82,15 +99,13 @@ What the design adds on top, not built yet:
 
 ## Leases (planned)
 
-Leases are state records with a TTL, an exclusive flag, path patterns, a release time, and
-a way to repair orphaned leases, following mcp_agent_mail's design. They aren't built.
-Leases are for coordination, such as who holds a task or a file. They are not how a
-session's liveness is tracked: a runtime asserts that itself
-([cynapse and the runtime](/cynapse/design/runtime/#why-the-line-falls-there), proposed).
-
-A "happens at most once" write, such as a single ruling on a decision, needs a
-conditional append that the store doesn't have yet
-([#19](https://github.com/cyberuni/cynapse/issues/19)).
+Leases are designed and not built: state records with a time to live, an exclusive flag,
+path patterns, a release time, and a way to repair orphaned leases
+([ADR-0006](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0006-state-views-and-lifecycle.md)).
+Until they exist, nothing expires and nothing is exclusive. Leases are for coordination,
+such as who holds a task or a file. They are not how a session's liveness is tracked: a
+runtime asserts that itself
+([cynapse and the runtime](/cynapse/design/runtime/#why-the-line-falls-there)).
 
 ## Related
 

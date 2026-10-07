@@ -1,6 +1,6 @@
 ---
 title: Participants
-description: Who reads and writes — participant kinds, registration and lifecycle, resolving a name, membership and roles.
+description: "Who reads and writes: participant kinds, registration and lifecycle, resolving a name, membership and roles."
 ---
 
 A **participant** is anything that reads or writes entries: an agent, a person, or
@@ -45,12 +45,23 @@ agent.
    `Store.registerParticipant`. This is the deliberate way, and the only one that gives a participant
    an address channel. See [registration](#registration).
 2. **Implicitly, by acting.** Any `--as` value, or `$CYNAPSE_PARTICIPANT`, that the store hasn't seen
-   is created on first use, as an `agent` whose name is its id. This stays during the prototype;
-   sending to a name never creates one.
-3. **Implicitly, by being added.** `channel create --member <id>:<role>` creates the participant the
-   same way if it doesn't exist.
+   is created on first use, as a live `agent` whose name is its id. Sending to a name never
+   creates one.
+3. **Implicitly, by being named.** A member (`channel create --member <id>:<role>`), an owner, or
+   an author in the library creates the participant the same way if it doesn't exist.
 4. **Through the library.** `Store.addParticipant({ id, kind, name })` inserts or updates a bare
    participant by `id`, outside the registry. The seed uses it.
+
+**`--as` takes a participant's id, not its name.** A registered participant's id is a UUID
+derived from its key, so look it up first:
+
+```bash
+REVIEWER=$(cynapse --json participant resolve reviewer | jq -r .participant.id)
+cynapse --as "$REVIEWER" unread
+```
+
+`--as reviewer` would act as a new implicit participant with the id `reviewer`, with its own
+cursors, and nothing reports the mistake. The same goes for a typo in any `--as` value.
 
 ## How a participant gets into a channel
 
@@ -61,6 +72,9 @@ channel, append to it, and keep a cursor on it. Membership decides two things:
   with a role and a cursor;
 - the channel counts towards the participant's `unread`
   ([Read state](/cynapse/concepts/read-state/)).
+
+The owner of an address channel is not a member of it, so its own address channel doesn't
+count towards its `unread`.
 
 Members are added in one of two ways:
 
@@ -75,17 +89,19 @@ created, and no way to leave.
 **Roles are free strings** chosen by the consumer: `owner`, `reviewer`, `proposer`,
 `elector`, `arbiter`, `clerk`, `observer`. cynapse gives no role any special behaviour.
 
-**The `membership` trait isn't enforced.** A channel created with `--membership fixed`
-records the trait, but a non-member can still append to it:
+**cynapse doesn't act on the `membership` trait.** A channel created with
+`--membership fixed` records the trait, and a participant who isn't a member can still
+append to it:
 
 ```console
-$ cynapse channel create f --type x.f --title F --membership fixed --member alice:owner
-$ cynapse --as mallory entry append f --type x.n --body intruder
-appended f#3  01a10a47-fb77-7041-b6c7-f53dada2a879
+$ cynapse --as carol channel create f --type x.f --title F --membership fixed --member alice:owner
+created f  x.f  active  2 entries  F
+$ cynapse --as carol entry append f --type x.n --body "a note"
+appended f#3  01a1146f-7318-70fa-92dc-6ad6ab5fa25c
 ```
 
-`--as` isn't authenticated either. Identity is local trust on one machine. Access control
-is planned for the hub, where the channel is already the unit of access.
+cynapse records the participant each call names and doesn't verify it
+([Guarantees](/cynapse/concepts/guarantees/#identity)).
 
 ## Registration
 
@@ -127,12 +143,10 @@ These are not settled. Each one waits on a use case that would decide it.
   CI and a trunk watcher in the seed, and ADR-0013 also uses it for the runtime that
   registers participants. Splitting it, or adding a kind, is worth doing only when some
   behaviour has to differ between them.
-- **How a participant joins a channel after it is created.** Today only the creator can
-  add members, and there is nothing that needs a participant to join later. That
-  changes when one does, such as an observer following a participant's address channel
-  under ADR-0013.
-- **Whether the `membership` trait should be enforced.** It is recorded and has no
-  effect. Enforcing it needs a case where a non-member writing would do harm.
+- **How a participant joins a channel after it is created.** The CLI adds members only at
+  `channel create`; the library's `addMember` works at any time. Nothing removes a member.
+- **Whether the `membership` trait should have an effect.** It is recorded and changes
+  nothing.
 
 ## Related
 

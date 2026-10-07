@@ -48,7 +48,7 @@ cynapse channel create <handle> --type <type> --title <title> [options]
 | `--purpose <text>` | What the channel is for. |
 | `--anchor <entry>` | Branch from this entry in a parent channel (UUID or `handle#seq`). The new channel's id is derived from the anchor. |
 | `--key <key>` | A natural key; the channel id is derived from it. Keys starting with `subject:` are reserved and fail with exit `1`; use `--store` and `--native-id`. |
-| `--store <store>` | The subject's store, such as `gh`: lowercase letters, digits, `.` and `-`. Needs `--native-id`. |
+| `--store <store>` | The subject's store, such as `gh`: a lowercase letter, then lowercase letters, digits, `.` and `-`. Needs `--native-id`. |
 | `--native-id <id>` | The subject's id in its store, such as a GitHub `node_id`; no whitespace. The channel id is derived from the store and this id. Needs `--store`. |
 | `--kind <kind>` | `address` or `work` (the default). Anything else exits `2`. |
 | `--owner <participant>` | The owner of an address channel. Required with `--kind address`; refused on a work channel. |
@@ -105,7 +105,8 @@ cynapse --as sdd-conductor channel create review-1 --type demo.review --title "R
 The agent's briefing for one channel: everything needed to start work, in one call. It lists the
 channel's type, lifecycle state, title, purpose, anchor, aliases, members with their read cursors,
 context (rendered as links), conventions, entry stats, open state records, pinned entries, saved
-view names and child channels. Pass `--as` to add the participant's unread count to the stats.
+view names and child channels. The third line reads `work channel`, or `address of <owner>` for an address
+channel. Pass `--as` to add the participant's unread count to the stats.
 
 **Usage**
 
@@ -122,6 +123,7 @@ cynapse --as council channel show truss-pagination
 ```text
 truss-pagination  truss.mission  active
 Fix pagination rounding
+work channel
 purpose: A developer fixed pagination in {code, test}; propagate the change through the artifact sets until the repo settles.
 members: truss-ledger (run-ledger, read 0), wf-feature-delivery (workflow, read 0), council (approver, read 21)
 context: [cyberuni/cyber-truss#41](https://github.com/cyberuni/cyber-truss/issues/41), [cyberuni/cyber-truss:fix/pagination](https://github.com/cyberuni/cyber-truss/tree/fix/pagination)
@@ -172,7 +174,8 @@ lifecycle state `deleted`, which `channel list` and `channel tree` hide
 ([State and lifecycle](/cynapse/concepts/state-and-lifecycle/#deleting-a-channel)). Logged as one
 `cynapse.channel.deleted` entry with the count. Needs `--as`, which the log records; anyone may delete,
 since no caller can be verified. Deleting it again with nothing new prints the last delete, and
-`state lifecycle <channel> active` restores it.
+`state lifecycle <channel> active` restores it. Setting the `deleted` state with `state lifecycle` fails
+with exit `1`; use this command.
 
 **Usage**
 
@@ -292,7 +295,7 @@ cynapse --as sdd-conductor channel add-key gh:cyberuni/cynapse-12 --store gh --n
 ## `cynapse channel owner`
 
 Change the owner of an address channel. Appends a `cynapse.channel.owner-changed` entry recording
-the old and new owner. An [address channel](/cynapse/concepts/subjects/#channels-keyed-by-subject) is
+the old and new owner. An [address channel](/cynapse/concepts/subjects/#address-channels-and-owners) is
 created with an owner; a work channel has none, so this fails on one with exit `1`.
 
 **Usage**
@@ -311,7 +314,8 @@ cynapse --as sdd-conductor channel owner alice-box bob
 ## `cynapse channel pin`
 
 Pin an entry in its own channel. The pinned entries appear in
-[`channel show`](#cynapse-channel-show). Appends a `cynapse.pinned` entry referencing the target.
+[`channel show`](#cynapse-channel-show). Appends a `cynapse.pinned` entry referencing the target. A deleted
+entry can't be pinned: the command fails with exit `1`.
 
 **Usage**
 

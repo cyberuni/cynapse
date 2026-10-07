@@ -14,6 +14,9 @@ as `truss.criteria-v2`. Adding a tag the entry already has, or removing one it d
 owner of an address channel may add or remove it. Anyone else fails with `not_owner`, and on a work
 channel it fails with `not_address`, both with exit `1` and no label entry written.
 
+A deleted entry can't be tagged: the command fails with exit `1`. Every call writes a `cynapse.label`
+entry, which counts as unread for everyone but you.
+
 With neither tags nor `--remove` it exits `2`. Additions are applied before removals. The result is the
 target entry, so you see its tags after the change.
 

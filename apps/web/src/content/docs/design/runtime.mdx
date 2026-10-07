@@ -1,6 +1,6 @@
 ---
 title: cynapse and the runtime
-description: Where cynapse stops and a runtime such as cyberlegion starts — who registers participants, where traffic goes, who wakes whom, who decides which session acts as a role.
+description: "Where cynapse stops and a runtime such as cyberlegion starts: who registers participants, where traffic goes, who wakes whom, who decides which session acts as a role."
 ---
 
 import MessageFlowDiagram from '../../../components/MessageFlowDiagram.astro'
@@ -34,7 +34,7 @@ DM.
 - **Work traffic goes on the work channel.** Most of what a runtime sends between sessions
   is about a work item: a brief, the reports on it, the decisions made on it, a notice
   that trunk moved under it. It goes on that item's
-  [work channel](/cynapse/concepts/subjects/#channels-keyed-by-subject), such as the
+  [work channel](/cynapse/concepts/subjects/), such as the
   channel of `gh:cyberuni/cynapse#30`. Sender and recipient are both members, so a reply
   reaches both through their own `unread`, and whoever joins the work later reads the whole
   exchange in one place.
@@ -56,7 +56,8 @@ traffic sent to the wrong kind of channel stays there. The mechanics of both cas
 2. **Send.** The asker resolves `reviewer` to one live participant and appends the question
    to its address channel.
 3. **Notice.** The runtime polls `changes(since)`, a cheap store-wide token, and sees which
-   channels moved. It calls `unread` only for those.
+   channels moved. It reads only those. The owner of an address channel isn't a member of
+   it, so the runtime reads that channel's entries after the owner's cursor, not `unread`.
 4. **Wake.** The runtime decides whether to wake a session, using the channel's `wake`
    trait as advice, and rings the doorbell for the session that currently claims the role.
 5. **Read.** The session reads as the role. The cursor belongs to the participant, not the
@@ -95,7 +96,8 @@ spawns and it gets typed errors. Agents use the CLI, whose `--json` output has t
 shapes. A runtime codes against `Store`, never against `SqliteStore`, so the hub can
 replace the engine underneath.
 
-Before a runtime depends on cynapse, these must ship:
+ADR-0013 listed what had to ship before a runtime depended on cynapse. All of it shipped
+in `0.1.0`:
 
 1. a schema version and forward migrations;
 2. ADR-0012's key scheme and address channels;
@@ -108,6 +110,8 @@ Before a runtime depends on cynapse, these must ship:
    shapes and the new `cynapse.*` entry types as public;
 7. the database location contract: a runtime passes `$CYNAPSE_HOME` to the agents it
    launches, or they write to different databases.
+
+[Use the library](/cynapse/guides/library/) shows a runtime doing steps 1 to 7 in one file.
 
 ## Related
 

@@ -1,6 +1,6 @@
 ---
 title: Types
-description: The data model — Participant, Channel, Entry, Member, ChannelTraits, Anchor and the records around them.
+description: "The data model: Participant, Channel, Entry, Member, ChannelTraits, Anchor and the records around them."
 ---
 
 All of these are exported from `cynapse` as types (`import type { Channel, Entry } from 'cynapse'`) and
@@ -27,16 +27,42 @@ interface Participant {
 ```
 
 A participant from before the registry has no `key`, no `registeredBy` and no address channel. It is
-`live`, and still resolves by name.
+`live`, and still resolves by name. It cannot be retired or renamed, since both are logged on the address
+channel.
+
+```ts
+type NewParticipant = Pick<Participant, 'id' | 'kind' | 'name'>   // what addParticipant takes
+
+interface RegisterParticipantInput {
+  key: string                // '<unit>:<rest>', such as cyberlegion:role/reviewer
+  kind: ParticipantKind
+  name: string
+  registeredBy?: string      // the registering unit, a service; omit for a unit registering itself
+}
+
+interface RegisteredParticipant { participant: Participant; channel: Channel }
+
+interface ResolvedAddress { participant: Participant; channel?: Channel }   // no channel before the registry
+
+interface ResolveAddressOptions { kinds?: ParticipantKind[] }
+
+interface ParticipantQuery { status?: ParticipantStatus; registeredBy?: string }
+```
 
 ## `Channel`
 
-A named, ordered log of entries. See [Channels](/cynapse/concepts/channels/).
+A named, ordered log of entries. See [Channels](/cynapse/concepts/channels/). `SubjectId` is
+`{ store, nativeId }`; see [Ids and errors](/cynapse/api/ids/#subjects).
 
 ```ts
+type ChannelKind = 'address' | 'work'
+
 interface Channel {
-  id: string              // UUID: v7 when minted, v5 when derived from an anchor or key
+  id: string              // UUID: v7 when minted, v5 when derived from an anchor, key or subject
   handle: string          // the current human-readable name
+  kind: ChannelKind       // an address channel has an owner; a work channel has members
+  owner?: string          // the participant who triages an address channel; absent on a work channel
+  subjects: SubjectId[]   // the subject keys it resolves from, first the one its id came from; may be empty
   aliases: string[]       // handles it used to have; they still resolve
   type: string            // namespaced, defined by the consumer, e.g. 'sdd.mission'
   title: string
@@ -45,7 +71,7 @@ interface Channel {
   members: Member[]
   context: string[]       // reference shorthands, e.g. 'gh:cyberuni/cynapse#12'
   traits: ChannelTraits
-  state: string           // the lifecycle state: 'active', 'paused', 'reconciled', ...
+  state: string           // the lifecycle state: 'active', 'paused', 'reconciled', ...; 'deleted' after deleteChannel
   pinned: number[]        // seqs of the pinned entries
   conventions: string[]   // names of the conventions that apply, plugin-prefixed
   stats: ChannelStats
@@ -94,8 +120,8 @@ interface Anchor {
 
 ```ts
 interface ChannelStats {
-  entries: number
-  lastSeq: number
+  entries: number         // live entries; tombstones are not counted
+  lastSeq: number         // the highest seq handed out, tombstones included
   lastAt?: string
   unread?: number         // present only when read on behalf of a participant
 }
@@ -116,13 +142,13 @@ An immutable record in a channel. See [Entries](/cynapse/concepts/entries/).
 
 ```ts
 interface Entry {
-  id: string              // UUIDv7 minted by the writer; also the idempotency key
+  id: string              // UUIDv7 minted by the writer unless supplied; also the idempotency key
   channelId: string
   channel: string         // the channel's current handle: `${channel}#${seq}` is the short reference
   seq: number             // arrival order within the channel
   author: string
   type: string
-  tags: string[]          // the current set: write-time tags adjusted by cynapse.label entries
+  tags: string[]          // the current set: write-time tags adjusted by cynapse.label entries; sorted
   parent?: string
   parentSeq?: number
   root?: string
@@ -130,11 +156,14 @@ interface Entry {
   refs: string[]
   body: string            // Markdown; '' when empty or read metadata-only
   data?: Record<string, unknown>   // typed payload; absent when read metadata-only
-  createdAt: string       // when the writer minted it, from the UUIDv7
+  createdAt: string       // when the writer minted it, from the UUIDv7; recordedAt for a supplied non-v7 id
   recordedAt: string      // when it arrived in the channel
   deleted?: { at: string; by: string }   // on a tombstone: content erased, place kept (ADR-0014)
 }
 ```
+
+A tombstone has an empty `body`, no `data`, empty `refs` and `tags`, and keeps its `id`, `seq`, `author`,
+`type`, `parent` and `root`. Read it with `entry`, or list it with `includeDeleted`.
 
 ## `StateRecord`
 
@@ -222,6 +251,6 @@ interface UnreadCount {
 
 ## Inputs and queries
 
-`CreateChannelInput`, `AppendInput`, `EntryMatch`, `ConditionalAppend`, `SetStateInput`,
-`ListChannelsQuery`, `EntryQuery`, `SearchQuery` and `StateQuery` are documented with the methods that take them on the [Store](/cynapse/api/store/)
-page.
+`CreateChannelInput`, `RegisterAddressInput`, `AppendInput`, `EntryMatch`, `ConditionalAppend`,
+`SetStateInput`, `ListChannelsQuery`, `EntryQuery`, `SearchQuery` and `StateQuery` are documented with the
+methods that take them on the [Store](/cynapse/api/store/) page.

@@ -1,6 +1,6 @@
 ---
 title: Agent-friendly output
-description: How the CLI is shaped for agents — structured output, definitive empty states, one-line errors, exit codes to branch on.
+description: How the CLI is shaped for agents, with structured output, definitive empty states, one-line errors and exit codes to branch on.
 ---
 
 Most of cynapse's callers are agents. The CLI follows the
@@ -10,7 +10,7 @@ command behaves the same way.
 ## `--json` everywhere
 
 Every command prints a compact human-readable line by default and the full structured
-value with `--json`. The JSON has the same shapes the library returns, so a reader of
+value with `--json`, pretty-printed as JSON with a 2-space indent. The JSON has the same shapes the library returns, so a reader of
 either sees one model ([Types](/cynapse/api/types/)).
 
 ```console
@@ -55,7 +55,9 @@ error: no entry found for "nope#9"
 help: check the reference: `cynapse channel list`, `cynapse entry list <channel>` and `cynapse participant list` show what exists
 ```
 
-Every error suggests a next step on a `help:` line, so an agent is never left at a dead end. A usage
+Every error suggests a next step on a `help:` line, so an agent is never left at a dead end.
+A failure with no code of its own is `failure` with exit `1`. A database locked by another writer for more
+than 10 seconds fails this way with the message `database is locked`, and its help is the generic bug help. A usage
 error names what the command accepts: an unknown flag lists the command's flags, and a command group
 run without a subcommand lists its subcommands, on stdout rather than as usage on stderr.
 

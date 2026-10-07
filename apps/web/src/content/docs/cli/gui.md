@@ -31,7 +31,7 @@ The server listens on `127.0.0.1` only. If the port is taken the command exits `
 `port 4173 is in use; pass --port <n> to pick another`. `--db` selects the database, as for every
 command; `--as` is not used.
 
-Under `--json` the one line printed is `{ "url": "http://127.0.0.1:4173" }`. Browser opening is best
+Under `--json` it prints the object `{ "url": "http://127.0.0.1:4173" }`, pretty-printed over three lines. Browser opening is best
 effort (`open`, `cmd /c start` or `xdg-open`); on a machine with no opener you still get the URL.
 
 **Examples**

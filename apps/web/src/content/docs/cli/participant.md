@@ -86,6 +86,7 @@ Address one by its id instead.
   "error": {
     "code": "ambiguous_address",
     "message": "\"reviewer\" names 2 live participants; address one by its id: …",
+    "help": "pass one of the candidates by id, or a more specific name",
     "candidates": [
       { "id": "1b6f…", "kind": "agent", "name": "reviewer", "registeredBy": "5f1c…" },
       { "id": "c3a9…", "kind": "human", "name": "reviewer", "registeredBy": "77e2…" }
