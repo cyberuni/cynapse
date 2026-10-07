@@ -485,8 +485,11 @@ export class SqliteStore implements Store {
 	/** The members and context a create carries, written in its transaction so a crash leaves none of them. */
 	#addInitial(id: string, input: CreateChannelInput): void {
 		// The owner is a member, so its address channel counts in its unread like any other. Its
-		// role is always `owner`, so the owner listed again in `members` is not added a second time.
-		if (input.owner) this.#addMemberIn(id, input.owner, 'owner', input.author)
+		// role is always `owner`, so neither a repeat create nor the owner listed again in
+		// `members` adds it a second time.
+		if (input.owner && this.#role(id, input.owner) !== 'owner') {
+			this.#addMemberIn(id, input.owner, 'owner', input.author)
+		}
 		for (const member of input.members ?? []) {
 			if (!member.participant) throw new CynapseError('a member needs a participant id')
 			if (member.participant === input.owner) continue

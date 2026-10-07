@@ -192,6 +192,12 @@ describe('channel kind and owner', () => {
 		])
 	})
 
+	it('adds nothing when an address channel is created again', () => {
+		const channel = repoAddress()
+		repoAddress()
+		expect(store.entries(channel.id).map((e) => e.type)).toEqual(['cynapse.channel.created', 'cynapse.member.joined'])
+	})
+
 	it('lists an address channel in its owner’s unread', () => {
 		const channel = repoAddress()
 		store.append(channel.id, { author: 'bob', type: 'demo.ask', body: 'Can you review the fix today?' })
