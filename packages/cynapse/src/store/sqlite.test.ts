@@ -86,6 +86,45 @@ describe('channels', () => {
 		expect(() => mission()).toThrow(CynapseError)
 	})
 
+	it('adds members and context in the creating transaction, each as its own entry', () => {
+		const channel = store.createChannel({
+			handle: 'auth',
+			type: 'sdd.mission',
+			title: 'Add auth',
+			author: 'alice',
+			members: [{ participant: 'bob', role: 'reviewer' }, { participant: 'carol' }],
+			context: ['gh:cyberuni/cynapse#12'],
+		})
+		expect(channel).toMatchObject({
+			members: [
+				{ participant: 'bob', role: 'reviewer' },
+				{ participant: 'carol', role: 'member' },
+			],
+			context: ['gh:cyberuni/cynapse#12'],
+		})
+		expect(store.entries('auth').map((e) => e.type)).toEqual([
+			'cynapse.channel.created',
+			'cynapse.member.joined',
+			'cynapse.member.joined',
+			'cynapse.context.added',
+		])
+	})
+
+	it('creates nothing when a member in the create is invalid', () => {
+		const error = captureError(() =>
+			store.createChannel({
+				handle: 'auth',
+				type: 'sdd.mission',
+				title: 'Add auth',
+				author: 'alice',
+				members: [{ participant: 'bob' }, { participant: '' }],
+			}),
+		)
+		expect(error.message).toContain('member')
+		expect(store.getChannel('auth')).toBeUndefined()
+		expect(mission().handle).toBe('auth')
+	})
+
 	it('writes each metadata change as an entry and reflects it in the briefing', () => {
 		mission()
 		store.addMember('auth', 'bob', 'reviewer', 'alice')

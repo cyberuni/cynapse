@@ -62,7 +62,8 @@ cynapse channel create <handle> --type <type> --title <title> [options]
 the CLI acts on them yet.
 
 The new channel starts in the `active` lifecycle state. Each `--member` and `--context` becomes its
-own entry after the `cynapse.channel.created` entry.
+own entry after the `cynapse.channel.created` entry, written in the same transaction: a create that
+fails leaves no channel and no members behind, so it can be retried.
 
 **Examples**
 

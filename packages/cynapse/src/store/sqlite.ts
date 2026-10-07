@@ -164,17 +164,39 @@ export class SqliteStore implements Store {
 
 	// ── participants ────────────────────────────────────────────────────────────
 
+	/** @deprecated Use `registerParticipant`. Until it goes, each change is logged in `PARTICIPANTS_LEDGER`. */
 	addParticipant(participant: NewParticipant): Participant {
-		this.#write(() =>
+		const { id, kind, name } = participant
+		this.#write(() => {
+			const existing = this.#findParticipant(id)
+			// Upserting what is already there is a no-op, so the ledger records only changes.
+			if (existing && existing.kind === kind && existing.name === name) return
 			this.#run(
 				`INSERT INTO participants (id, kind, name) VALUES (?, ?, ?)
 				ON CONFLICT (id) DO UPDATE SET kind = excluded.kind, name = excluded.name`,
-				participant.id,
-				participant.kind,
-				participant.name,
-			),
-		)
-		return this.#requireParticipant(participant.id)
+				id,
+				kind,
+				name,
+			)
+			const ledger = this.createChannel({
+				handle: PARTICIPANTS_LEDGER,
+				type: 'cynapse.participants',
+				title: 'Participants',
+				author: id,
+				key: PARTICIPANTS_LEDGER,
+			})
+			this.#appendIn(ledger.id, {
+				author: id,
+				type: existing ? 'cynapse.participant.updated' : 'cynapse.participant.added',
+				data: {
+					participant: id,
+					kind,
+					name,
+					...(existing ? { from: { kind: existing.kind, name: existing.name } } : {}),
+				},
+			})
+		})
+		return this.#requireParticipant(id)
 	}
 
 	participants(query: ParticipantQuery = {}): Participant[] {
@@ -411,6 +433,7 @@ export class SqliteStore implements Store {
 						},
 					)
 				}
+				this.#addInitial(id, input)
 				return id
 			}
 			const taken = this.#findChannelId(input.handle)
@@ -453,9 +476,19 @@ export class SqliteStore implements Store {
 					...(anchor ? { anchor: anchor.id } : {}),
 				},
 			})
+			this.#addInitial(id, input)
 			return id
 		})
 		return this.#requireChannel(id)
+	}
+
+	/** The members and context a create carries, written in its transaction so a crash leaves none of them. */
+	#addInitial(id: string, input: CreateChannelInput): void {
+		for (const member of input.members ?? []) {
+			if (!member.participant) throw new CynapseError('a member needs a participant id')
+			this.#addMemberIn(id, member.participant, member.role || 'member', input.author)
+		}
+		for (const ref of input.context ?? []) this.#addContextIn(id, ref, input.author)
 	}
 
 	registerAddress(input: RegisterAddressInput): Channel {
@@ -608,30 +641,32 @@ export class SqliteStore implements Store {
 	}
 
 	addMember(ref: string, participant: string, role: string, author: string): Entry {
-		return this.#writeEntry(() => {
-			const id = this.#requireChannelId(ref)
-			this.#ensureParticipant(participant)
-			this.#run(
-				`INSERT INTO members (channel, participant, role) VALUES (?, ?, ?)
-				ON CONFLICT (channel, participant) DO UPDATE SET role = excluded.role`,
-				id,
-				participant,
-				role,
-			)
-			return this.#appendIn(id, { author, type: 'cynapse.member.joined', data: { participant, role } })
-		})
+		return this.#writeEntry(() => this.#addMemberIn(this.#requireChannelId(ref), participant, role, author))
+	}
+
+	#addMemberIn(id: string, participant: string, role: string, author: string): Entry {
+		this.#ensureParticipant(participant)
+		this.#run(
+			`INSERT INTO members (channel, participant, role) VALUES (?, ?, ?)
+			ON CONFLICT (channel, participant) DO UPDATE SET role = excluded.role`,
+			id,
+			participant,
+			role,
+		)
+		return this.#appendIn(id, { author, type: 'cynapse.member.joined', data: { participant, role } })
 	}
 
 	addContext(ref: string, contextRef: string, author: string): Entry {
-		return this.#writeEntry(() => {
-			const id = this.#requireChannelId(ref)
-			this.#run('INSERT OR IGNORE INTO context (channel, ref) VALUES (?, ?)', id, contextRef)
-			return this.#appendIn(id, {
-				author,
-				type: 'cynapse.context.added',
-				refs: [contextRef],
-				data: { ref: contextRef },
-			})
+		return this.#writeEntry(() => this.#addContextIn(this.#requireChannelId(ref), contextRef, author))
+	}
+
+	#addContextIn(id: string, contextRef: string, author: string): Entry {
+		this.#run('INSERT OR IGNORE INTO context (channel, ref) VALUES (?, ?)', id, contextRef)
+		return this.#appendIn(id, {
+			author,
+			type: 'cynapse.context.added',
+			refs: [contextRef],
+			data: { ref: contextRef },
 		})
 	}
 
@@ -1552,6 +1587,9 @@ const DELETED_STATE = 'deleted'
 
 /** The reserved tag that marks an entry on an address channel as handled by its owner. */
 export const HANDLED_TAG = 'cynapse.handled'
+
+/** The handle and key of the channel that logs `addParticipant`'s changes, which belong to no address channel. */
+export const PARTICIPANTS_LEDGER = 'cynapse.participants'
 
 /** Tags as a set, in a stable order, so the same tags given in another order compare equal. */
 function normalizeTags(tags: string[] = []): string[] {

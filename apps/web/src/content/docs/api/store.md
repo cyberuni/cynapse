@@ -82,7 +82,7 @@ Closes the database connection.
 | `renameParticipant(id, name, author)` | `Participant` | Renames it and its address handle; the old handle stays as an alias. Logs `cynapse.participant.renamed`. Fails for a participant with no address channel. |
 | `resolveAddress(name, options?: { kinds? })` | `ResolvedAddress` | `{ participant, channel? }`: the one live participant whose id, name, or address handle or alias is exactly `name`. Throws `ambiguous_address` (exit `4`, `details.candidates`) or `unknown_address` (exit `5`). |
 | `participants(query?: { status?, registeredBy? })` | `Participant[]` | Ordered by id, for reconciliation. |
-| `addParticipant(participant: NewParticipant)` | `Participant` | Insert or update a bare `{ id, kind, name }` outside the registry, with no key or address channel. |
+| `addParticipant(participant: NewParticipant)` | `Participant` | **Deprecated**; use `registerParticipant`. Insert or update a bare `{ id, kind, name }` outside the registry, with no key or address channel. A change is logged as `cynapse.participant.added` or `cynapse.participant.updated` in the `cynapse.participants` channel; repeating the same values logs nothing. |
 
 ## Channels
 
@@ -124,6 +124,8 @@ interface CreateChannelInput {
   traits?: Partial<ChannelTraits>
   conventions?: string[]
   state?: string             // initial lifecycle state; defaults to 'active'
+  members?: { participant: string; role?: string }[]  // role defaults to 'member'
+  context?: string[]         // reference shorthands, such as 'gh:org/repo#12'
 }
 ```
 
@@ -135,7 +137,10 @@ consumer of the subject, so its handle, type and title are not compared. A `key`
 `subject:` throws. `traits` defaults to `{ membership: 'open', wake: false }`. A handle is letters,
 digits and `. _ / : -`, starts with a letter or digit, must not look like a UUID, and must not be taken.
 
-Unlike the CLI, `createChannel` does not add members or context; call `addMember` and `addContext`.
+`members` and `context` are added in the creating transaction, each as its own
+`cynapse.member.joined` or `cynapse.context.added` entry after `cynapse.channel.created`, so a failed
+create leaves no channel behind. A repeat create of a derived-id channel adds them to the existing
+channel, as `addMember` and `addContext` would.
 
 ## Entries
 

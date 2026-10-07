@@ -50,7 +50,8 @@ agent.
 3. **Implicitly, by being named.** A member (`channel create --member <id>:<role>`), an owner, or
    an author in the library creates the participant the same way if it doesn't exist.
 4. **Through the library.** `Store.addParticipant({ id, kind, name })` inserts or updates a bare
-   participant by `id`, outside the registry. The seed uses it.
+   participant by `id`, outside the registry, and logs the change in the `cynapse.participants`
+   channel. It is deprecated in favour of registration; the seed still uses it.
 
 **`--as` takes a participant's id, not its name.** A registered participant's id is a UUID
 derived from its key, so look it up first:

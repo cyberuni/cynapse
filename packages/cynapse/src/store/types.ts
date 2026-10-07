@@ -238,6 +238,16 @@ export interface CreateChannelInput {
 	conventions?: string[]
 	/** Initial lifecycle state; defaults to `active`. */
 	state?: string
+	/** Members to add in the creating transaction, each logged as `cynapse.member.joined`. */
+	members?: NewMember[]
+	/** Context refs to add in the creating transaction, each logged as `cynapse.context.added`. */
+	context?: string[]
+}
+
+/** A member `createChannel` adds; the role defaults to `member`. */
+export interface NewMember {
+	participant: string
+	role?: string
 }
 
 export interface AppendInput {
@@ -362,7 +372,12 @@ export interface Store {
 	close(): void
 
 	// participants
-	/** Inserts or updates a bare participant by id, outside the registry. */
+	/**
+	 * Inserts or updates a bare participant by id, outside the registry, and logs the change as
+	 * `cynapse.participant.added` or `.updated` in the `cynapse.participants` channel.
+	 *
+	 * @deprecated Use `registerParticipant`, which gives the participant a key and an address channel.
+	 */
 	addParticipant(participant: NewParticipant): Participant
 	/** Ordered by id. */
 	participants(query?: ParticipantQuery): Participant[]

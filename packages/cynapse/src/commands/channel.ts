@@ -51,18 +51,17 @@ export function registerChannel(program: Command): void {
 						...(opts.membership ? { membership: opts.membership } : {}),
 						...(opts.wake ? { wake: true } : {}),
 					},
+					members: ((opts.member ?? []) as string[]).map((member) => {
+						const [participant = '', role = 'member'] = member.split(':')
+						return { participant, role }
+					}),
+					context: opts.context,
 				}
 				const created =
 					kind === 'address' && !subject && !opts.anchor && !opts.key
 						? store.registerAddress({ ...input, owner: opts.owner })
 						: store.createChannel({ ...input, anchor: opts.anchor, key: opts.key, subject, kind, owner: opts.owner })
-				for (const member of (opts.member ?? []) as string[]) {
-					const [participant, role = 'member'] = member.split(':')
-					store.addMember(created.id, participant as string, role, author)
-				}
-				for (const ref of (opts.context ?? []) as string[]) store.addContext(created.id, ref, author)
-				const result = store.getChannel(created.id)
-				output(result, () => `created ${channelLine(result ?? created)}`)
+				output(created, () => `created ${channelLine(created)}`)
 			})
 		})
 
