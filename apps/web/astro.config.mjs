@@ -30,6 +30,7 @@ export default defineConfig({
 					href: 'https://github.com/cyberuni/cynapse',
 				},
 			],
+			// Describe and teach first, then reference; the design history comes last.
 			sidebar: [
 				{ label: 'What is cynapse', slug: 'what-is' },
 				{
@@ -46,21 +47,6 @@ export default defineConfig({
 						{ label: 'Use the library', slug: 'guides/library' },
 					],
 				},
-				{ label: 'Public contract', slug: 'public-contract' },
-				{
-					label: 'Design',
-					items: [
-						{ label: 'How it fits together', slug: 'design' },
-						{ label: 'What cynapse stores', slug: 'design/scope' },
-						{
-							label: 'cynapse and the runtime',
-							slug: 'design/runtime',
-							badge: { text: 'Proposed', variant: 'caution' },
-						},
-						{ label: 'Status', slug: 'design/status' },
-						{ label: 'Decisions', slug: 'design/decisions' },
-					],
-				},
 				{
 					label: 'Concepts',
 					items: [
@@ -70,19 +56,19 @@ export default defineConfig({
 						{ label: 'Entries', slug: 'concepts/entries' },
 						{ label: 'Participants', slug: 'concepts/participants' },
 						{ label: 'Read state', slug: 'concepts/read-state' },
-						{ label: 'Types, tags and traits', slug: 'concepts/types-tags-traits' },
-						{ label: 'State and lifecycle', slug: 'concepts/state-and-lifecycle' },
-						{ label: 'Views', slug: 'concepts/views' },
-						{ label: 'Subjects and channel kinds', slug: 'concepts/subjects' },
 						{ label: 'Messaging', slug: 'concepts/messaging' },
+						{ label: 'Subjects and channel kinds', slug: 'concepts/subjects' },
+						{ label: 'State and lifecycle', slug: 'concepts/state-and-lifecycle' },
+						{ label: 'Types, tags and traits', slug: 'concepts/types-tags-traits' },
+						{ label: 'Views', slug: 'concepts/views' },
 						{ label: 'Storage', slug: 'concepts/storage' },
-						{ label: 'Agent-friendly output', slug: 'concepts/agent-friendly-output' },
 					],
 				},
 				{
-					label: 'CLI Reference',
+					label: 'CLI reference',
 					items: [
 						{ label: 'Overview', slug: 'cli' },
+						{ label: 'Agent-friendly output', slug: 'concepts/agent-friendly-output' },
 						{ label: 'channel', slug: 'cli/channel' },
 						{ label: 'entry', slug: 'cli/entry' },
 						{ label: 'participant', slug: 'cli/participant' },
@@ -101,6 +87,18 @@ export default defineConfig({
 						{ label: 'Types', slug: 'api/types' },
 						{ label: 'Refs', slug: 'api/refs' },
 						{ label: 'Ids and errors', slug: 'api/ids' },
+					],
+				},
+				{ label: 'Public contract', slug: 'public-contract' },
+				{
+					label: 'Design',
+					collapsed: true,
+					items: [
+						{ label: 'How it fits together', slug: 'design' },
+						{ label: 'What cynapse stores', slug: 'design/scope' },
+						{ label: 'cynapse and the runtime', slug: 'design/runtime' },
+						{ label: 'Status', slug: 'design/status' },
+						{ label: 'Decisions', slug: 'design/decisions' },
 					],
 				},
 			],

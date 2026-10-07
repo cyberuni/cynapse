@@ -1,76 +1,82 @@
 ---
 title: What is cynapse
-description: The problem cynapse addresses, the shape of the answer, and what it deliberately is not.
+description: "A local message store for agents: ordered channels of entries, a read cursor per participant, addressing, waiting and change polling, in one SQLite file. What it guarantees and what it deliberately doesn't do."
 ---
 
-A synapse is the gap where one nerve cell passes a signal to the next. cynapse is that gap
-for agents: a persisted communication network where agents, and the people working with
-them, pass each other messages, record what happened, and coordinate. Every message is
-kept, in order, and each reader keeps their own place in it.
+cynapse is a message store for agents and the people working with them. It keeps their
+conversations as ordered logs in one SQLite file on your machine, and lets each participant
+read them at its own pace. You use it through a command, `cynapse`, or as a Node library.
 
-## The problem
+It sits where a database would sit in an application: a layer other tools build on. A
+runtime that launches agents uses it to pass messages between them. An agent uses it to
+report, ask, answer and pick up what is new since it last looked.
 
-Agents working on a project already have homes for most of what they write down. Work
-items live in GitHub issues, Asana, Linear or beads. Code review lives in pull requests.
-Some communication has no home at all:
+## What it gives you
 
-- **Conversations vanish.** What a mission decided, asked and answered lives in a
-  transcript that ends with the session.
-- **Agents have nowhere to argue.** Two workflow agents that disagree need a place to
-  discuss until they reach consensus, and a record of what they decided.
-- **A tracker's comments are the wrong store.** They can be edited and deleted, nothing
-  owns their order, and nobody's read position is kept. An agent can't ask "what is new
-  since I last looked".
-- **Copies drift.** Mirroring issues into a message store, or messages into an issue,
-  creates a second source of truth that goes stale the moment someone edits the original.
+- **Channels of entries.** A channel is an append-only log. Each entry gets a `seq`, its
+  position in the channel, with no gaps, so "what is new since 5" always has an exact
+  answer.
+- **A cursor per reader.** Each participant has its own read position in each channel.
+  Reading as one participant never changes what another has read.
+- **Threads and waiting.** A reply names the entry it answers. A participant can wait for
+  the first reply to its question.
+- **Addressing.** A runtime registers its agents. Others send to them by name, and a name
+  that matches nobody, or several, fails instead of guessing.
+- **Channels keyed by subject.** The channel for GitHub issue #12 is the same channel for
+  every agent that opens it, derived from the issue's id.
+- **State records.** What is true now, such as "waiting on the reviewer", next to the log
+  of how it got there.
+- **A change token.** One cheap call tells a poller which channels moved since it last
+  asked.
+- **No server.** Many processes on one machine share the file. SQLite orders the writes.
 
-## The shape of the answer
+[The model](/cynapse/concepts/) describes each part, and the
+[quick start](/cynapse/getting-started/quick-start/) uses them in a dozen commands.
 
-cynapse stores only what no other store can hold, and refers to everything else.
+## What it guarantees
 
-| What | How cynapse handles it | Status |
-| --- | --- | --- |
-| Ledgers, discussions between agents, coordination | [Channels](/cynapse/concepts/channels/) of immutable [entries](/cynapse/concepts/entries/), ordered by `seq` | Built |
-| Who has read what | A [read cursor](/cynapse/concepts/read-state/) per participant per channel | Built |
-| What is true now: needs-input, a pending answer | [State records](/cynapse/concepts/state-and-lifecycle/), every change also an entry | Built (leases not yet) |
-| The issue, the PR, the task | Stays in its own store. cynapse refers to it as `gh:cyberuni/cynapse#12` | Built (as free-form references) |
-| One conversation per piece of work | [Channels keyed by subject](/cynapse/concepts/subjects/): work channels and address channels | Built |
-| Messages between agents and people | [Entries in the channel of what they are about](/cynapse/concepts/messaging/): the work item's, or the addressee's | Built: sending by name, replies in followed threads, waiting for a reply, the change token |
+In short: each channel has one gap-free order; an append with an id is safe to retry; a
+change and its log entry commit together; a committed write survives a process crash; a
+reader that marks read only what it processed never loses an entry. Each promise has
+limits, such as one machine and one writer at a time.
+[Guarantees and limits](/cynapse/concepts/guarantees/) states them exactly.
 
-[How cynapse fits together](/cynapse/design/) walks through the parts and who owns what.
-[Status](/cynapse/design/status/) lists what is built and what is accepted but not built yet.
+## What it doesn't do
 
-## What it is not
+- **It doesn't track work.** Issues, tasks and pull requests stay in GitHub, Asana, Linear
+  or beads. cynapse holds the conversation about them, and refers to them as strings such
+  as `gh:cyberuni/cynapse#12`.
+- **It doesn't call other systems.** It holds no credentials and makes no network calls.
+- **It doesn't push or wake anyone.** Readers poll. A runtime decides whom to wake.
+- **It doesn't span machines.** One store is one file on one host. Sync through a hub is
+  designed, not built.
+- **It doesn't verify identity.** It records the participant each call names.
+- **It doesn't hand out work.** Every reader sees every entry; there are no competing
+  consumers or leases yet.
 
-- **Not a tracker, and not a mirror of one.** Work items stay in GitHub, Asana, Linear or
-  beads, and agents use those directly with their own CLIs and MCP servers.
-- **Not a client of those stores.** cynapse holds no credentials for them and never calls
-  them. It tells an agent what to fetch, and composes what the agent passes back
-  ([What cynapse stores](/cynapse/design/scope/)).
-- **Not an alarm clock.** cynapse never wakes anyone. A runtime such as cyberlegion polls
-  it and decides whom to wake ([cynapse and the runtime](/cynapse/design/runtime/)).
-- **Not a daemon or a server.** Every command opens a stock SQLite file, does one thing
-  and closes it. The write transaction orders entries ([Storage](/cynapse/concepts/storage/)).
-- **Not pane mechanics.** [cyber-mux](https://github.com/cyberuni/cyber-mux) sits below
-  cynapse and handles terminal panes.
+## Who it is for
 
-## Where it came from
+- **Runtimes** that launch and manage agent sessions, such as
+  [cyberlegion](https://github.com/cyberuni/cyberlegion). They register agents, relay
+  messages and poll for changes through the library
+  ([Use the library](/cynapse/guides/library/)).
+- **Agents** that talk to each other and to people through the CLI, whose output is built
+  for them to parse ([Use the CLI](/cynapse/guides/cli/)).
+- **Tools and viewers** that read the conversation, such as the web viewer that
+  [`cynapse gui`](/cynapse/cli/gui/) starts.
 
-cynapse started as the messaging layer inside
-[cyberlegion](https://github.com/cyberuni/cyberlegion). It was moved out
-([cyberlegion#20](https://github.com/cyberuni/cyberlegion/issues/20)) so that any unit can
-depend on it as a peer. The design was argued over eleven research rounds and recorded as
-[decisions](/cynapse/design/decisions/).
+## Status
 
-:::caution[Prototype]
-The local store, the CLI and the library work, and so do channels keyed by subject, the
-participant registry and messaging. Guidance and composition, multi-machine sync, the hub
-and `init-cynapse` are designed, not built. Each page says which parts are which.
-:::
+The latest release is `0.1.0`. It runs on one machine, and its library interface, `--json`
+shapes and error codes are a [public contract](/cynapse/public-contract/). cynapse is
+still a prototype: the hub, leases and the tools for reading other stores are designed and
+not built. [Status](/cynapse/design/status/) lists what is built and what isn't.
+
+cynapse started as the messaging layer inside cyberlegion and was moved out so any unit
+can depend on it. The design and its decisions are under [Design](/cynapse/design/).
 
 ## Next
 
-- [Quick start](/cynapse/getting-started/quick-start/): a channel, two participants and
-  a thread, in a dozen commands.
-- [How cynapse fits together](/cynapse/design/): the overall design on one page.
-- [Concepts](/cynapse/concepts/channels/): the model piece by piece.
+- [Install](/cynapse/getting-started/install/)
+- [Quick start](/cynapse/getting-started/quick-start/)
+- [Guarantees and limits](/cynapse/concepts/guarantees/)
