@@ -39,6 +39,13 @@ export default defineConfig({
 						{ label: 'Quick start', slug: 'getting-started/quick-start' },
 					],
 				},
+				{
+					label: 'Guides',
+					items: [
+						{ label: 'Use the CLI', slug: 'guides/cli' },
+						{ label: 'Use the library', slug: 'guides/library' },
+					],
+				},
 				{ label: 'Public contract', slug: 'public-contract' },
 				{
 					label: 'Design',
