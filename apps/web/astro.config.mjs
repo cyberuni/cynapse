@@ -32,7 +32,13 @@ export default defineConfig({
 			],
 			sidebar: [
 				{ label: 'What is cynapse', slug: 'what-is' },
-				{ label: 'Quick start', slug: 'getting-started/quick-start' },
+				{
+					label: 'Get started',
+					items: [
+						{ label: 'Install', slug: 'getting-started/install' },
+						{ label: 'Quick start', slug: 'getting-started/quick-start' },
+					],
+				},
 				{ label: 'Public contract', slug: 'public-contract' },
 				{
 					label: 'Design',
