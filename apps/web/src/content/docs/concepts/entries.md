@@ -66,13 +66,15 @@ entry removed on purpose from one not received yet.
 - cynapse doesn't check who deletes. The `cynapse.entry.deleted` entry records the
   participant the caller named.
 - `cynapse.*` entries are the channel's record of itself and can't be deleted. Content
-  written into them, such as a state record's `value` or a channel's title, stays.
+  written into them, such as a state record's `value` or a channel's title, stays, so
+  don't put secrets there.
 - `entries` hides tombstones unless asked (`includeDeleted`, `--include-deleted`). `search`,
   unread counts and `appendUnless` skip them. `entry(ref)` still returns the tombstone.
 - A tombstone can't be replied to, tagged or pinned. Deleting it again returns the entry
   that logged the delete.
-- The erased bytes can stay in the database file and its write-ahead log until SQLite
-  reuses those pages ([Guarantees](/cynapse/concepts/guarantees/#deletion)).
+- The erased bytes are overwritten in the database file, and the write-ahead log is
+  checkpointed after the delete. A reader holding an older snapshot can keep them in the
+  log a while longer ([Guarantees](/cynapse/concepts/guarantees/#deletion)).
 
 `deleteChannel` does the same for every entry in a channel, and hides the channel
 ([State and lifecycle](/cynapse/concepts/state-and-lifecycle/#deleting-a-channel)).

@@ -41,9 +41,12 @@ replies still point at their parent, and no position is reused. Deleting was add
   for its own history.
 - **1b. The entry is a `cynapse.*` entry,** such as a state change. It can't be deleted.
   Don't put content you may need to remove into state values, titles or purposes.
-- **2a. The bytes must be gone from disk too.** SQLite can keep erased content in its
-  write-ahead log and free pages. Run `VACUUM` on the file while no cynapse process has it
-  open ([Guarantees](/cynapse/concepts/guarantees/#deletion)).
+- **2a. The bytes must be gone from disk too.** The delete overwrites them in the database
+  file and checkpoints the write-ahead log. If another process was reading at the time, the
+  log can keep them until that process finishes and a later checkpoint runs, or until every
+  cynapse process closes. A store written before this release can still hold old content
+  in free pages; run `VACUUM` on it while no cynapse process has it open
+  ([Guarantees](/cynapse/concepts/guarantees/#deletion)).
 
 ## Scenario: a pasted token is removed
 

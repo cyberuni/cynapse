@@ -1,3 +1,7 @@
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { DatabaseSync } from 'node:sqlite'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { CynapseError } from '../cli-error.js'
 import { openStore } from './open.js'
@@ -313,5 +317,69 @@ describe('deleteChannel', () => {
 
 	it('fails with not_found for an unknown channel', () => {
 		expect(captureError(() => store.deleteChannel('nope', 'carol'))).toMatchObject({ code: 'not_found' })
+	})
+})
+
+describe('erased content on disk', () => {
+	let dir: string
+	let path: string
+	let disk: Store
+
+	beforeEach(() => {
+		dir = mkdtempSync(join(tmpdir(), 'cynapse-delete-'))
+		path = join(dir, 'cynapse.db')
+		disk = openStore({ path })
+		disk.createChannel({ handle: 'leak', type: 'sdd.mission', title: 'Leak', author: 'alice' })
+	})
+
+	afterEach(() => {
+		disk.close()
+		rmSync(dir, { recursive: true, force: true })
+	})
+
+	// Large enough to spill into overflow pages, so the body is split across pages: scan
+	// for the short marker it repeats, not the whole body.
+	const marker = 'hunter2-secret-67'
+	const secret = `${marker} `.repeat(1_200)
+
+	function onDisk(): { db: boolean; wal: boolean } {
+		const has = (file: string) => existsSync(file) && readFileSync(file).includes(marker)
+		return { db: has(path), wal: has(`${path}-wal`) }
+	}
+
+	it('leaves no copy of a deleted entry in the database file or the WAL', () => {
+		const leaked = disk.append('leak', { author: 'alice', type: 'note', body: secret })
+
+		disk.deleteEntry(leaked.id, 'carol')
+
+		expect(onDisk()).toEqual({ db: false, wal: false })
+		disk.close()
+		disk = openStore({ path })
+		expect(onDisk()).toEqual({ db: false, wal: false })
+	})
+
+	it("leaves no copy of a deleted channel's entries in the database file or the WAL", () => {
+		disk.append('leak', { author: 'alice', type: 'note', body: secret })
+
+		disk.deleteChannel('leak', 'carol')
+
+		expect(onDisk()).toEqual({ db: false, wal: false })
+	})
+
+	it('still deletes, without waiting, while a reader holds an older snapshot', () => {
+		const leaked = disk.append('leak', { author: 'alice', type: 'note', body: secret })
+		const reader = new DatabaseSync(path)
+		try {
+			reader.exec('BEGIN')
+			reader.prepare('SELECT count(*) FROM entries').get()
+			const started = Date.now()
+
+			disk.deleteEntry(leaked.id, 'carol')
+
+			expect(Date.now() - started).toBeLessThan(1_000)
+			expect(disk.entry(leaked.id)?.deleted).toBeDefined()
+		} finally {
+			reader.close()
+		}
 	})
 })
