@@ -17,7 +17,7 @@ const rows = [
 		y: 140,
 		subject: 'issue #12',
 		subjectNote: 'closed-by: #15',
-		channel: 'gh:cyberuni/cynapse#12',
+		channel: 'gh:cyberuni/cynapse/12',
 		kind: 'WORK CHANNEL',
 		owner: 'members, no owner',
 	},
@@ -25,7 +25,7 @@ const rows = [
 		y: 220,
 		subject: 'PR #15',
 		subjectNote: 'closes: #12',
-		channel: 'gh:cyberuni/cynapse#15',
+		channel: 'gh:cyberuni/cynapse/15',
 		kind: 'WORK CHANNEL',
 		owner: 'members, no owner',
 	},
@@ -87,7 +87,7 @@ const rows = [
 	<figcaption>
 		Address channels (outlined in the accent color) take direct messages; work channels hold
 		the conversation about one piece of work. The readable reference is a handle, not the key,
-		because it changes when a subject moves. Accepted (ADR-0012) and proposed (ADR-0013), not
-		built.
+		because it changes when a subject moves. The relation between the issue and the PR stays
+		in GitHub; cynapse doesn't store it.
 	</figcaption>
 </figure>

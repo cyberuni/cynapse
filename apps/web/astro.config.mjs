@@ -60,11 +60,7 @@ export default defineConfig({
 						{ label: 'Types, tags and traits', slug: 'concepts/types-tags-traits' },
 						{ label: 'State and lifecycle', slug: 'concepts/state-and-lifecycle' },
 						{ label: 'Views', slug: 'concepts/views' },
-						{
-							label: 'Subjects across stores',
-							slug: 'concepts/subjects',
-							badge: { text: 'Planned', variant: 'note' },
-						},
+						{ label: 'Subjects and channel kinds', slug: 'concepts/subjects' },
 						{
 							label: 'Messaging',
 							slug: 'concepts/messaging',

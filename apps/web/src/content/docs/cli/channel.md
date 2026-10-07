@@ -295,7 +295,7 @@ cynapse --as sdd-conductor channel add-key gh:cyberuni/cynapse-12 --store gh --n
 ## `cynapse channel owner`
 
 Change the owner of an address channel. Appends a `cynapse.channel.owner-changed` entry recording
-the old and new owner. An [address channel](/cynapse/concepts/subjects/#channels-keyed-by-subject) is
+the old and new owner. An [address channel](/cynapse/concepts/subjects/#address-channels-and-owners) is
 created with an owner; a work channel has none, so this fails on one with exit `1`.
 
 **Usage**
