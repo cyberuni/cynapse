@@ -28,7 +28,7 @@ id, a different `--kind` or `--owner` also fails with `id_conflict`.
 
 `--kind` is `work` by default. A work channel has members, not an owner:
 `--owner` on a work channel fails with exit `1`. `--kind address` needs `--owner` (exit `2` without
-it). An address channel with no `--store`, `--anchor` or `--key` gets a minted `cynapse` key, so you
+it), and the owner joins as a member with role `owner`. An address channel with no `--store`, `--anchor` or `--key` gets a minted `cynapse` key, so you
 do not have to invent a native id. An address channel cannot take `--anchor`, and with `--key` and no
 `--store` it fails with exit `1`.
 
@@ -92,7 +92,7 @@ cynapse --as sdd-conductor channel create gh:cyberuni/cynapse-12 --type demo.iss
 # An address channel for a participant; with no --store, cynapse mints the key
 cynapse --as sdd-conductor channel create alice-box --type cynapse.address --title "Alice" \
   --kind address --owner alice
-# created alice-box  cynapse.address  active  1 entries  Alice
+# created alice-box  cynapse.address  active  2 entries  Alice
 ```
 
 ```bash
@@ -296,7 +296,8 @@ cynapse --as sdd-conductor channel add-key gh:cyberuni/cynapse-12 --store gh --n
 ## `cynapse channel owner`
 
 Change the owner of an address channel. Appends a `cynapse.channel.owner-changed` entry recording
-the old and new owner. An [address channel](/cynapse/concepts/subjects/#address-channels-and-owners) is
+the old and new owner. The new owner becomes a member with role `owner`, and the old owner stays a
+member with role `member`; each change appends a `cynapse.member.joined` entry. An [address channel](/cynapse/concepts/subjects/#address-channels-and-owners) is
 created with an owner; a work channel has none, so this fails on one with exit `1`.
 
 **Usage**

@@ -58,10 +58,10 @@ their ids ([Use the CLI](/cynapse/guides/cli/#1-register-the-participants) shows
 
 ```console
 $ cynapse --as "$BUILDER" entry send reviewer --type demo.ask --body "Is the login fix safe to merge?"
-sent reviewer#3  01a11491-948e-70d2-aec3-e21192b899a0
+sent reviewer#4  01a11491-948e-70d2-aec3-e21192b899a0
 
 $ cynapse --as "$BUILDER" state set reviewer ask-merge --kind cynapse.awaiting-reply \
-    --status open --subject "$REVIEWER" --entry reviewer#3
+    --status open --subject "$REVIEWER" --entry reviewer#4
 reviewer  ask-merge  cynapse.awaiting-reply  open → cd604701-2518-512b-b65e-7253e252004f
 ```
 
@@ -69,37 +69,38 @@ reviewer  ask-merge  cynapse.awaiting-reply  open → cd604701-2518-512b-b65e-72
 
 ```console
 $ cynapse --as "$REVIEWER" entry list reviewer --unread --exclude-type 'cynapse.*'
-reviewer#3  2026-10-07T04:14:07.502Z  67b14d3c-5255-5994-8da9-c8f40f6a1dd9  demo.ask  Is the login fix safe to merge?
+reviewer#4  2026-10-07T04:14:07.502Z  67b14d3c-5255-5994-8da9-c8f40f6a1dd9  demo.ask  Is the login fix safe to merge?
 ```
 
 **When** the reviewer answers, marks the question handled, and marks what it read:
 
 ```console
-$ cynapse --as "$REVIEWER" entry append reviewer --type demo.answer --parent reviewer#3 \
+$ cynapse --as "$REVIEWER" entry append reviewer --type demo.answer --parent reviewer#4 \
     --body "Yes. Merge after CI."
-appended reviewer#5  01a11491-9877-7097-987f-94b98ecff01e
+appended reviewer#6  01a11491-9877-7097-987f-94b98ecff01e
 
-$ cynapse --as "$REVIEWER" tag reviewer#3 cynapse.handled
-reviewer#3 tags: cynapse.handled
+$ cynapse --as "$REVIEWER" tag reviewer#4 cynapse.handled
+reviewer#4 tags: cynapse.handled
 
-$ cynapse --as "$REVIEWER" read reviewer --to 6
-cd604701-2518-512b-b65e-7253e252004f has read reviewer up to seq 6
+$ cynapse --as "$REVIEWER" read reviewer --to 7
+cd604701-2518-512b-b65e-7253e252004f has read reviewer up to seq 7
 ```
 
-The state record and the tag were written as entries too (`#4` and `#6`), so the reply is
-`#5`.
+The state record and the tag were written as entries too (`#5` and `#7`), so the reply is
+`#6`.
 
 **Then** the builder sees the reply, gets it from `entry wait`, and closes the record:
 
 ```console
 $ cynapse --as "$BUILDER" unread
+builder  3 unread
 reviewer  1 unread
 
-$ cynapse --as "$BUILDER" entry wait reviewer#3 --timeout 30
-reviewer#5  demo.answer  by cd604701-2518-512b-b65e-7253e252004f
+$ cynapse --as "$BUILDER" entry wait reviewer#4 --timeout 30
+reviewer#6  demo.answer  by cd604701-2518-512b-b65e-7253e252004f
 id: 01a11491-9877-7097-987f-94b98ecff01e
 created: 2026-10-07T04:14:08.503Z  recorded: 2026-10-07T04:14:08.503Z
-parent: reviewer#3  root: reviewer#3
+parent: reviewer#4  root: reviewer#4
 
 Yes. Merge after CI.
 

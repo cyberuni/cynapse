@@ -159,6 +159,73 @@ describe('channel kind and owner', () => {
 		expect(store.getChannel(channel.id)?.owner).toBe('bob')
 	})
 
+	it('makes the owner a member of its address channel, logged as cynapse.member.joined', () => {
+		const channel = repoAddress()
+		expect(store.getChannel(channel.id)?.members).toEqual([{ participant: 'unional', role: 'owner', cursor: 0 }])
+		expect(store.entries(channel.id).map((e) => [e.type, e.author, e.data])).toEqual([
+			['cynapse.channel.created', 'legion', expect.anything()],
+			['cynapse.member.joined', 'legion', { participant: 'unional', role: 'owner' }],
+		])
+	})
+
+	it('adds the owner once, as owner, when members also lists it', () => {
+		const channel = store.createChannel({
+			handle: 'gh:cyberuni/cynapse',
+			type: 'cynapse.repo',
+			title: 'cyberuni/cynapse',
+			author: 'legion',
+			subject: repo,
+			kind: 'address',
+			owner: 'unional',
+			members: [
+				{ participant: 'unional', role: 'reviewer' },
+				{ participant: 'bob', role: 'reviewer' },
+			],
+		})
+		expect(store.getChannel(channel.id)?.members.map(({ participant, role }) => ({ participant, role }))).toEqual([
+			{ participant: 'unional', role: 'owner' },
+			{ participant: 'bob', role: 'reviewer' },
+		])
+		expect(store.entries(channel.id, { types: ['cynapse.member.joined'] }).map((e) => e.data)).toEqual([
+			{ participant: 'unional', role: 'owner' },
+			{ participant: 'bob', role: 'reviewer' },
+		])
+	})
+
+	it('adds nothing when an address channel is created again', () => {
+		const channel = repoAddress()
+		repoAddress()
+		expect(store.entries(channel.id).map((e) => e.type)).toEqual(['cynapse.channel.created', 'cynapse.member.joined'])
+	})
+
+	it('lists an address channel in its owner’s unread', () => {
+		const channel = repoAddress()
+		store.append(channel.id, { author: 'bob', type: 'demo.ask', body: 'Can you review the fix today?' })
+		expect(store.unread('unional')).toEqual([{ channelId: channel.id, handle: 'gh:cyberuni/cynapse', count: 3 }])
+	})
+
+	it('makes the new owner a member with role owner and the old owner a plain member', () => {
+		const channel = repoAddress()
+		store.setOwner(channel.id, 'bob', 'unional')
+		expect(store.getChannel(channel.id)?.members.map(({ participant, role }) => ({ participant, role }))).toEqual([
+			{ participant: 'unional', role: 'member' },
+			{ participant: 'bob', role: 'owner' },
+		])
+		expect(store.entries(channel.id, { types: ['cynapse.member.*'] }).map((e) => e.data)).toEqual([
+			{ participant: 'unional', role: 'owner' },
+			{ participant: 'bob', role: 'owner' },
+			{ participant: 'unional', role: 'member' },
+		])
+	})
+
+	it('keeps the role when the owner is set to the current owner', () => {
+		const channel = repoAddress()
+		store.setOwner(channel.id, 'unional', 'unional')
+		expect(store.getChannel(channel.id)?.members.map(({ participant, role }) => ({ participant, role }))).toEqual([
+			{ participant: 'unional', role: 'owner' },
+		])
+	})
+
 	it('refuses an owner on a work channel', () => {
 		store.createChannel({ handle: 'auth', type: 'sdd.mission', title: 'Add auth', author: 'alice' })
 		expect(() => store.setOwner('auth', 'bob', 'alice')).toThrow(/work channel/)
@@ -248,8 +315,8 @@ describe('change token', () => {
 		expect(created.channels.map((c) => c.channelId)).toEqual([channel.id])
 		store.addSubject(channel.id, { store: 'gh', nativeId: 'R_moved' }, 'unional')
 		const keyed = store.changes(created.token)
-		expect(keyed.channels.map((c) => c.lastSeq)).toEqual([2])
+		expect(keyed.channels.map((c) => c.lastSeq)).toEqual([3])
 		store.setOwner(channel.id, 'bob', 'unional')
-		expect(store.changes(keyed.token).channels.map((c) => c.lastSeq)).toEqual([3])
+		expect(store.changes(keyed.token).channels.map((c) => c.lastSeq)).toEqual([6])
 	})
 })

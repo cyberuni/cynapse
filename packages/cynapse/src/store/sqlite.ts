@@ -484,8 +484,15 @@ export class SqliteStore implements Store {
 
 	/** The members and context a create carries, written in its transaction so a crash leaves none of them. */
 	#addInitial(id: string, input: CreateChannelInput): void {
+		// The owner is a member, so its address channel counts in its unread like any other. Its
+		// role is always `owner`, so neither a repeat create nor the owner listed again in
+		// `members` adds it a second time.
+		if (input.owner && this.#role(id, input.owner) !== 'owner') {
+			this.#addMemberIn(id, input.owner, 'owner', input.author)
+		}
 		for (const member of input.members ?? []) {
 			if (!member.participant) throw new CynapseError('a member needs a participant id')
+			if (member.participant === input.owner) continue
 			this.#addMemberIn(id, member.participant, member.role || 'member', input.author)
 		}
 		for (const ref of input.context ?? []) this.#addContextIn(id, ref, input.author)
@@ -550,11 +557,14 @@ export class SqliteStore implements Store {
 			if (row.kind !== 'address') throw new CynapseError(`channel ${ref} is a work channel, which has no owner`)
 			this.#ensureParticipant(owner)
 			this.#run('UPDATE channels SET owner = ? WHERE id = ?', owner, id)
-			return this.#appendIn(id, {
+			const logged = this.#appendIn(id, {
 				author,
 				type: 'cynapse.channel.owner-changed',
 				data: { ...(row.owner ? { from: row.owner } : {}), to: owner },
 			})
+			if (this.#role(id, owner) !== 'owner') this.#addMemberIn(id, owner, 'owner', author)
+			if (row.owner && row.owner !== owner) this.#addMemberIn(id, row.owner, 'member', author)
+			return logged
 		})
 	}
 
@@ -654,6 +664,14 @@ export class SqliteStore implements Store {
 			role,
 		)
 		return this.#appendIn(id, { author, type: 'cynapse.member.joined', data: { participant, role } })
+	}
+
+	#role(channelId: string, participant: string): string | undefined {
+		return this.#get<{ role: string }>(
+			'SELECT role FROM members WHERE channel = ? AND participant = ?',
+			channelId,
+			participant,
+		)?.role
 	}
 
 	addContext(ref: string, contextRef: string, author: string): Entry {

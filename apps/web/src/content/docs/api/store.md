@@ -93,7 +93,7 @@ Closes the database connection.
 | `getChannel(ref, options?: { as?: string })` | `Channel \| undefined` | `as` fills `stats.unread` for that participant. |
 | `getChannelBySubject(subject: SubjectId)` | `Channel \| undefined` | The channel keyed by this subject, by its first key or an added one. |
 | `addSubject(ref, subject, author)` | `Channel` | Adds an alias key, as when the subject moved and its store gave it a new native id. Logs `cynapse.channel.subject-added`. A subject that keys another channel throws. |
-| `setOwner(ref, owner, author)` | `Entry` | Changes an address channel's owner and logs `cynapse.channel.owner-changed`. A work channel throws. |
+| `setOwner(ref, owner, author)` | `Entry` | Changes an address channel's owner and logs `cynapse.channel.owner-changed`, which it returns. The new owner becomes a member with role `owner` and the old owner's role changes to `member`, each logged as `cynapse.member.joined`. A work channel throws. |
 | `listChannels(query?: ListChannelsQuery)` | `Channel[]` | Oldest first. Filters: `kind`, `type`, `parent`, `state`. Hides deleted channels unless `includeDeleted` is set or `state` is `deleted`. |
 | `children(ref)` | `Channel[]` | Channels anchored directly in this channel. Hides deleted channels. |
 | `tree(ref?)` | `ChannelTree[]` | From `ref`, or from every channel with no parent. Hides deleted channels, except a `ref` you name. |
@@ -141,6 +141,10 @@ digits and `. _ / : -`, starts with a letter or digit, must not look like a UUID
 `cynapse.member.joined` or `cynapse.context.added` entry after `cynapse.channel.created`, so a failed
 create leaves no channel behind. A repeat create of a derived-id channel adds them to the existing
 channel, as `addMember` and `addContext` would.
+
+The owner of an address channel is added as a member with role `owner` before any `members`, logged as
+`cynapse.member.joined`. Its role is always `owner`: listing the owner in `members` too, or creating the
+channel again, does not add it a second time.
 
 ## Entries
 
@@ -269,7 +273,7 @@ polls when nothing moved.
 | --- | --- | --- |
 | `markRead(ref, participant, seq?)` | `Member` | Moves the cursor forward to `seq`; without `seq`, to the channel's latest entry. Never backwards; clamped to the last `seq`. |
 | `changes(since?)` | `Changes` | The channels whose last `seq` moved after the token `since`, ordered by handle, plus a new token. Without `since`, every channel. An indexed read, cheap to poll. A token from another store throws `foreign_token`; an unreadable one, `invalid_token`. |
-| `unread(participant)` | `UnreadCount[]` | Channels with unread entries, ordered by handle: those the participant is a member of, and those where a thread they wrote in has a reply after both their cursor and their own last entry in that thread. Entries the participant wrote and tombstones do not count. A registered participant owns its address channel but is not a member of it, so that channel is not in its `unread`. |
+| `unread(participant)` | `UnreadCount[]` | Channels with unread entries, ordered by handle: those the participant is a member of, and those where a thread they wrote in has a reply after both their cursor and their own last entry in that thread. Entries the participant wrote and tombstones do not count. A registered participant owns its address channel and is a member of it with role `owner`, so that channel is in its `unread`. |
 
 `markRead` works for a participant who is not a member and reports their role as `reader`.
 `UnreadCount` is `{ channelId, handle, count }`. See [Read state](/cynapse/concepts/read-state/).

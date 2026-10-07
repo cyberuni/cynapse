@@ -79,9 +79,11 @@ add or remove the `cynapse.handled` tag on its entries
 - `channel owner <channel> <participant>` changes the owner, logged as
   `cynapse.channel.owner-changed`.
 
-The owner of an address channel is not a member of it. The channel doesn't appear in the
-owner's `unread`; read it with `entry list <handle> --unread`
-([Read state](/cynapse/concepts/read-state/#unread)).
+The owner of an address channel is also a member of it, with role `owner`, so the channel
+appears in the owner's `unread` ([Read state](/cynapse/concepts/read-state/#unread)).
+Creating the channel adds the owner as a member, and `channel owner` makes the new owner a
+member with role `owner` and changes the old owner's role to `member`. Each change is
+logged as `cynapse.member.joined`.
 
 ## Related
 

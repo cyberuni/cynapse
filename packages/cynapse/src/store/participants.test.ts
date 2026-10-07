@@ -74,6 +74,17 @@ describe('registerParticipant', () => {
 		})
 	})
 
+	it('makes the participant a member of its address channel, so a direct message shows in its unread', () => {
+		const { participant: reviewer, channel } = register('cyberlegion:role/reviewer', 'reviewer')
+		const { participant: builder } = register('cyberlegion:role/builder', 'builder')
+		expect(store.getChannel(channel.id)?.members).toEqual([{ participant: reviewer.id, role: 'owner', cursor: 0 }])
+
+		store.markRead(channel.id, reviewer.id)
+		expect(store.unread(reviewer.id)).toEqual([])
+		store.append(channel.id, { author: builder.id, type: 'demo.ask', body: 'Can you review the fix today?' })
+		expect(store.unread(reviewer.id)).toEqual([{ channelId: channel.id, handle: 'reviewer', count: 1 }])
+	})
+
 	it('lets a unit register itself as a service, with no registrant given', () => {
 		expect(legion).toMatchObject({ kind: 'service', registeredBy: legion.id })
 		const address = store.getChannelBySubject({ store: 'cynapse', nativeId: legion.id })

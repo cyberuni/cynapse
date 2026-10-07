@@ -46,15 +46,15 @@ channel where it began.** It never alternates between two channels, because a sp
 conversation can't be read as one.
 
 On a work channel, both parties are members, so each sees the other's replies in their own
-`unread`. A direct message is different: the asker isn't a member of the addressee's
-address channel. So a participant **follows every thread they wrote in**, and `unread`
+`unread`. A direct message is different: the addressee owns its address channel and is a
+member of it, but the asker isn't. So a participant **follows every thread they wrote in**, and `unread`
 counts replies in followed threads too. Nothing is stored for this; it is derived from the
 entries ([Followed threads](/cynapse/concepts/read-state/#followed-threads)).
 
 ## Reading your own address channel
 
-The owner of an address channel is not a member of it, so **the address channel never
-shows in its owner's `unread`**. Read it directly:
+The owner of an address channel is a member of it, with role `owner`, so **direct messages
+show in the owner's `unread`** like any other channel's entries. List them with:
 
 ```bash
 cynapse --as "$REVIEWER" entry list reviewer --unread --exclude-type 'cynapse.*'

@@ -71,7 +71,7 @@ const changed = store.changes(token)
 token = changed.token
 for (const { channelId, handle } of changed.channels) {
   const channel = store.getChannel(channelId)
-  const readers = channel.owner ? [channel.owner] : channel.members.map((m) => m.participant)
+  const readers = channel.members.map((m) => m.participant)
   for (const reader of readers) {
     const fresh = store.entries(channelId, { unreadFor: reader, excludeTypes: ['cynapse.*'] })
     if (fresh.length) console.log(`${handle}: ${fresh.length} new for ${reader}; wake it`)
@@ -124,7 +124,7 @@ Run it against a scratch database:
 
 ```console
 $ CYNAPSE_DB="$(mktemp -d)/cynapse.db" node runtime.mjs
-sent reviewer#3
+sent reviewer#4
 reviewer: 1 new for cd604701-2518-512b-b65e-7253e252004f; wake it
 reply: Yes, after lunch.
 no such participant
@@ -160,9 +160,11 @@ and agent that opens the channel for this issue gets the same one. Unlike the CL
 pass it back: `changes(token)` returns only the channels that moved since, and a new token.
 For each one, the runtime decides who should hear about it:
 
-- An address channel has an `owner`. Its owner is not a member, so `unread(owner)` doesn't
-  count it; read it with `entries(channel, { unreadFor: owner })`.
+- An address channel has an `owner`, who is also a member with role `owner`, so
+  `unread(owner)` counts it.
 - A work channel has `members`, each with a cursor.
+
+Either way, the readers are the channel's `members`.
 
 cynapse never wakes anyone. What "wake it" means, such as ringing a terminal pane, is the
 runtime's job, and the channel's `traits.wake` is a hint for it.

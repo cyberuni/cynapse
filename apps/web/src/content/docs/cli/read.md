@@ -62,8 +62,8 @@ to report it prints `0 unread channels found`.
 Following is derived from the entries; nothing is stored for it. A channel is listed once, whichever
 way its entries count.
 
-A registered participant owns its address channel but is not a member of it. That channel never appears in
-the participant's own `unread`. Read it with [`entry list <handle> --unread`](/cynapse/cli/entry/#cynapse-entry-list).
+A registered participant owns its address channel and is a member of it with role `owner`, so direct messages
+to it appear in its own `unread`. Read them with [`entry list <handle> --unread`](/cynapse/cli/entry/#cynapse-entry-list).
 
 **Usage**
 
