@@ -212,6 +212,8 @@ The `code` string under `--json`, and `CynapseError.code` in the library.
 | `invalid_token` | `1` | A change token could not be read. |
 | `foreign_token` | `1` | A change token came from another store; call `changes` without `--since` to start over. |
 | `schema_too_new` | `1` | The database is newer than the installed cynapse. |
+| `busy` | `1` | Another process held the database's write lock past the busy timeout. Retry. |
+| `storage` | `1` | SQLite could not use the database file: the disk is full, an I/O error, or the file is damaged or not a database. `help` names the file. |
 | `port_in_use` | `1` | `cynapse gui` could not bind its port. |
 | `gui_not_installed` | `1` | `cynapse gui` needs `@cyberuni/cynapse-gui` installed. |
 

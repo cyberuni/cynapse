@@ -8,6 +8,7 @@ import { isUuid, timestampOf, uuidv5, uuidv7 } from '../ids.js'
 import { connect } from './connect.js'
 import { migrate } from './migrate.js'
 import { MIGRATIONS } from './schema.js'
+import { toStoreError } from './sqlite-error.js'
 import type {
 	AppendInput,
 	Briefing,
@@ -131,16 +132,22 @@ const ENTRY_SELECT = `
 export class SqliteStore implements Store {
 	readonly #db: DatabaseSync
 	readonly #clock: () => number
+	readonly #path: string
 
 	constructor(options: SqliteStoreOptions) {
+		this.#path = options.path
 		if (options.path !== ':memory:') mkdirSync(dirname(options.path), { recursive: true })
-		this.#db = connect(options.path, { busyTimeoutMs: options.busyTimeoutMs })
+		try {
+			this.#db = connect(options.path, { busyTimeoutMs: options.busyTimeoutMs })
+		} catch (error) {
+			throw toStoreError(error, this.#path)
+		}
 		this.#clock = options.clock ?? Date.now
 		try {
 			migrate(this.#db, MIGRATIONS)
 		} catch (error) {
 			this.#db.close()
-			throw error
+			throw toStoreError(error, this.#path)
 		}
 	}
 
@@ -984,14 +991,18 @@ export class SqliteStore implements Store {
 	 */
 	#write<T>(fn: () => T): T {
 		if (this.#db.isTransaction) return fn()
-		this.#db.exec('BEGIN IMMEDIATE')
+		try {
+			this.#db.exec('BEGIN IMMEDIATE')
+		} catch (error) {
+			throw toStoreError(error, this.#path)
+		}
 		try {
 			const result = fn()
 			this.#db.exec('COMMIT')
 			return result
 		} catch (error) {
 			this.#db.exec('ROLLBACK')
-			throw error
+			throw toStoreError(error, this.#path)
 		}
 	}
 

@@ -56,7 +56,7 @@ with `uuidgen`, and pass the same `id` on every retry.
 - **There is one write lock per store, not per channel.** Writes to any channels take turns.
   Each write is short, so the turns are short.
 - **A writer waits up to 10 seconds for the lock,** then fails with
-  `database is locked` (exit `1`, code `failure`). Retry it.
+  `database is locked` (exit `1`, code `busy`). Retry it.
 - **A reader doesn't wait for writers.** Opening a current store reads its schema version
   without a lock. Only the first open after an upgrade, which migrates the schema, takes
   the write lock and can wait behind a writer.
@@ -138,17 +138,16 @@ the caller is.
 
 | What happens | What you see | What to do |
 | --- | --- | --- |
-| Another process holds the write lock for over 10 seconds | `database is locked`, exit `1`, code `failure` | Retry. |
+| Another process holds the write lock for over 10 seconds | `database is locked`, exit `1`, code `busy` | Retry. |
 | The database was written by a newer cynapse | `schema_too_new`, exit `1` | Upgrade cynapse. |
 | The process stops in the middle of a call | The call's transaction rolls back | Retry; pass an `id` to make an append safe to retry. |
 | The process stops between two calls of one CLI command | The earlier calls stay | Rerun the command, or finish it with single calls. |
-| The disk is full, or the file is damaged | SQLite's own message, exit `1`, code `failure` | Free space, or restore a backup. |
+| The disk is full, or the file is damaged | SQLite's own message, exit `1`, code `storage`; `help` names the file | Free space, or run `PRAGMA integrity_check` and restore a backup if it fails. |
 | A name matches no live participant, or several | `unknown_address` (exit `5`) or `ambiguous_address` (exit `4`) | Fix the name, or pass an id. |
 | `entry wait` sees no reply in time | `timeout`, exit `3` | Wait again. |
 
-Every CLI error prints a `help:` line with a next step. Errors that cynapse doesn't raise
-itself, such as a locked database or a full disk, get a generic help line that suggests
-reporting a bug.
+Every CLI error prints a `help:` line with a next step. Only an error cynapse can't
+account for gets the generic help line that suggests reporting a bug.
 
 ## What cynapse doesn't do
 

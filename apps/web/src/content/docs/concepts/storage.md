@@ -33,7 +33,7 @@ Each connection sets:
 | --- | --- | --- |
 | `journal_mode` | `WAL` | Readers keep reading while another process writes. |
 | `synchronous` | `NORMAL` | A commit survives a crash of the process. A power loss can lose the latest commits. |
-| `busy_timeout` | 10 000 ms | A write waits up to 10 seconds for another writer, then fails with `database is locked`. |
+| `busy_timeout` | 10 000 ms | A write waits up to 10 seconds for another writer, then fails with `database is locked` (code `busy`). |
 | `foreign_keys` | `ON` | Rows can't point at a channel or entry that doesn't exist. |
 | `secure_delete` | `ON` | Freed space is zeroed, so a deleted entry's content doesn't stay in free pages. |
 
@@ -59,6 +59,10 @@ its old version.
 A database written by a newer cynapse fails to open with `schema_too_new`, and nothing is
 written to it. Upgrade cynapse to open it. There are no backward migrations, so keep a
 backup before you upgrade a store you care about.
+
+A database SQLite can't use (a full disk, an I/O error, a damaged file or one that isn't a
+database) fails with the code `storage`, and its `help` names the file. Run
+`sqlite3 <file> "PRAGMA integrity_check"` on it before trying again.
 
 ## Back up and move
 

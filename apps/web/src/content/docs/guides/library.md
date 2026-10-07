@@ -188,9 +188,10 @@ the question's `seq`, a reply that arrived before the wait began is found on the
 
 Every failure cynapse raises is a `CynapseError`. Branch on `error.code`, such as `not_found`,
 `id_conflict`, `unknown_address` or `ambiguous_address`
-([Public contract](/cynapse/public-contract/#error-codes)). An error SQLite raises itself,
-such as `database is locked` after waiting 10 seconds for another writer, is not a
-`CynapseError`; retry it.
+([Public contract](/cynapse/public-contract/#error-codes)). A store that
+waited 10 seconds for another writer's lock throws `busy`; retry it. A database file SQLite
+can't use (full disk, I/O error, damaged or not a database) throws `storage`, whose `help`
+names the file.
 
 ## Next
 
