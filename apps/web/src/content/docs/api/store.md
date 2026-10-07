@@ -124,6 +124,8 @@ interface CreateChannelInput {
   traits?: Partial<ChannelTraits>
   conventions?: string[]
   state?: string             // initial lifecycle state; defaults to 'active'
+  members?: { participant: string; role?: string }[]  // role defaults to 'member'
+  context?: string[]         // reference shorthands, such as 'gh:org/repo#12'
 }
 ```
 
@@ -135,7 +137,10 @@ consumer of the subject, so its handle, type and title are not compared. A `key`
 `subject:` throws. `traits` defaults to `{ membership: 'open', wake: false }`. A handle is letters,
 digits and `. _ / : -`, starts with a letter or digit, must not look like a UUID, and must not be taken.
 
-Unlike the CLI, `createChannel` does not add members or context; call `addMember` and `addContext`.
+`members` and `context` are added in the creating transaction, each as its own
+`cynapse.member.joined` or `cynapse.context.added` entry after `cynapse.channel.created`, so a failed
+create leaves no channel behind. A repeat create of a derived-id channel adds them to the existing
+channel, as `addMember` and `addContext` would.
 
 ## Entries
 

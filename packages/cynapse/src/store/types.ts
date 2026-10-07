@@ -238,6 +238,16 @@ export interface CreateChannelInput {
 	conventions?: string[]
 	/** Initial lifecycle state; defaults to `active`. */
 	state?: string
+	/** Members to add in the creating transaction, each logged as `cynapse.member.joined`. */
+	members?: NewMember[]
+	/** Context refs to add in the creating transaction, each logged as `cynapse.context.added`. */
+	context?: string[]
+}
+
+/** A member `createChannel` adds; the role defaults to `member`. */
+export interface NewMember {
+	participant: string
+	role?: string
 }
 
 export interface AppendInput {
