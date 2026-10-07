@@ -1,6 +1,6 @@
 ---
 title: State and lifecycle
-description: State records for what is true now — needs-input, pending answers, leases — and a channel's lifecycle, where cleanup is a state, not a deletion.
+description: State records for what is true now — needs-input, pending answers, leases — and a channel's lifecycle, where cleanup is a state and deleting a channel is a reserved one.
 ---
 
 A channel's entries say what happened. Some facts are about what is true **now**: a
@@ -52,6 +52,26 @@ A lifecycle change is written as a `cynapse.state.changed` entry. It is set with
 When a mission ends, its raw ledger has done its job, but the distilled record has to
 survive, and the distilled record is a [view](/cynapse/concepts/views/) over the raw
 channel. So cleanup marks the channel `reconciled` and doesn't delete it.
+
+### Deleting a channel
+
+Deleting is for removing what was said, such as a secret pasted into a channel, or a
+channel nobody wants any more ([ADR-0014](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0014-deleting-entries-and-channels.md)).
+`deleteChannel` erases every entry outside `cynapse.*`, leaving
+[tombstones](/cynapse/concepts/entries/#deleting-an-entry), and moves the channel to the
+reserved lifecycle state `deleted`, logged as one `cynapse.channel.deleted` entry.
+
+```bash
+cynapse --as alice channel delete review-12
+cynapse channel list --include-deleted
+```
+
+- The channel keeps its id, handles and subject keys, so references still resolve.
+  Creating it again from its subject returns it, still deleted.
+- `listChannels` and `tree` hide it, unless asked with `includeDeleted` or `state: 'deleted'`.
+- `state lifecycle <channel> active` restores it, empty except for its `cynapse.*` history.
+- Child channels anchored in it are left alone; their anchor entries resolve as tombstones.
+- `setLifecycle` refuses `deleted`, so a channel is never marked deleted with its content still there.
 
 What the design adds on top, not built yet:
 

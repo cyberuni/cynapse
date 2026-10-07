@@ -53,6 +53,7 @@ export function registerEntry(program: Command): void {
 		.option('--view <name>', 'apply a saved view, such as distilled')
 		.option('--root <entry>', 'only this thread')
 		.option('--after <seq>', 'only entries after this seq')
+		.option('--include-deleted', 'include tombstones, the entries deleted since they were written')
 		.option('--limit <n>', 'at most this many entries')
 		.action(async (ref: string, opts, command: Command) => {
 			const query: EntryQuery = {
@@ -66,6 +67,7 @@ export function registerEntry(program: Command): void {
 				root: opts.root,
 				metaOnly: Boolean(opts.metaOnly),
 				fromSummary: Boolean(opts.fromSummary),
+				includeDeleted: Boolean(opts.includeDeleted),
 				...(opts.unread ? { unreadFor: actor(command) } : {}),
 				...(opts.after ? { afterSeq: parseInteger(opts.after, '--after') } : {}),
 				...(opts.limit ? { limit: parseInteger(opts.limit, '--limit') } : {}),
@@ -85,6 +87,20 @@ export function registerEntry(program: Command): void {
 				const found = store.entry(ref)
 				if (!found) throw new CynapseError(`no entry found for "${ref}"`, { code: 'not_found' })
 				output({ ...found, links: found.refs.map(renderRef) }, () => entryDetail(found))
+			})
+		})
+
+	entry
+		.command('delete <entry>')
+		.description(
+			"erase an entry's content, leaving a tombstone that keeps its seq and thread; deleting it again is a no-op (needs --as)",
+		)
+		.action(async (ref: string, _opts, command: Command) => {
+			const author = actor(command)
+			await withStore(command, (store) => {
+				const logged = store.deleteEntry(ref, author)
+				const seq = (logged.data?.seq as number | undefined) ?? 0
+				output(logged, () => `deleted ${logged.channel}#${seq}  logged ${logged.channel}#${logged.seq}`)
 			})
 		})
 

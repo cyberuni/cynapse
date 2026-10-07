@@ -43,6 +43,29 @@ An edit or a retraction is a new entry that refers to the old one. A tag added l
 ([Types, tags and traits](/cynapse/concepts/types-tags-traits/)). Whatever an entry said
 when it was read is what it still says.
 
+## Deleting an entry
+
+Removing what was said is the one exception, and it keeps the entry's place
+([ADR-0014](https://github.com/cyberuni/cynapse/blob/main/docs/adr/0014-deleting-entries-and-purging-an-address.md)).
+`deleteEntry` erases an entry's body, data, refs and tags and leaves a **tombstone**: the
+`id`, `seq`, author, type, `parent` and `root` stay, and the entry carries
+`deleted: { at, by }`. The delete is logged as a `cynapse.entry.deleted` entry in the same
+channel. Because the row stays, a `seq` is never handed out twice, replies still resolve
+their `parent` and `root`, and a reader can tell an entry removed on purpose from one not
+received yet.
+
+- **Anyone may delete, on any channel.** No layer can tell whether the caller is the person
+  or an agent acting for them, so cynapse doesn't pretend to check. The
+  `cynapse.entry.deleted` entry records who claimed the delete.
+- `cynapse.*` entries are the channel's record of itself and cannot be deleted.
+- Listings hide tombstones unless asked (`includeDeleted`, `--include-deleted`); `search`,
+  unread counts and `appendUnless` skip them. `entry(ref)` still returns the tombstone.
+- A tombstone cannot be replied to, tagged or pinned. Deleting it again returns the entry
+  that logged the delete.
+
+`deleteChannel` does the same for every entry in a channel, and hides the channel
+([State and lifecycle](/cynapse/concepts/state-and-lifecycle/#deleting-a-channel)).
+
 ## Threads
 
 An entry may name a `parent`: the entry it replies to, in the same channel. Its `root` is

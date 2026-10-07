@@ -143,7 +143,7 @@ List channels, oldest first. With no options it lists all of them. Options combi
 **Usage**
 
 ```bash
-cynapse channel list [--kind <kind>] [--type <type>] [--parent <channel>] [--state <state>]
+cynapse channel list [--kind <kind>] [--type <type>] [--parent <channel>] [--state <state>] [--include-deleted]
 ```
 
 | Option | Effect |
@@ -152,6 +152,7 @@ cynapse channel list [--kind <kind>] [--type <type>] [--parent <channel>] [--sta
 | `--type <type>` | Only channels of exactly this type. |
 | `--parent <channel>` | Only channels anchored directly in this channel. |
 | `--state <state>` | Only channels in this lifecycle state, such as `active` or `reconciled`. |
+| `--include-deleted` | Include deleted channels, which are hidden otherwise. `--state deleted` lists only them. |
 
 Each text line is `handle  type  state  N entries  [(child)]  title`. A channel with no matches
 prints `0 channels found`.
@@ -162,6 +163,28 @@ prints `0 channels found`.
 cynapse channel list --type sdd.mission --state active
 # m-channel-ids  sdd.mission  active  12 entries  (child)  Channel identity and renameable handles
 # m-cortex-shell  sdd.mission  active  7 entries  (child)  Cortex app shell
+```
+
+## `cynapse channel delete`
+
+Erase every entry in a channel outside `cynapse.*`, leaving tombstones, and move it to the reserved
+lifecycle state `deleted`, which `channel list` and `channel tree` hide
+([State and lifecycle](/cynapse/concepts/state-and-lifecycle/#deleting-a-channel)). Logged as one
+`cynapse.channel.deleted` entry with the count. Needs `--as`, which the log records; anyone may delete,
+since no caller can be verified. Deleting it again with nothing new prints the last delete, and
+`state lifecycle <channel> active` restores it.
+
+**Usage**
+
+```bash
+cynapse --as <participant> channel delete <channel>
+```
+
+**Examples**
+
+```bash
+cynapse --as alice channel delete review-12
+# deleted review-12, erasing 14 entries  logged review-12#31
 ```
 
 ## `cynapse channel tree`

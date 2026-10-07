@@ -92,11 +92,13 @@ listing is `{ count: 0, entity, items: [] }`, where `entity` names what was empt
 | `channel owner` | `Entry` (the `cynapse.channel.owner-changed` entry) |
 | `channel pin` | `Entry` (the `cynapse.pinned` entry) |
 | `channel view` | `Entry` (the `cynapse.view.defined` entry) |
+| `channel delete` | `Entry` (the `cynapse.channel.deleted` entry) |
 | `entry append` | `Entry` |
 | `entry send` | `Entry` |
 | `entry list` | `{ count, items: Entry[] }` |
 | `entry show` | `Entry` plus `links: RenderedRef[]`, one per ref |
 | `entry wait` | `Entry` (the reply) |
+| `entry delete` | `Entry` (the `cynapse.entry.deleted` entry) |
 | `participant register` | `RegisteredParticipant` |
 | `participant retire` | `Participant` |
 | `participant rename` | `Participant` |
@@ -144,6 +146,19 @@ their `data`.
 | `cynapse.participant.registered` | `registerParticipant` | `{ participant, key, kind, name, registeredBy }` |
 | `cynapse.participant.retired` | `retireParticipant` | `{ participant }` |
 | `cynapse.participant.renamed` | `renameParticipant` | `{ participant, from, to }` |
+| `cynapse.entry.deleted` | `deleteEntry` | `{ target, seq }` |
+| `cynapse.channel.deleted` | `deleteChannel` | `{ count, from? }` |
+
+A deleted entry keeps its place as a tombstone: its `id`, `seq`, author, type, `parent`
+and `root` stay, its body, data, refs and tags are erased, and it carries
+`deleted: { at, by }`. Listings hide tombstones unless `includeDeleted` is set, and
+`cynapse.*` entries cannot be deleted. A deleted channel has every other entry erased and
+the lifecycle state `deleted`, which `listChannels` hides unless `includeDeleted` is set
+or `state: 'deleted'` is asked for. Anyone may delete, since no caller can be verified
+(ADR-0014).
+
+The lifecycle state `deleted` is reserved: `setLifecycle` refuses it, and only
+`deleteChannel` sets it.
 
 The participant entries land on the participant's address channel. That channel has the
 type `cynapse.participant`.
@@ -219,7 +234,7 @@ From the first release, each of these is a breaking change:
   or making an optional field required in an input.
 - Removing or renaming a `cynapse.*` entry type, or removing or changing the meaning of a
   field in its `data`.
-- Changing who may add or remove a reserved tag.
+- Changing who may add or remove a reserved tag, or what deleting an entry or a channel erases.
 - Changing an exit code's value or meaning, or moving an existing failure to a different
   exit code or `code` string.
 - Changing how `$CYNAPSE_HOME` resolves to a database path, or how the id of a

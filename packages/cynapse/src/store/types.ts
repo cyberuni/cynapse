@@ -171,6 +171,11 @@ export interface Entry {
 	createdAt: string
 	/** When it arrived in the channel. */
 	recordedAt: string
+	/**
+	 * Present on a tombstone: the entry was deleted, its body, data, refs and tags erased, and
+	 * its place kept so `seq`, `parent` and `root` still resolve (ADR-0014).
+	 */
+	deleted?: { at: string; by: string }
 }
 
 export type StateStatus = 'open' | 'resolved'
@@ -273,6 +278,8 @@ export interface EntryQuery extends ViewFilter {
 	metaOnly?: boolean
 	/** Only entries in this thread (the root and every reply under it). */
 	root?: string
+	/** Include tombstones, the entries deleted since they were written; hidden by default. */
+	includeDeleted?: boolean
 }
 
 export interface SearchQuery extends ViewFilter {
@@ -308,6 +315,8 @@ export interface ListChannelsQuery {
 	/** Channels anchored in this channel. */
 	parent?: string
 	state?: string
+	/** Include channels in the `deleted` lifecycle, hidden by default unless `state` asks for them. */
+	includeDeleted?: boolean
 }
 
 export interface ChannelTree {
@@ -393,7 +402,15 @@ export interface Store {
 	addMember(ref: string, participant: string, role: string, author: string): Entry
 	addContext(ref: string, contextRef: string, author: string): Entry
 	pin(entryRef: string, author: string): Entry
+	/** Moves the channel to a lifecycle state; `deleted` is reserved for `deleteChannel`. */
 	setLifecycle(ref: string, state: string, author: string): Entry
+	/**
+	 * Erases every entry in the channel outside `cynapse.*`, as `deleteEntry` would, moves it to
+	 * the `deleted` lifecycle, which listings hide, and logs `cynapse.channel.deleted` with the
+	 * count (ADR-0014). The channel still resolves, and `setLifecycle` restores it. Deleting it
+	 * again with nothing new to erase returns the last log entry.
+	 */
+	deleteChannel(ref: string, author: string): Entry
 	defineView(ref: string, name: string, filter: ViewFilter, author: string): Entry
 	views(ref: string): View[]
 
@@ -409,6 +426,13 @@ export interface Store {
 	entry(ref: string, seq: number): Entry | undefined
 	entries(ref: string, query?: EntryQuery): Entry[]
 	search(query?: SearchQuery): Entry[]
+	/**
+	 * Erases an entry's content and leaves a tombstone in its place, logged as
+	 * `cynapse.entry.deleted` (ADR-0014). Anyone may delete, since no caller can be verified;
+	 * the log names who did. `cynapse.*` entries cannot be deleted. Deleting a tombstone again
+	 * returns the entry that logged its delete.
+	 */
+	deleteEntry(entryRef: string, author: string): Entry
 	addTags(entryRef: string, tags: string[], author: string): Entry
 	removeTags(entryRef: string, tags: string[], author: string): Entry
 

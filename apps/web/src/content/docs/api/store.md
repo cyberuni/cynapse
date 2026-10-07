@@ -81,7 +81,7 @@ Closes the database connection.
 | --- | --- | --- |
 | `createChannel(input: CreateChannelInput)` | `Channel` | See below. |
 | `getChannel(ref, options?: { as?: string })` | `Channel \| undefined` | `as` fills `stats.unread` for that participant. |
-| `listChannels(query?: ListChannelsQuery)` | `Channel[]` | Oldest first. Filters: `type`, `parent`, `state`. |
+| `listChannels(query?: ListChannelsQuery)` | `Channel[]` | Oldest first. Filters: `kind`, `type`, `parent`, `state`. Hides deleted channels unless `includeDeleted` is set or `state` is `deleted`. |
 | `children(ref)` | `Channel[]` | Channels anchored directly in this channel. |
 | `tree(ref?)` | `ChannelTree[]` | From `ref`, or from every channel with no parent. |
 | `brief(ref, options?: { as?: string })` | `Briefing` | The one-call briefing: channel, open state records, pinned entries, views, children. |
@@ -89,7 +89,8 @@ Closes the database connection.
 | `addMember(ref, participant, role, author)` | `Entry` | Re-adding a member updates the role. |
 | `addContext(ref, contextRef, author)` | `Entry` | Adds a [reference shorthand](/cynapse/api/refs/) to the channel's context. |
 | `pin(entryRef, author)` | `Entry` | Pins the entry in its own channel. |
-| `setLifecycle(ref, state, author)` | `Entry` | Moves the channel to a lifecycle state. |
+| `setLifecycle(ref, state, author)` | `Entry` | Moves the channel to a lifecycle state. `deleted` is reserved for `deleteChannel`; any other state restores a deleted channel. |
+| `deleteChannel(ref, author)` | `Entry` | Erases every entry outside `cynapse.*`, leaving tombstones, moves the channel to `deleted`, and returns the `cynapse.channel.deleted` entry (`{ count, from? }`). Anyone may delete. Nothing new to erase on a deleted channel returns the last delete. |
 | `defineView(ref, name, filter, author)` | `Entry` | Saves or replaces a named [`ViewFilter`](/cynapse/api/types/#view-and-viewfilter). |
 | `views(ref)` | `View[]` | The channel's saved views, ordered by name. |
 
@@ -130,6 +131,7 @@ Unlike the CLI, `createChannel` does not add members or context; call `addMember
 | `search(query?: SearchQuery)` | `Entry[]` | Across channels, in id (so creation-time) order. |
 | `addTags(entryRef, tags, author)` | `Entry` | Writes a `cynapse.label` entry; returns it. |
 | `removeTags(entryRef, tags, author)` | `Entry` | Same, removing. |
+| `deleteEntry(entryRef, author)` | `Entry` | Erases the entry's content and leaves a tombstone; returns the `cynapse.entry.deleted` entry (`{ target, seq }`). Anyone may delete, since no caller can be verified; `cynapse.*` entries cannot be deleted. Again on a tombstone returns the entry that logged its delete. |
 
 ### `append(ref, input)`
 
@@ -195,6 +197,7 @@ interface EntryQuery extends ViewFilter {   // types, excludeTypes, tags, exclud
   fromSummary?: boolean// start at the latest `cynapse.summary` entry, if any
   metaOnly?: boolean   // no body, no data
   root?: string        // only this thread: the root entry and every reply under it
+  includeDeleted?: boolean // include tombstones, hidden by default
 }
 ```
 

@@ -85,6 +85,8 @@ interface EntryRow {
 	body: string
 	data: string | null
 	recorded_at: string
+	deleted_at: string | null
+	deleted_by: string | null
 }
 
 interface ParticipantRow {
@@ -112,7 +114,8 @@ interface StateRow {
 
 const ENTRY_SELECT = `
 	SELECT e.id, e.channel, s.handle, e.seq, e.author, e.type, e.parent, p.seq AS parent_seq,
-		e.root, r.seq AS root_seq, e.refs, e.tags AS write_tags, e.body, e.data, e.recorded_at
+		e.root, r.seq AS root_seq, e.refs, e.tags AS write_tags, e.body, e.data, e.recorded_at,
+		e.deleted_at, e.deleted_by
 	FROM entries e
 	JOIN channels s ON s.id = e.channel
 	LEFT JOIN entries p ON p.id = e.parent
@@ -529,6 +532,9 @@ export class SqliteStore implements Store {
 		if (query.state) {
 			where.push('state = ?')
 			params.push(query.state)
+		} else if (!query.includeDeleted) {
+			where.push('state <> ?')
+			params.push(DELETED_STATE)
 		}
 		if (query.parent) {
 			where.push('parent_channel = ?')
@@ -552,7 +558,8 @@ export class SqliteStore implements Store {
 		})
 		if (ref) return [build(this.#requireChannel(this.#requireChannelId(ref)))]
 		const roots = this.#all<{ id: string }>(
-			'SELECT id FROM channels WHERE parent_channel IS NULL ORDER BY created_at, id',
+			'SELECT id FROM channels WHERE parent_channel IS NULL AND state <> ? ORDER BY created_at, id',
+			DELETED_STATE,
 		)
 		return roots.map((row) => build(this.#loadChannel(row.id)))
 	}
@@ -623,7 +630,7 @@ export class SqliteStore implements Store {
 
 	pin(entryRef: string, author: string): Entry {
 		return this.#writeEntry(() => {
-			const target = this.#requireEntryRow(entryRef)
+			const target = this.#requireLiveEntryRow(entryRef, 'pinned')
 			this.#run('INSERT OR IGNORE INTO pins (channel, entry) VALUES (?, ?)', target.channel, target.id)
 			return this.#appendIn(target.channel, {
 				author,
@@ -635,6 +642,11 @@ export class SqliteStore implements Store {
 	}
 
 	setLifecycle(ref: string, state: string, author: string): Entry {
+		if (state === DELETED_STATE) {
+			throw new CynapseError('the deleted lifecycle is set by deleteChannel, which also erases the entries', {
+				help: 'run `cynapse channel delete <channel>` instead',
+			})
+		}
 		return this.#writeEntry(() => {
 			const id = this.#requireChannelId(ref)
 			const from = this.#get<{ state: string }>('SELECT state FROM channels WHERE id = ?', id)?.state
@@ -643,6 +655,32 @@ export class SqliteStore implements Store {
 				author,
 				type: 'cynapse.state.changed',
 				data: { key: 'lifecycle', kind: 'lifecycle', from, to: state },
+			})
+		})
+	}
+
+	deleteChannel(ref: string, author: string): Entry {
+		return this.#writeEntry(() => {
+			const id = this.#requireChannelId(ref)
+			const from = (this.#get<{ state: string }>('SELECT state FROM channels WHERE id = ?', id) as { state: string })
+				.state
+			const targets = this.#all<{ id: string }>(
+				"SELECT id FROM entries WHERE channel = ? AND deleted_at IS NULL AND type NOT LIKE 'cynapse.%' ORDER BY seq",
+				id,
+			)
+			if (!targets.length && from === DELETED_STATE) {
+				const last = this.#get<{ id: string }>(
+					"SELECT id FROM entries WHERE channel = ? AND type = 'cynapse.channel.deleted' ORDER BY seq DESC LIMIT 1",
+					id,
+				) as { id: string }
+				return this.#toEntry(this.#findEntryRow(last.id) as EntryRow)
+			}
+			for (const target of targets) this.#tombstone(target.id, author)
+			this.#run('UPDATE channels SET state = ? WHERE id = ?', DELETED_STATE, id)
+			return this.#appendIn(id, {
+				author,
+				type: 'cynapse.channel.deleted',
+				data: { count: targets.length, ...(from === DELETED_STATE ? {} : { from }) },
 			})
 		})
 	}
@@ -678,7 +716,8 @@ export class SqliteStore implements Store {
 	appendUnless(ref: string, input: AppendInput, unless: EntryMatch): ConditionalAppend {
 		const result = this.#write((): { appended: boolean; id: string } => {
 			const channelId = this.#requireChannelId(ref)
-			const where = ['e.channel = ?']
+			// A deleted entry no longer says anything, so it cannot be the one already written.
+			const where = ['e.channel = ?', 'e.deleted_at IS NULL']
 			const params: SQLInputValue[] = [channelId]
 			if (unless.parent) {
 				where.push('e.parent = ?')
@@ -707,7 +746,7 @@ export class SqliteStore implements Store {
 
 	entries(ref: string, query: EntryQuery = {}): Entry[] {
 		const id = this.#requireChannelId(ref)
-		const where = ['e.channel = ?']
+		const where = query.includeDeleted ? ['e.channel = ?'] : ['e.channel = ?', 'e.deleted_at IS NULL']
 		const params: SQLInputValue[] = [id]
 		let filter: ViewFilter = query
 		if (query.view) {
@@ -750,7 +789,7 @@ export class SqliteStore implements Store {
 	}
 
 	search(query: SearchQuery = {}): Entry[] {
-		const where: string[] = []
+		const where = ['e.deleted_at IS NULL']
 		const params: SQLInputValue[] = []
 		applyFilter(query, where, params)
 		if (query.channels?.length) {
@@ -759,10 +798,29 @@ export class SqliteStore implements Store {
 			params.push(...ids)
 		}
 		const limit = query.limit ? `LIMIT ${Math.max(0, Math.trunc(query.limit))}` : ''
-		return this.#all<EntryRow>(
-			`${ENTRY_SELECT} ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY e.id ${limit}`,
-			...params,
-		).map((row) => this.#toEntry(row, query.metaOnly))
+		return this.#all<EntryRow>(`${ENTRY_SELECT} WHERE ${where.join(' AND ')} ORDER BY e.id ${limit}`, ...params).map(
+			(row) => this.#toEntry(row, query.metaOnly),
+		)
+	}
+
+	deleteEntry(entryRef: string, author: string): Entry {
+		return this.#writeEntry(() => {
+			// No permission check: no caller can be verified, so the log naming who deleted is the record.
+			const target = this.#requireEntryRow(entryRef)
+			if (target.deleted_at) return this.#deletionOf(target)
+			if (target.type.startsWith('cynapse.')) {
+				throw new CynapseError(
+					`${target.handle}#${target.seq} is a ${target.type} entry; cynapse.* entries record the channel itself and cannot be deleted`,
+				)
+			}
+			this.#tombstone(target.id, author)
+			return this.#appendIn(target.channel, {
+				author,
+				type: 'cynapse.entry.deleted',
+				refs: [`${target.handle}#${target.seq}`],
+				data: { target: target.id, seq: target.seq },
+			})
+		})
 	}
 
 	addTags(entryRef: string, tags: string[], author: string): Entry {
@@ -811,6 +869,7 @@ export class SqliteStore implements Store {
 			JOIN channels s ON s.id = m.channel
 			LEFT JOIN cursors c ON c.channel = m.channel AND c.participant = m.participant
 			JOIN entries e ON e.channel = m.channel AND e.seq > COALESCE(c.seq, 0) AND e.author <> m.participant
+				AND e.deleted_at IS NULL
 			WHERE m.participant = ?1
 			GROUP BY s.id
 			UNION ALL
@@ -825,7 +884,7 @@ export class SqliteStore implements Store {
 			JOIN channels s ON s.id = f.channel
 			LEFT JOIN cursors c ON c.channel = f.channel AND c.participant = ?1
 			JOIN entries e ON e.channel = f.channel AND (e.id = f.thread OR e.root = f.thread)
-				AND e.seq > MAX(f.last, COALESCE(c.seq, 0)) AND e.author <> ?1
+				AND e.seq > MAX(f.last, COALESCE(c.seq, 0)) AND e.author <> ?1 AND e.deleted_at IS NULL
 			GROUP BY s.id
 			ORDER BY handle`,
 			participant,
@@ -963,7 +1022,7 @@ export class SqliteStore implements Store {
 		let root: string | null = null
 		let parent: string | null = null
 		if (input.parent) {
-			const parentRow = this.#requireEntryRow(input.parent)
+			const parentRow = this.#requireLiveEntryRow(input.parent, 'replied to')
 			if (parentRow.channel !== channelId) {
 				throw new CynapseError(`parent ${input.parent} is in another channel; replies stay in one channel`)
 			}
@@ -1044,7 +1103,7 @@ export class SqliteStore implements Store {
 
 	#label(entryRef: string, add: string[], remove: string[], author: string): Entry {
 		return this.#writeEntry(() => {
-			const target = this.#requireEntryRow(entryRef)
+			const target = this.#requireLiveEntryRow(entryRef, 'tagged')
 			this.#guardReservedTags(target.channel, [...add, ...remove], author)
 			for (const tag of add) this.#run('INSERT OR IGNORE INTO entry_tags (entry, tag) VALUES (?, ?)', target.id, tag)
 			for (const tag of remove) this.#run('DELETE FROM entry_tags WHERE entry = ? AND tag = ?', target.id, tag)
@@ -1129,6 +1188,45 @@ export class SqliteStore implements Store {
 		return row
 	}
 
+	#requireLiveEntryRow(ref: string, act: string): EntryRow {
+		const row = this.#requireEntryRow(ref)
+		if (row.deleted_at) throw new CynapseError(`${row.handle}#${row.seq} was deleted, so it cannot be ${act}`)
+		return row
+	}
+
+	/**
+	 * Erases an entry's content and keeps its row, so `seq` is never handed out again and
+	 * replies and anchors still resolve (ADR-0014). The caller logs the delete.
+	 */
+	#tombstone(id: string, author: string): void {
+		this.#run(
+			`UPDATE entries SET body = '', data = NULL, refs = '[]', tags = '[]', deleted_at = ?, deleted_by = ?
+			WHERE id = ?`,
+			this.#now(),
+			author,
+			id,
+		)
+		this.#run('DELETE FROM entry_tags WHERE entry = ?', id)
+		this.#run('DELETE FROM pins WHERE entry = ?', id)
+	}
+
+	/**
+	 * The entry that logged a tombstone's delete: its own `cynapse.entry.deleted`, or the
+	 * first channel delete after it, whichever came first.
+	 */
+	#deletionOf(target: EntryRow): Entry {
+		const log = this.#get<{ id: string }>(
+			`SELECT id FROM entries WHERE channel = ?1 AND seq > ?2 AND (
+				(type = 'cynapse.entry.deleted' AND json_extract(data, '$.target') = ?3)
+				OR type = 'cynapse.channel.deleted')
+			ORDER BY seq LIMIT 1`,
+			target.channel,
+			target.seq,
+			target.id,
+		) as { id: string }
+		return this.#toEntry(this.#findEntryRow(log.id) as EntryRow)
+	}
+
 	#loadChannel(id: string, as?: string): Channel {
 		const row = this.#get<ChannelRow>('SELECT * FROM channels WHERE id = ?', id)
 		if (!row) throw new CynapseError(`no channel found for "${id}"`, { code: 'not_found' })
@@ -1154,8 +1252,10 @@ export class SqliteStore implements Store {
 			'SELECT e.seq FROM pins p JOIN entries e ON e.id = p.entry WHERE p.channel = ? ORDER BY e.seq',
 			id,
 		).map((p) => p.seq)
+		// A tombstone does not count as an entry, but its seq was handed out, so it counts in lastSeq.
 		const stats = this.#get<{ entries: number; lastSeq: number | null; lastAt: string | null }>(
-			'SELECT COUNT(*) AS entries, MAX(seq) AS lastSeq, MAX(recorded_at) AS lastAt FROM entries WHERE channel = ?',
+			`SELECT COUNT(*) - COUNT(deleted_at) AS entries, MAX(seq) AS lastSeq, MAX(recorded_at) AS lastAt
+			FROM entries WHERE channel = ?`,
 			id,
 		)
 		let parent: Channel['parent']
@@ -1168,7 +1268,7 @@ export class SqliteStore implements Store {
 		if (as) {
 			unread =
 				this.#get<{ count: number }>(
-					'SELECT COUNT(*) AS count FROM entries WHERE channel = ? AND seq > ? AND author <> ?',
+					'SELECT COUNT(*) AS count FROM entries WHERE channel = ? AND seq > ? AND author <> ? AND deleted_at IS NULL',
 					id,
 					this.#cursor(id, as),
 					as,
@@ -1222,6 +1322,7 @@ export class SqliteStore implements Store {
 			// A writer-supplied id may not be a UUIDv7; fall back to arrival time then.
 			createdAt: row.id[14] === '7' && Number.isFinite(created) ? new Date(created).toISOString() : row.recorded_at,
 			recordedAt: row.recorded_at,
+			...(row.deleted_at ? { deleted: { at: row.deleted_at, by: row.deleted_by ?? '' } } : {}),
 		}
 	}
 
@@ -1412,6 +1513,9 @@ function applyFilter(filter: ViewFilter, where: string[], params: SQLInputValue[
 		params.push(...filter.excludeAuthors)
 	}
 }
+
+/** The lifecycle state `deleteChannel` sets; listings hide it unless asked. */
+const DELETED_STATE = 'deleted'
 
 /** The reserved tag that marks an entry on an address channel as handled by its owner. */
 export const HANDLED_TAG = 'cynapse.handled'

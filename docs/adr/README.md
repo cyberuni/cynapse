@@ -22,3 +22,4 @@ A decision is changed by a new record that supersedes the old one, never by rewr
 | [0011](0011-cynapse-stores-only-what-no-other-store-can.md) | cynapse stores only what no other store can; it guides and composes |
 | [0012](0012-channels-are-keyed-by-subject.md) | Channels are keyed by subject: address and work channels |
 | [0013](0013-messaging-between-participants.md) | Messaging between participants on work and address channels |
+| [0014](0014-deleting-entries-and-channels.md) | Deleting an entry or a channel |

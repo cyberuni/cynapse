@@ -132,6 +132,7 @@ interface Entry {
   data?: Record<string, unknown>   // typed payload; absent when read metadata-only
   createdAt: string       // when the writer minted it, from the UUIDv7
   recordedAt: string      // when it arrived in the channel
+  deleted?: { at: string; by: string }   // on a tombstone: content erased, place kept (ADR-0014)
 }
 ```
 

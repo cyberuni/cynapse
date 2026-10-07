@@ -7,7 +7,9 @@ export function entryLine(entry: Entry): string {
 	const tags = entry.tags.length ? `  [${entry.tags.join(', ')}]` : ''
 	const reply = entry.parentSeq ? `  ↳${entry.channel}#${entry.parentSeq}` : ''
 	const firstLine = entry.body.split('\n', 1)[0] ?? ''
-	const summary = firstLine || (entry.data ? JSON.stringify(entry.data) : '')
+	const summary = entry.deleted
+		? `(deleted by ${entry.deleted.by})`
+		: firstLine || (entry.data ? JSON.stringify(entry.data) : '')
 	return `${entry.channel}#${entry.seq}  ${entry.createdAt}  ${entry.author}  ${entry.type}${tags}${reply}${summary ? `  ${truncate(summary, 100)}` : ''}`
 }
 
@@ -17,6 +19,7 @@ export function entryDetail(entry: Entry): string {
 		`id: ${entry.id}`,
 		`created: ${entry.createdAt}  recorded: ${entry.recordedAt}`,
 	]
+	if (entry.deleted) lines.push(`deleted: ${entry.deleted.at} by ${entry.deleted.by}`)
 	if (entry.parent) lines.push(`parent: ${entry.channel}#${entry.parentSeq}  root: ${entry.channel}#${entry.rootSeq}`)
 	if (entry.tags.length) lines.push(`tags: ${entry.tags.join(', ')}`)
 	if (entry.refs.length) lines.push(`refs: ${entry.refs.map((ref) => renderRef(ref).markdown).join(', ')}`)
