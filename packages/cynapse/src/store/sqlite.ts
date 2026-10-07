@@ -1484,8 +1484,10 @@ function mergeFilters(view: ViewFilter, extra: ViewFilter): ViewFilter {
 function applyFilter(filter: ViewFilter, where: string[], params: SQLInputValue[]): void {
 	const typeClause = (type: string) => {
 		if (type.endsWith('.*')) {
-			params.push(`${type.slice(0, -1)}%`)
-			return 'e.type LIKE ?'
+			// Not LIKE: it ignores case and treats `_` and `%` as wildcards.
+			const prefix = type.slice(0, -1)
+			params.push(prefix, prefix)
+			return 'substr(e.type, 1, length(?)) = ?'
 		}
 		params.push(type)
 		return 'e.type = ?'

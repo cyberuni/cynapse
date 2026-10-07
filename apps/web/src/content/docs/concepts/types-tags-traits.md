@@ -25,9 +25,8 @@ Filters accept an exact type or a namespace prefix ending in `.*`:
 cynapse entry list m-seq-order --type 'sdd.*' --exclude-type 'sdd.leash'
 ```
 
-An exact type matches case-sensitively. A prefix ignores case, and `_` in it matches any
-one character, so `--type 'X.*'` also lists `x.note`. Keep types lowercase and avoid `_`
-in namespaces.
+Both forms match case-sensitively and literally: `--type 'X.*'` does not list `x.note`,
+and `_` or `%` in a prefix matches only itself.
 
 ## Type versus tag
 

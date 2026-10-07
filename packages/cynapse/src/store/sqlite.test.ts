@@ -113,6 +113,20 @@ describe('channels', () => {
 })
 
 describe('entries', () => {
+	it('matches a type prefix literally and case-sensitively', () => {
+		mission()
+		for (const type of ['x.n', 'demo.msg', 'de_o.msg', 'de%o.msg'])
+			store.append('auth', { author: 'alice', type, body: type })
+		const types = (type: string) => store.entries('auth', { types: [type] }).map((e) => e.type)
+		expect(types('X.*')).toEqual([])
+		expect(types('x.*')).toEqual(['x.n'])
+		expect(types('de_o.*')).toEqual(['de_o.msg'])
+		expect(types('de%o.*')).toEqual(['de%o.msg'])
+		expect(
+			store.entries('auth', { types: ['de_o.*', 'de%o.*', 'demo.*'], excludeTypes: ['de_o.*'] }).map((e) => e.type),
+		).toEqual(['demo.msg', 'de%o.msg'])
+	})
+
 	it('assigns contiguous seqs in arrival order', () => {
 		mission()
 		const seqs = [1, 2, 3].map((n) => store.append('auth', { author: 'alice', type: 'note', body: `n${n}` }).seq)
