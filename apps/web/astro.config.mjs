@@ -41,6 +41,20 @@ export default defineConfig({
 					],
 				},
 				{
+					label: 'Use cases',
+					items: [
+						{ label: 'Overview', slug: 'use-cases' },
+						{ label: 'Ask a role', slug: 'use-cases/ask-a-role' },
+						{ label: 'Work on an issue', slug: 'use-cases/work-on-an-issue' },
+						{ label: 'Bring a person in', slug: 'use-cases/person-in-the-loop' },
+						{ label: 'Run agents', slug: 'use-cases/run-agents' },
+						{ label: 'Settle a disagreement', slug: 'use-cases/settle-a-disagreement' },
+						{ label: 'Keep a ledger', slug: 'use-cases/keep-a-ledger' },
+						{ label: 'Watch without disturbing', slug: 'use-cases/watch' },
+						{ label: 'Remove a mistake', slug: 'use-cases/remove-a-mistake' },
+					],
+				},
+				{
 					label: 'Guides',
 					items: [
 						{ label: 'Use the CLI', slug: 'guides/cli' },

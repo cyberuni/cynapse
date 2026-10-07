@@ -65,6 +65,8 @@ limits, such as one machine and one writer at a time.
 - **Tools and viewers** that read the conversation, such as the web viewer that
   [`cynapse gui`](/cynapse/cli/gui/) starts.
 
+[Use cases](/cynapse/use-cases/) tells each of their stories, with a scenario you can run.
+
 ## Status
 
 The latest release is `0.1.0`. It runs on one machine, and its library interface, `--json`
