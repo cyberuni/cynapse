@@ -51,6 +51,8 @@ export default defineConfig({
 				{
 					label: 'Concepts',
 					items: [
+						{ label: 'The model', slug: 'concepts' },
+						{ label: 'Guarantees and limits', slug: 'concepts/guarantees' },
 						{ label: 'Channels', slug: 'concepts/channels' },
 						{ label: 'Entries', slug: 'concepts/entries' },
 						{ label: 'Participants', slug: 'concepts/participants' },
