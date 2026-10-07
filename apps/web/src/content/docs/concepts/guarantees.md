@@ -57,8 +57,9 @@ with `uuidgen`, and pass the same `id` on every retry.
   Each write is short, so the turns are short.
 - **A writer waits up to 10 seconds for the lock,** then fails with
   `database is locked` (exit `1`, code `failure`). Retry it.
-- **A reader doesn't wait for writers once the store is open.** Opening the store takes the
-  write lock briefly to check the schema version, so an open can wait behind a writer.
+- **A reader doesn't wait for writers.** Opening a current store reads its schema version
+  without a lock. Only the first open after an upgrade, which migrates the schema, takes
+  the write lock and can wait behind a writer.
 - **The file must be on a local filesystem, used by processes on one host.** SQLite's
   write-ahead log needs shared memory between them. A network filesystem isn't supported.
 

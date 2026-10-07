@@ -31,7 +31,7 @@ Each connection sets:
 
 | Setting | Value | Effect |
 | --- | --- | --- |
-| `journal_mode` | `WAL` | Readers that have opened the store keep reading while another process writes. |
+| `journal_mode` | `WAL` | Readers keep reading while another process writes. |
 | `synchronous` | `NORMAL` | A commit survives a crash of the process. A power loss can lose the latest commits. |
 | `busy_timeout` | 10 000 ms | A write waits up to 10 seconds for another writer, then fails with `database is locked`. |
 | `foreign_keys` | `ON` | Rows can't point at a channel or entry that doesn't exist. |
@@ -40,8 +40,8 @@ Every write runs under `BEGIN IMMEDIATE`, which takes the store's single write l
 it reads anything. A new entry's `seq` is the channel's last `seq` + 1, assigned inside that
 transaction. A metadata change and the `cynapse.*` entry that records it commit together.
 
-Opening the store also takes the write lock for a moment, to check the schema version. So
-an open, even for a read, waits behind a writer that holds the lock.
+Opening the store reads the schema version without a lock, so opening a current database
+doesn't wait behind a writer. Only an open that has migrations to run takes the write lock.
 
 `cynapse dev load-test` checks the ordering under load: concurrent writer processes append
 to one channel, then the test checks that `seq` has no gaps or repeats and runs SQLite's
@@ -49,9 +49,10 @@ to one channel, then the test checks that `seq` has no gaps or repeats and runs 
 
 ## Schema version and migrations
 
-The database records its schema version in `PRAGMA user_version`. Opening a store runs the
-forward migrations it hasn't run yet, all in one write transaction, so several processes
-opening a fresh database at once migrate it once. A failed migration leaves the database at
+The database records its schema version in `PRAGMA user_version`. Opening a store reads
+it, and when it is behind, takes the write lock, reads it again, and runs the forward
+migrations it hasn't run yet, all in one write transaction. So several processes opening a
+fresh database at once migrate it once. A failed migration leaves the database at
 its old version.
 
 A database written by a newer cynapse fails to open with `schema_too_new`, and nothing is
