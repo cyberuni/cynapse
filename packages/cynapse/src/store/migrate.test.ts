@@ -239,6 +239,49 @@ describe('the change-token migration', () => {
 	})
 })
 
+describe('the owner-membership migration', () => {
+	it('makes the owner of every address channel a member, logged as cynapse.member.joined', () => {
+		const path = join(dir, 'v5-owners.db')
+		const before = new SqliteStore({ path })
+		before.createChannel({
+			handle: 'gh:cyberuni/cynapse',
+			type: 'cynapse.repo',
+			title: 'cyberuni/cynapse',
+			author: 'legion',
+			subject: { store: 'gh', nativeId: 'R_kgDOPfmJ6A' },
+			kind: 'address',
+			owner: 'unional',
+		})
+		before.createChannel({ handle: 'auth', type: 'sdd.mission', title: 'Add auth', author: 'alice' })
+		before.close()
+		// Rewind to the state version 5 left: an owner with no membership.
+		const db = new DatabaseSync(path)
+		db.exec(`DELETE FROM entry_tags; DELETE FROM members;
+			DELETE FROM entries WHERE type = 'cynapse.member.joined'; PRAGMA user_version = 5`)
+		const clock = (db.prepare('SELECT change FROM store_clock').get() as { change: number }).change
+		db.close()
+
+		const store = new SqliteStore({ path })
+		try {
+			expect(store.getChannel('gh:cyberuni/cynapse')?.members).toEqual([
+				{ participant: 'unional', role: 'owner', cursor: 0 },
+			])
+			expect(store.getChannel('auth')?.members).toEqual([])
+			const joined = store.entries('gh:cyberuni/cynapse', { types: ['cynapse.member.joined'] })
+			expect(joined).toMatchObject([{ seq: 2, author: 'legion', data: { participant: 'unional', role: 'owner' } }])
+			expect(store.unread('unional')).toEqual([expect.objectContaining({ handle: 'gh:cyberuni/cynapse' })])
+		} finally {
+			store.close()
+		}
+		const check = new DatabaseSync(path)
+		try {
+			expect((check.prepare('SELECT change FROM store_clock').get() as { change: number }).change).toBe(clock + 1)
+		} finally {
+			check.close()
+		}
+	})
+})
+
 describe('migrate', () => {
 	const v1: Migration = 'CREATE TABLE IF NOT EXISTS notes (id TEXT PRIMARY KEY) STRICT;'
 

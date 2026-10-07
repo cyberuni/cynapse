@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { uuidv7 } from '../ids.js'
 import type { Migration } from './migrate.js'
 
 /**
@@ -175,6 +176,39 @@ CREATE INDEX participants_registered_by ON participants (registered_by);
 ALTER TABLE entries ADD COLUMN deleted_at TEXT;
 ALTER TABLE entries ADD COLUMN deleted_by TEXT;
 `,
+	// 6: the owner of an address channel is a member of it, with role `owner`, so the channel
+	// counts in the owner's unread. Each backfilled membership is logged as
+	// `cynapse.member.joined`, by the author who created the channel, as creating it does now.
+	(db) => {
+		const missing = db
+			.prepare(
+				`SELECT c.id AS channel, c.owner AS owner,
+					(SELECT e.author FROM entries e WHERE e.channel = c.id ORDER BY e.seq LIMIT 1) AS author
+				FROM channels c
+				WHERE c.kind = 'address' AND c.owner IS NOT NULL
+					AND NOT EXISTS (SELECT 1 FROM members m WHERE m.channel = c.id AND m.participant = c.owner)
+				ORDER BY c.created_at, c.id`,
+			)
+			.all() as { channel: string; owner: string; author: string | null }[]
+		const join = db.prepare(
+			`INSERT INTO members (channel, participant, role) VALUES (?, ?, 'owner')
+			ON CONFLICT (channel, participant) DO UPDATE SET role = excluded.role`,
+		)
+		const log = db.prepare(
+			`INSERT INTO entries (id, channel, seq, author, type, refs, tags, body, data, recorded_at)
+			VALUES (?, ?, (SELECT COALESCE(MAX(seq), 0) + 1 FROM entries WHERE channel = ?2), ?, 'cynapse.member.joined',
+				'[]', '[]', '', ?, ?)`,
+		)
+		const tick = db.prepare('UPDATE store_clock SET change = change + 1')
+		const touch = db.prepare('UPDATE channels SET change = (SELECT change FROM store_clock) WHERE id = ?')
+		for (const { channel, owner, author } of missing) {
+			join.run(channel, owner)
+			const data = JSON.stringify({ participant: owner, role: 'owner' })
+			log.run(uuidv7(), channel, author ?? owner, data, new Date().toISOString())
+			tick.run()
+			touch.run(channel)
+		}
+	},
 ]
 
 /** The version a database is at once every migration has run. */
