@@ -65,6 +65,9 @@ const DEFAULT_HELP: Record<string, string> = {
 	not_owner: "act as the channel's owner with --as <owner>, or leave cynapse.handled to them",
 	invalid_token: 'pass a token printed by `cynapse changes`, or call `cynapse changes` without --since to start over',
 	foreign_token: 'call `cynapse changes` without --since to start over against this store',
+	busy: 'another process holds the write lock on the database; retry the command',
+	storage:
+		'check the database file ($CYNAPSE_HOME/cynapse.db): free disk space if the disk is full, then run `sqlite3 <file> "PRAGMA integrity_check"`',
 	schema_too_new: 'upgrade cynapse to the release that wrote this database: npm install -g cynapse@latest',
 	port_in_use: 'pass --port <n> to pick another port',
 	gui_not_installed: 'install it next to cynapse: npm install -g @cyberuni/cynapse-gui',

@@ -57,7 +57,7 @@ help: check the reference: `cynapse channel list`, `cynapse entry list <channel>
 
 Every error suggests a next step on a `help:` line, so an agent is never left at a dead end.
 A failure with no code of its own is `failure` with exit `1`. A database locked by another writer for more
-than 10 seconds fails this way with the message `database is locked`, and its help is the generic bug help. A usage
+than 10 seconds fails with `busy`, and its help says to retry. A usage
 error names what the command accepts: an unknown flag lists the command's flags, and a command group
 run without a subcommand lists its subcommands, on stdout rather than as usage on stderr.
 

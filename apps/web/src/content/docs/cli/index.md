@@ -114,6 +114,8 @@ The `code` is the contract; the `message` and `help` are for people and agents t
 | `not_owner` | `1` | Only the address channel's owner may add or remove `cynapse.handled`. Ask the owner. |
 | `not_address` | `1` | `cynapse.handled` was given on a work channel; it is defined on address channels only. |
 | `schema_too_new` | `1` | The database was written by a newer cynapse than this one. Upgrade cynapse; don't write to it with this version. |
+| `busy` | `1` | Another process held the database's write lock for longer than the 10 s busy timeout. Retry the command. |
+| `storage` | `1` | SQLite could not use the database file: the disk is full, an I/O error, or the file is damaged or not a database. `help` names the file and the check to run; don't retry until it passes. |
 | `port_in_use` | `1` | `cynapse gui` can't bind its port. Pass `--port`. |
 | `gui_not_installed` | `1` | `cynapse gui` can't find `@cyberuni/cynapse-gui`. |
 | `invalid_token` | `1` | `changes --since` got something that isn't a change token. Call `changes` without `--since`. |
@@ -121,7 +123,7 @@ The `code` is the contract; the `message` and `help` are for people and agents t
 | `timeout` | `3` | `entry wait` saw no reply within `--timeout`. Wait again, or give up. |
 | `ambiguous_address` | `4` | The name matches more than one live participant. `error.candidates` lists each one's `id`, `kind`, `name` and `registeredBy`; address one by its id. |
 | `unknown_address` | `5` | The name matches no live participant. Check the name, or register it. |
-| `failure` | `1` | Any failure not yet given its own code. Read it only as "failed". A database locked by another writer for more than 10 seconds fails this way, with the message `database is locked` and the generic bug help. Retry it later. |
+| `failure` | `1` | Any failure not yet given its own code. Read it only as "failed". |
 
 A failure that gets its own code later moves out of `failure`; a code above never changes meaning.
 
@@ -130,7 +132,7 @@ A failure that gets its own code later moves out of `failure`; a code above neve
 | Code | Meaning |
 | --- | --- |
 | `0` | Success, including `--help` and `--version`. |
-| `1` | The command ran and failed: no such channel or entry (`not_found`), an id conflict (`id_conflict`), a database newer than this cynapse (`schema_too_new`), `cynapse.handled` by someone other than the address channel's owner (`not_owner`) or on a work channel (`not_address`), a taken handle, a subject key that already keys another channel, `--owner` on a work channel, a deleted entry given to `channel pin`, `tag` or `entry append --parent`, `entry delete` on a `cynapse.*` entry, `state lifecycle <channel> deleted`, a database locked for more than 10 seconds (`database is locked`), a failed load test. |
+| `1` | The command ran and failed: no such channel or entry (`not_found`), an id conflict (`id_conflict`), a database newer than this cynapse (`schema_too_new`), `cynapse.handled` by someone other than the address channel's owner (`not_owner`) or on a work channel (`not_address`), a taken handle, a subject key that already keys another channel, `--owner` on a work channel, a deleted entry given to `channel pin`, `tag` or `entry append --parent`, `entry delete` on a `cynapse.*` entry, `state lifecycle <channel> deleted`, a database locked by another process for more than 10 seconds (`busy`) or one SQLite can't use (`storage`), a failed load test. |
 | `2` | Usage error: unknown flag or subcommand, a command group run without a subcommand (the error lists its subcommands), missing `--as`, an option value that does not parse (`--data`, `--value`, `--after`, `--limit`, `--port`, …), `--membership`, `--kind` or `--status` outside its set, `--store` without `--native-id` (or the reverse), `--kind address` without `--owner`, `tag` with nothing to do, `dev seed --reset` without `--db`. |
 | `3` | Timed out: `entry wait` saw no reply within `--timeout` (`timeout`). |
 | `4` | Ambiguous address: `participant resolve` or `entry send` named more than one live participant (`ambiguous_address`). |
