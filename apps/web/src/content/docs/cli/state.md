@@ -1,6 +1,6 @@
 ---
 title: state
-description: State records and channel lifecycle — what is true on a channel right now.
+description: State records and channel lifecycle, which say what is true on a channel right now.
 ---
 
 A channel's log says what happened; a **state record** says what is true now: an unanswered
@@ -87,10 +87,14 @@ cynapse --as council state set notes-2 ask-1 --kind needs-input --status resolve
 
 ## `cynapse state lifecycle`
 
-Move a channel to a lifecycle state. The state is a free-form string — channels start `active`; the
+Move a channel to a lifecycle state. The state is a free-form string. Channels start `active`; the
 seeded data uses `active`, `reconciled`, `closed` and `escalated`. The change appears in
 [`channel list --state`](/cynapse/cli/channel/#cynapse-channel-list) immediately and is logged as a
 `cynapse.state.changed` entry with `kind: "lifecycle"`.
+
+`deleted` is reserved: `state lifecycle <channel> deleted` fails with exit `1`, and
+[`channel delete`](/cynapse/cli/channel/#cynapse-channel-delete) sets it. Moving a deleted channel to
+another state, such as `active`, restores it to listings.
 
 **Usage**
 

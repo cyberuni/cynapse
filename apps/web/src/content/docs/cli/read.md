@@ -7,12 +7,17 @@ Read state is a per-participant cursor on each channel: the last `seq` that part
 An entry is unread when its `seq` is past your cursor and you did not write it. See
 [Read state](/cynapse/concepts/read-state/).
 
-Both commands act as `--as` / `$CYNAPSE_PARTICIPANT` and exit `2` without one.
+`read` and `unread` act as `--as` / `$CYNAPSE_PARTICIPANT` and exit `2` without one. `changes` needs no identity.
 
 ## `cynapse read`
 
-Advance your cursor on a channel — to the latest entry by default, or to `--to <seq>`. The cursor only
-moves forward: marking an older `seq` after a newer one leaves the cursor where it was, and a `--to`
+Advance your cursor on a channel to `--to <seq>`, or to the latest entry.
+
+Without `--to`, the cursor moves to the channel's latest entry, including entries you have not listed.
+An entry that lands after you list and before you run `read` is marked read unseen. Pass `--to <seq>` with
+the last entry you actually processed.
+
+The cursor only moves forward: marking an older `seq` after a newer one leaves the cursor where it was, and a `--to`
 past the end is clamped to the last entry. Reading a channel you are not a member of works and records
 a cursor for you.
 
@@ -48,6 +53,7 @@ List the channels that have unread entries for you, with a count each, sorted by
 to report it prints `0 unread channels found`.
 
 - In a channel you are a **member** of, every entry past your cursor that you did not write counts.
+  `cynapse.*` metadata entries count too: a tag added later is a `cynapse.label` entry and counts as unread.
 - In a channel you are **not** a member of, only replies in threads you **follow** count. You follow
   every thread you wrote an entry in, so the asker of a question on someone else's channel sees the
   answer here. A reply counts when it comes after both your cursor on that channel and your own last
@@ -55,6 +61,9 @@ to report it prints `0 unread channels found`.
 
 Following is derived from the entries; nothing is stored for it. A channel is listed once, whichever
 way its entries count.
+
+A registered participant owns its address channel but is not a member of it. That channel never appears in
+the participant's own `unread`. Read it with [`entry list <handle> --unread`](/cynapse/cli/entry/#cynapse-entry-list).
 
 **Usage**
 
@@ -72,8 +81,13 @@ cynapse --as council unread
 coord-cynapse  1 unread
 dm-council-conductor  4 unread
 epic-store  2 unread
+epic-viewer  5 unread
+feed-cynapse  2 unread
 graph-agent-comms  31 unread
+m-channel-ids  5 unread
+m-cortex-shell  7 unread
 truss-pagination  3 unread
+truss-pagination-arb-2  16 unread
 ```
 
 Under `--json` this is `{ "count": n, "items": [{ "channelId", "handle", "count" }] }`.
