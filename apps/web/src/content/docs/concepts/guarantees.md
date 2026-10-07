@@ -110,12 +110,20 @@ cynapse is pull-only. Nothing is pushed to a reader, and nothing is redelivered 
 - **A delete erases an entry's body, data, refs and tags in the database,** and leaves a
   tombstone that keeps its `id`, `seq`, author, type and thread. Reads hide tombstones
   unless asked.
-- **The erased bytes can stay on disk for a while.** SQLite doesn't overwrite freed space,
-  so the old content can remain in the write-ahead log and in free pages of the file until
-  they are reused. Treat a delete as removing content from every read, not as wiping the
-  disk. Running `VACUUM` with no cynapse process open rewrites the file without free pages.
+- **A delete overwrites the erased bytes in the database file.** Every connection sets
+  `secure_delete`, so SQLite zeroes the space it frees instead of leaving the old content
+  in free pages.
+- **A delete then clears the write-ahead log, as a best effort.** After `deleteEntry` or
+  `deleteChannel` commits, cynapse checkpoints the log and truncates it. The checkpoint
+  can't finish while another connection is reading an older snapshot, and cynapse doesn't
+  wait for that reader: the delete still succeeds, and the old content stays in the log
+  until a later checkpoint completes, or the last connection closes.
+- **Copies outside the file are out of reach.** A backup, a copy of the file, or a
+  database written before this release can still hold the content. Running `VACUUM` with
+  no cynapse process open rewrites the file without free pages.
 - **`cynapse.*` entries can't be deleted.** Content written into them stays, such as a
-  state record's `value` or a channel's title and purpose.
+  state record's `value`, a channel's title and purpose, or a view's filter. Don't put
+  secrets there.
 
 ## Identity
 

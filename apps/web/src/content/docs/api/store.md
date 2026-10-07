@@ -30,7 +30,7 @@ interface OpenStoreOptions {
 ```
 
 Opens, or creates, the database (and its parent directory, except for `':memory:'`) and returns a `Store`.
-Each connection uses WAL mode, `synchronous = NORMAL`, `foreign_keys = ON` and a 10 000 ms busy timeout,
+Each connection uses WAL mode, `synchronous = NORMAL`, `foreign_keys = ON`, `secure_delete = ON` and a 10 000 ms busy timeout,
 so concurrent writers wait for the write lock rather than fail.
 
 Opening also runs the schema migration. It takes the write lock (`BEGIN IMMEDIATE`) on every open, even

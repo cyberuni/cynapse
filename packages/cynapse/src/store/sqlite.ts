@@ -660,7 +660,7 @@ export class SqliteStore implements Store {
 	}
 
 	deleteChannel(ref: string, author: string): Entry {
-		return this.#writeEntry(() => {
+		return this.#erasing(() => {
 			const id = this.#requireChannelId(ref)
 			const from = (this.#get<{ state: string }>('SELECT state FROM channels WHERE id = ?', id) as { state: string })
 				.state
@@ -804,7 +804,7 @@ export class SqliteStore implements Store {
 	}
 
 	deleteEntry(entryRef: string, author: string): Entry {
-		return this.#writeEntry(() => {
+		return this.#erasing(() => {
 			// No permission check: no caller can be verified, so the log naming who deleted is the record.
 			const target = this.#requireEntryRow(entryRef)
 			if (target.deleted_at) return this.#deletionOf(target)
@@ -998,6 +998,26 @@ export class SqliteStore implements Store {
 	#writeEntry(fn: () => Entry): Entry {
 		const id = this.#write(() => fn().id)
 		return this.entry(id) as Entry
+	}
+
+	/**
+	 * Runs a delete, then checkpoints the WAL so the erased content leaves it too. Best
+	 * effort: a reader holding an older snapshot keeps the WAL, and the delete has already
+	 * committed, so it neither waits for that reader nor fails.
+	 */
+	#erasing(fn: () => Entry): Entry {
+		const entry = this.#writeEntry(fn)
+		if (this.#db.isTransaction) return entry
+		const { busy_timeout } = this.#get<{ busy_timeout: number }>('PRAGMA busy_timeout') as { busy_timeout: number }
+		try {
+			this.#db.exec('PRAGMA busy_timeout = 0')
+			this.#db.exec('PRAGMA wal_checkpoint(TRUNCATE)')
+		} catch {
+			// Another connection holds the lock; the next checkpoint clears the WAL.
+		} finally {
+			this.#db.exec(`PRAGMA busy_timeout = ${busy_timeout}`)
+		}
+		return entry
 	}
 
 	#appendIn(channelId: string, input: AppendInput): Entry {

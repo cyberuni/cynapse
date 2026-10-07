@@ -16,6 +16,8 @@ export function connect(path: string, options: ConnectOptions = {}): DatabaseSyn
 		enableWal(db, busyTimeoutMs)
 		db.exec('PRAGMA synchronous = NORMAL')
 		db.exec('PRAGMA foreign_keys = ON')
+		// Overwrite freed content, so an erased entry does not linger in free pages (ADR-0014).
+		db.exec('PRAGMA secure_delete = ON')
 	} catch (error) {
 		db.close()
 		throw error

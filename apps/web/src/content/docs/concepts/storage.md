@@ -35,6 +35,7 @@ Each connection sets:
 | `synchronous` | `NORMAL` | A commit survives a crash of the process. A power loss can lose the latest commits. |
 | `busy_timeout` | 10 000 ms | A write waits up to 10 seconds for another writer, then fails with `database is locked`. |
 | `foreign_keys` | `ON` | Rows can't point at a channel or entry that doesn't exist. |
+| `secure_delete` | `ON` | Freed space is zeroed, so a deleted entry's content doesn't stay in free pages. |
 
 Every write runs under `BEGIN IMMEDIATE`, which takes the store's single write lock before
 it reads anything. A new entry's `seq` is the channel's last `seq` + 1, assigned inside that
