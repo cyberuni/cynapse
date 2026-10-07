@@ -51,17 +51,17 @@ is its own cursor.
 
 ```console
 $ cynapse --as auditor entry list reviewer --unread --exclude-type 'cynapse.*'
-reviewer#3  2026-10-07T04:14:29.435Z  builder  demo.ask  Review the login fix?
+reviewer#4  2026-10-07T04:14:29.435Z  builder  demo.ask  Review the login fix?
 
-$ cynapse --as auditor read reviewer --to 3
-auditor has read reviewer up to seq 3
+$ cynapse --as auditor read reviewer --to 4
+auditor has read reviewer up to seq 4
 ```
 
 **Then** the reviewer's own unread is unchanged:
 
 ```console
 $ cynapse --as "$REVIEWER" entry list reviewer --unread --exclude-type 'cynapse.*'
-reviewer#3  2026-10-07T04:14:29.435Z  builder  demo.ask  Review the login fix?
+reviewer#4  2026-10-07T04:14:29.435Z  builder  demo.ask  Review the login fix?
 ```
 
 **When** the builder writes in two channels:
@@ -71,7 +71,7 @@ $ cynapse --as builder entry append gh:acme/app/12 --type demo.report --body "Fi
 appended gh:acme/app/12#3  01a11491-f239-70e3-84c6-9298ebc7f71f
 
 $ cynapse --as builder entry send reviewer --type demo.ask --body "CI is green now."
-sent reviewer#4  01a11491-f3a0-7093-be3c-9b60ed8dcd6d
+sent reviewer#5  01a11491-f3a0-7093-be3c-9b60ed8dcd6d
 ```
 
 **Then** the change token names both channels, and the auditor lists the builder's
@@ -80,14 +80,14 @@ entries in each:
 ```console
 $ cynapse changes --since "$TOKEN"
 gh:acme/app/12  seq 3
-reviewer  seq 4
+reviewer  seq 5
 token: cyn1.NjY2YzcxZGYtNWM2Yy00ZDk5LWE4YjAtZDNhNzhiMjFhNTg2Ojk
 
 $ cynapse --as auditor entry list gh:acme/app/12 --author builder --exclude-type 'cynapse.*'
 gh:acme/app/12#3  2026-10-07T04:14:31.481Z  builder  demo.report  Fix pushed.
 
-$ cynapse --as auditor entry list reviewer --author builder --after 3
-reviewer#4  2026-10-07T04:14:31.840Z  builder  demo.ask  CI is green now.
+$ cynapse --as auditor entry list reviewer --author builder --after 4
+reviewer#5  2026-10-07T04:14:31.840Z  builder  demo.ask  CI is green now.
 ```
 
 The auditor keeps the new token for its next poll.

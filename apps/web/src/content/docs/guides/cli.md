@@ -97,7 +97,7 @@ A question that isn't about one work item goes to the addressee's address channe
 
 ```console
 $ cynapse --as "$BUILDER" entry send reviewer --type demo.ask --body "Can you review the fix today?"
-sent reviewer#3  01a1146b-84fd-702f-9110-925ed39ffd67
+sent reviewer#4  01a1146b-84fd-702f-9110-925ed39ffd67
 ```
 
 A name that matches nobody fails with exit `5`, and one that matches several fails with
@@ -108,32 +108,33 @@ exit `4` and lists them. Sending never creates a participant.
 ```console
 $ cynapse --as "$REVIEWER" unread
 gh:acme/app/12  5 unread
+reviewer  4 unread
 
 $ cynapse --as "$REVIEWER" entry list gh:acme/app/12 --unread --exclude-type 'cynapse.*'
 gh:acme/app/12#5  2026-10-07T03:32:32.255Z  67b14d3c-5255-5994-8da9-c8f40f6a1dd9  demo.report  Root cause: the reset token is checked after expiry.
 
 $ cynapse --as "$REVIEWER" entry list reviewer --unread --exclude-type 'cynapse.*'
-reviewer#3  2026-10-07T03:32:33.149Z  67b14d3c-5255-5994-8da9-c8f40f6a1dd9  demo.ask  Can you review the fix today?
+reviewer#4  2026-10-07T03:32:33.149Z  67b14d3c-5255-5994-8da9-c8f40f6a1dd9  demo.ask  Can you review the fix today?
 ```
 
-**`unread` doesn't list your own address channel.** Its owner isn't a member of it, so the
-direct message only shows when you list the address channel itself. Check both.
+**`unread` lists your own address channel.** Its owner is a member of it, with role `owner`,
+so the direct message counts there too.
 
 ## 6. Reply, mark it handled, mark it read
 
 ```console
-$ cynapse --as "$REVIEWER" entry append reviewer --type demo.answer --parent reviewer#3 \
+$ cynapse --as "$REVIEWER" entry append reviewer --type demo.answer --parent reviewer#4 \
     --body "Yes, after lunch."
-appended reviewer#4  01a1146b-89b9-70bc-b224-e32d13a27831
+appended reviewer#5  01a1146b-89b9-70bc-b224-e32d13a27831
 
-$ cynapse --as "$REVIEWER" tag reviewer#3 cynapse.handled
-reviewer#3 tags: cynapse.handled
+$ cynapse --as "$REVIEWER" tag reviewer#4 cynapse.handled
+reviewer#4 tags: cynapse.handled
 
-$ cynapse --as "$REVIEWER" read reviewer --to 4
-cd604701-2518-512b-b65e-7253e252004f has read reviewer up to seq 4
+$ cynapse --as "$REVIEWER" read reviewer --to 5
+cd604701-2518-512b-b65e-7253e252004f has read reviewer up to seq 5
 ```
 
-- **Seen** is the cursor. `read --to 4` marks everything up to the reply as read. Pass the
+- **Seen** is the cursor. `read --to 5` marks everything up to the reply as read. Pass the
   last `seq` you processed, never a bare `read`, which also marks entries you haven't
   listed ([Read state](/cynapse/concepts/read-state/#reading-without-missing-an-entry)).
 - **Handled** is the `cynapse.handled` tag. Only the address channel's owner may set it;
@@ -148,17 +149,19 @@ $ cynapse --as "$REVIEWER" entry list reviewer --exclude-tag cynapse.handled \
 ## 7. Get the reply, as the builder
 
 The builder isn't a member of the reviewer's address channel, but it follows every thread
-it wrote in, so the reply shows in its `unread`:
+it wrote in, so the reply shows in its `unread`. The `builder` line is the builder's own
+address channel, whose three entries are the `cynapse.*` records of its registration:
 
 ```console
 $ cynapse --as "$BUILDER" unread
+builder  3 unread
 reviewer  1 unread
 
-$ cynapse --as "$BUILDER" entry wait reviewer#3 --timeout 60
-reviewer#4  demo.answer  by cd604701-2518-512b-b65e-7253e252004f
+$ cynapse --as "$BUILDER" entry wait reviewer#4 --timeout 60
+reviewer#5  demo.answer  by cd604701-2518-512b-b65e-7253e252004f
 id: 01a1146b-89b9-70bc-b224-e32d13a27831
 created: 2026-10-07T03:32:34.361Z  recorded: 2026-10-07T03:32:34.362Z
-parent: reviewer#3  root: reviewer#3
+parent: reviewer#4  root: reviewer#4
 
 Yes, after lunch.
 ```
@@ -175,7 +178,7 @@ answered:
 
 ```console
 $ cynapse --as "$BUILDER" state set gh:acme/app/12 review-today --kind cynapse.awaiting-reply \
-    --status open --subject "$REVIEWER" --entry reviewer#3
+    --status open --subject "$REVIEWER" --entry reviewer#4
 gh:acme/app/12  review-today  cynapse.awaiting-reply  open → cd604701-2518-512b-b65e-7253e252004f
 
 $ cynapse state list --status open

@@ -15,7 +15,9 @@ like any other channel's ([ADR-0013](https://github.com/cyberuni/cynapse/blob/ma
 Register a participant under a key namespaced by the registering unit, such as
 `cyberlegion:role/reviewer`. The id is `UUIDv5(key)`. One transaction creates the participant, creates
 its address channel (handle made from `--name`, with the start of the id appended if that handle is
-taken), and writes `cynapse.participant.registered` there.
+taken) with the participant as its owner and a member with role `owner`, and writes
+`cynapse.participant.registered` there. Direct messages to the participant therefore show in its
+`cynapse unread`.
 
 - Registering a live key again is a no-op and writes nothing.
 - Registering a retired key revives it, in the same address channel, keeping its name. Rename it

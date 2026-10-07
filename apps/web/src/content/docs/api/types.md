@@ -60,7 +60,7 @@ type ChannelKind = 'address' | 'work'
 interface Channel {
   id: string              // UUID: v7 when minted, v5 when derived from an anchor, key or subject
   handle: string          // the current human-readable name
-  kind: ChannelKind       // an address channel has an owner; a work channel has members
+  kind: ChannelKind       // an address channel has an owner, who is also a member; a work channel has members
   owner?: string          // the participant who triages an address channel; absent on a work channel
   subjects: SubjectId[]   // the subject keys it resolves from, first the one its id came from; may be empty
   aliases: string[]       // handles it used to have; they still resolve

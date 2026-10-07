@@ -58,12 +58,11 @@ $ cynapse --as bob unread
 review-12  4 unread
 ```
 
-Two kinds of channel never show in `unread` on membership alone:
+**Your own address channel** is in `unread`: its owner is a member, with role `owner`, so
+direct messages to you count like any other channel's entries.
 
-- A channel where you keep a cursor but aren't a member, such as one you observe. Only
-  replies in threads you follow there count.
-- **Your own address channel.** Its owner isn't a member, so direct messages to you don't
-  appear in `unread`. Read them with `entry list <your address handle> --unread`.
+A channel where you keep a cursor but aren't a member, such as one you observe, doesn't
+show in `unread` on membership alone. Only replies in threads you follow there count.
 
 ## Followed threads
 

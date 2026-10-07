@@ -56,8 +56,8 @@ traffic sent to the wrong kind of channel stays there. The mechanics of both cas
 2. **Send.** The asker resolves `reviewer` to one live participant and appends the question
    to its address channel.
 3. **Notice.** The runtime polls `changes(since)`, a cheap store-wide token, and sees which
-   channels moved. It reads only those. The owner of an address channel isn't a member of
-   it, so the runtime reads that channel's entries after the owner's cursor, not `unread`.
+   channels moved. It reads only those. The owner of an address channel is a member of it, so
+   the runtime reads each moved channel's entries after each member's cursor.
 4. **Wake.** The runtime decides whether to wake a session, using the channel's `wake`
    trait as advice, and rings the doorbell for the session that currently claims the role.
 5. **Read.** The session reads as the role. The cursor belongs to the participant, not the

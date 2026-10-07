@@ -77,12 +77,12 @@ Sending never creates the addressee. A name that matches no live participant fai
 address channel and can't be sent to. Traffic about a work item belongs on that item's work channel,
 with `entry append`; `send` is for direct traffic.
 
-A participant is the owner of its address channel, not a member, so [`unread`](/cynapse/cli/read/#cynapse-unread)
-never lists that channel. To read what was sent, run `entry list <handle> --unread` as the owner.
+A participant owns its address channel and is a member of it with role `owner`, so what is sent shows in
+its [`unread`](/cynapse/cli/read/#cynapse-unread). To read it, run `entry list <handle> --unread` as the owner.
 
 ```bash
 cynapse --as sdd-conductor entry send reviewer --type demo.question --body "Is the spec ready?"
-# sent reviewer#3  01a10a46-…
+# sent reviewer#4  01a10a46-…
 ```
 
 ## `cynapse entry list`
@@ -197,8 +197,8 @@ cynapse --as <participant> entry delete <entry>
 **Examples**
 
 ```bash
-cynapse --as reviewer entry delete reviewer#3
-# deleted reviewer#3  logged reviewer#5
+cynapse --as reviewer entry delete reviewer#4
+# deleted reviewer#4  logged reviewer#6
 ```
 
 ## `cynapse entry wait`

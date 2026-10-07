@@ -35,7 +35,7 @@ addressed, notice what arrived, and keep the registry true to what actually runs
 3. It registers each **session** that must be addressable on its own, under a key used only
    once, such as `cyberlegion:unit/<instance id>`.
 4. It polls `changes(since)`. For each channel that moved, it reads the entries after each
-   reader's cursor: the owner of an address channel, or the members of a work channel.
+   reader's cursor: the members of the channel. The owner of an address channel is one of them.
 5. It wakes the session that acts for each reader with something new. Which session plays
    a role is the runtime's own record.
 6. When a session ends, the runtime retires its participant.
@@ -121,11 +121,11 @@ the revival of a retired key writes anything:
 $ CYNAPSE_DB="$(mktemp -d)/cynapse.db" node lifecycle.mjs
 retired scout-7f3a
 scout-7f3a: unknown_address
-scout-7f3a#2 cynapse.participant.registered
-scout-7f3a#3 demo.ask
-scout-7f3a#4 cynapse.participant.retired
+scout-7f3a#3 cynapse.participant.registered
+scout-7f3a#4 demo.ask
+scout-7f3a#5 cynapse.participant.retired
 reviewer -> reviewer
-scout-7f3a is live again, same id: true; seq 4 -> 5
+scout-7f3a is live again, same id: true; seq 5 -> 6
 ```
 
 The last line shows why session keys must not be reused: the revived `scout-7f3a` is the

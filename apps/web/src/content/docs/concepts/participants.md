@@ -74,15 +74,19 @@ channel, append to it, and keep a cursor on it. Membership decides two things:
 - the channel counts towards the participant's `unread`
   ([Read state](/cynapse/concepts/read-state/)).
 
-The owner of an address channel is not a member of it, so its own address channel doesn't
-count towards its `unread`.
+The owner of an address channel is a member of it, with role `owner`, so its own address
+channel counts towards its `unread`.
 
-Members are added in one of two ways:
+Members are added in one of three ways:
 
 - **When the channel is created:** `cynapse channel create … --member alice:owner
   --member bob:reviewer`. The role defaults to `member`.
 - **Through the library:** `Store.addMember(channel, participant, role, author)`, which
   writes a `cynapse.member.joined` entry. Adding an existing member again updates its role.
+- **By owning an address channel:** the owner joins with role `owner` when the channel is
+  created, including the address channel registration creates. `channel owner` makes the
+  new owner a member with role `owner` and changes the old owner's role to `member`. Each
+  change writes a `cynapse.member.joined` entry.
 
 There is no CLI command to join a channel, or to add or remove a member, after it is
 created, and no way to leave.
