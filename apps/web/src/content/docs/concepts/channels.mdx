@@ -1,6 +1,6 @@
 ---
 title: Channels
-description: The one primitive — an ordered, append-only sequence of entries with a stable identity, renameable handles, and anchors.
+description: "The one primitive: an ordered, append-only sequence of entries with a stable identity, renameable handles and anchors."
 ---
 
 import ChannelDiagram from '../../../components/ChannelDiagram.astro'
@@ -23,13 +23,16 @@ it would rewrite history. How it is chosen depends on how the channel is created
 
 | Created with | `id` | Creating it again |
 | --- | --- | --- |
-| `--anchor <entry>` | `UUIDv5(anchor entry id)` | No-op with the same input |
-| `--key <key>` | `UUIDv5(key)` | No-op with the same input |
-| Neither | a fresh UUIDv7 | Creates another channel |
+| `--store <store> --native-id <id>` (a subject) | `UUIDv5("subject:<store>:<id>")` | Returns the existing channel, whatever handle, type or title is given |
+| `--anchor <entry>` | `UUIDv5(anchor entry id)` | Returns the existing channel when the input matches |
+| `--key <key>` | `UUIDv5(key)` | Returns the existing channel when the input matches |
+| None of these | a fresh UUIDv7 | Fails, because the handle is taken |
 
 A derived `id` is what makes two agents opening "the same" channel at once end up in one
-channel, not two. Creating it again with the same handle, type, title and traits returns
-the existing channel. Creating it with any of those different fails with `id_conflict`.
+channel, not two. For an anchor or a key, creating it again with a different handle, type,
+title or traits fails with `id_conflict`. A subject's channel is shared by every consumer
+that works on the subject, so only a different kind or owner conflicts. See
+[Subjects and channel kinds](/cynapse/concepts/subjects/).
 
 ## Handles and aliases
 
@@ -41,9 +44,12 @@ Anywhere a command or `Store` method takes a channel, it accepts the UUID, the c
 handle, or any old handle.
 
 ```bash
-cynapse channel rename review-12 cynapse-12-review
-cynapse entry show review-12#6        # still resolves
+cynapse --as alice channel rename review-12 cynapse-12-review
+cynapse entry show review-12#5        # still resolves
 ```
+
+A handle is letters, digits and `. _ / : -`, starting with a letter or digit. It can't
+contain `#`, which separates a handle from a `seq`, and it can't look like a UUID.
 
 ## Child channels and anchors
 
@@ -53,21 +59,33 @@ channel** whose `parent` is an **anchor** entry in the parent channel. The ancho
 to the anchor.
 
 ```bash
-cynapse channel create review-12-arb --anchor review-12#6 \
+cynapse --as alice channel create review-12-arb --anchor review-12#5 \
   --type demo.arbitration --title "Arbitrate the cursor rule"
 cynapse channel tree
 ```
 
 Anchors form a tree, and the tree stays inside cynapse. Relations between pieces of work,
-such as a PR closing an issue, are not channel structure
-([Subjects across stores](/cynapse/concepts/subjects/)).
+such as a PR closing an issue, are not channel structure: they stay on the work items in
+their own stores ([What cynapse stores](/cynapse/design/scope/#a-network-of-subjects)).
+
+## Two kinds: work and address
+
+A **work channel** is the conversation about one piece of work, such as an issue or a PR.
+It has members and no owner. An **address channel** takes direct messages for something
+that can receive them, such as a participant or a repository, and has one owner. A channel
+is a work channel unless it is created as an address. See
+[Subjects and channel kinds](/cynapse/concepts/subjects/).
 
 ## Metadata is written as entries
 
 Every change to a channel's metadata is also appended to the channel as a `cynapse.*`
 entry, in the same transaction: `cynapse.channel.created`, `cynapse.member.joined`,
-`cynapse.context.added`, a pin, a rename, a lifecycle change, a view. The channel is the
-whole record of itself, and anyone replaying it sees how it came to be.
+`cynapse.context.added`, a pin, a rename, a lifecycle change, a view, a delete. The channel
+is the whole record of itself, and anyone replaying it sees how it came to be. The
+[public contract](/cynapse/public-contract/#entry-types) lists every `cynapse.*` type.
+
+These entries count as unread like any other, so readers usually filter them out with
+`--exclude-type 'cynapse.*'`.
 
 Read cursors are the one exception. A read is not written as an entry, because logging
 every read would bloat the channel ([Read state](/cynapse/concepts/read-state/)).

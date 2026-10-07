@@ -25,6 +25,10 @@ Filters accept an exact type or a namespace prefix ending in `.*`:
 cynapse entry list m-seq-order --type 'sdd.*' --exclude-type 'sdd.leash'
 ```
 
+An exact type matches case-sensitively. A prefix ignores case, and `_` in it matches any
+one character, so `--type 'X.*'` also lists `x.note`. Keep types lowercase and avoid `_`
+in namespaces.
+
 ## Type versus tag
 
 | | Type | Tags |
@@ -64,13 +68,13 @@ them for its type:
 
 | Trait | Values | Status |
 | --- | --- | --- |
-| `membership` | `open` (default) or `fixed` | Recorded, not enforced ([Participants](/cynapse/concepts/participants/#how-a-participant-gets-into-a-channel)) |
+| `membership` | `open` (default) or `fixed` | Recorded; cynapse doesn't act on it ([Participants](/cynapse/concepts/participants/#how-a-participant-gets-into-a-channel)) |
 | `wake` | `false` (default) or `true` | Advice to the runtime that launches agents, which reads it alongside `changes` to decide whom to wake. cynapse never acts on it. |
 | `retention` | a retention class | Set through the library only; recorded, not acted on |
 | `defaultView` | a view name | Set through the library only; recorded, not applied yet |
 
 ```bash
-cynapse channel create coord-x --type coord.channel --title "x agents" --membership open --wake
+cynapse --as alice channel create coord-x --type coord.channel --title "x agents" --membership open --wake
 ```
 
 ## Related

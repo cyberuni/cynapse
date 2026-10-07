@@ -61,11 +61,7 @@ export default defineConfig({
 						{ label: 'State and lifecycle', slug: 'concepts/state-and-lifecycle' },
 						{ label: 'Views', slug: 'concepts/views' },
 						{ label: 'Subjects and channel kinds', slug: 'concepts/subjects' },
-						{
-							label: 'Messaging',
-							slug: 'concepts/messaging',
-							badge: { text: 'Proposed', variant: 'caution' },
-						},
+						{ label: 'Messaging', slug: 'concepts/messaging' },
 						{ label: 'Storage', slug: 'concepts/storage' },
 						{ label: 'Agent-friendly output', slug: 'concepts/agent-friendly-output' },
 					],
