@@ -82,7 +82,7 @@ Closes the database connection.
 | `renameParticipant(id, name, author)` | `Participant` | Renames it and its address handle; the old handle stays as an alias. Logs `cynapse.participant.renamed`. Fails for a participant with no address channel. |
 | `resolveAddress(name, options?: { kinds? })` | `ResolvedAddress` | `{ participant, channel? }`: the one live participant whose id, name, or address handle or alias is exactly `name`. Throws `ambiguous_address` (exit `4`, `details.candidates`) or `unknown_address` (exit `5`). |
 | `participants(query?: { status?, registeredBy? })` | `Participant[]` | Ordered by id, for reconciliation. |
-| `addParticipant(participant: NewParticipant)` | `Participant` | Insert or update a bare `{ id, kind, name }` outside the registry, with no key or address channel. |
+| `addParticipant(participant: NewParticipant)` | `Participant` | **Deprecated**; use `registerParticipant`. Insert or update a bare `{ id, kind, name }` outside the registry, with no key or address channel. A change is logged as `cynapse.participant.added` or `cynapse.participant.updated` in the `cynapse.participants` channel; repeating the same values logs nothing. |
 
 ## Channels
 

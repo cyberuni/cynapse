@@ -3,6 +3,7 @@ import { channelIdOf } from '../channel-key.js'
 import { CynapseError, EXIT_AMBIGUOUS_ADDRESS, EXIT_UNKNOWN_ADDRESS } from '../cli-error.js'
 import { uuidv5 } from '../ids.js'
 import { openStore } from './open.js'
+import { PARTICIPANTS_LEDGER } from './sqlite.js'
 import type { Participant, Store } from './types.js'
 
 let store: Store
@@ -293,6 +294,25 @@ describe('resolveAddress', () => {
 	it('does not count a participant twice when its name and handle both match', () => {
 		const { participant } = register('cyberlegion:role/reviewer', 'reviewer')
 		expect(store.resolveAddress('reviewer').participant.id).toBe(participant.id)
+	})
+})
+
+describe('addParticipant', () => {
+	it('logs an insert and a change in the participants ledger, and nothing for a repeat', () => {
+		store.addParticipant({ id: 'alice', kind: 'agent', name: 'alice' })
+		store.addParticipant({ id: 'alice', kind: 'human', name: 'Alice' })
+		store.addParticipant({ id: 'alice', kind: 'human', name: 'Alice' })
+
+		const entries = store.entries(PARTICIPANTS_LEDGER)
+		expect(entries.map((e) => [e.type, e.author, e.data])).toEqual([
+			['cynapse.channel.created', 'alice', expect.anything()],
+			['cynapse.participant.added', 'alice', { participant: 'alice', kind: 'agent', name: 'alice' }],
+			[
+				'cynapse.participant.updated',
+				'alice',
+				{ participant: 'alice', kind: 'human', name: 'Alice', from: { kind: 'agent', name: 'alice' } },
+			],
+		])
 	})
 })
 

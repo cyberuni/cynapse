@@ -372,7 +372,12 @@ export interface Store {
 	close(): void
 
 	// participants
-	/** Inserts or updates a bare participant by id, outside the registry. */
+	/**
+	 * Inserts or updates a bare participant by id, outside the registry, and logs the change as
+	 * `cynapse.participant.added` or `.updated` in the `cynapse.participants` channel.
+	 *
+	 * @deprecated Use `registerParticipant`, which gives the participant a key and an address channel.
+	 */
 	addParticipant(participant: NewParticipant): Participant
 	/** Ordered by id. */
 	participants(query?: ParticipantQuery): Participant[]

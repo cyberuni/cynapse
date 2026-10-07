@@ -164,17 +164,39 @@ export class SqliteStore implements Store {
 
 	// ── participants ────────────────────────────────────────────────────────────
 
+	/** @deprecated Use `registerParticipant`. Until it goes, each change is logged in `PARTICIPANTS_LEDGER`. */
 	addParticipant(participant: NewParticipant): Participant {
-		this.#write(() =>
+		const { id, kind, name } = participant
+		this.#write(() => {
+			const existing = this.#findParticipant(id)
+			// Upserting what is already there is a no-op, so the ledger records only changes.
+			if (existing && existing.kind === kind && existing.name === name) return
 			this.#run(
 				`INSERT INTO participants (id, kind, name) VALUES (?, ?, ?)
 				ON CONFLICT (id) DO UPDATE SET kind = excluded.kind, name = excluded.name`,
-				participant.id,
-				participant.kind,
-				participant.name,
-			),
-		)
-		return this.#requireParticipant(participant.id)
+				id,
+				kind,
+				name,
+			)
+			const ledger = this.createChannel({
+				handle: PARTICIPANTS_LEDGER,
+				type: 'cynapse.participants',
+				title: 'Participants',
+				author: id,
+				key: PARTICIPANTS_LEDGER,
+			})
+			this.#appendIn(ledger.id, {
+				author: id,
+				type: existing ? 'cynapse.participant.updated' : 'cynapse.participant.added',
+				data: {
+					participant: id,
+					kind,
+					name,
+					...(existing ? { from: { kind: existing.kind, name: existing.name } } : {}),
+				},
+			})
+		})
+		return this.#requireParticipant(id)
 	}
 
 	participants(query: ParticipantQuery = {}): Participant[] {
@@ -1565,6 +1587,9 @@ const DELETED_STATE = 'deleted'
 
 /** The reserved tag that marks an entry on an address channel as handled by its owner. */
 export const HANDLED_TAG = 'cynapse.handled'
+
+/** The handle and key of the channel that logs `addParticipant`'s changes, which belong to no address channel. */
+export const PARTICIPANTS_LEDGER = 'cynapse.participants'
 
 /** Tags as a set, in a stable order, so the same tags given in another order compare equal. */
 function normalizeTags(tags: string[] = []): string[] {
