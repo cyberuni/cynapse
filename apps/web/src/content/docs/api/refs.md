@@ -1,10 +1,10 @@
 ---
 title: Refs
-description: Render reference shorthands such as gh:cyberuni/cynapse#12 as links — the cynapse/refs export.
+description: "Render reference shorthands such as gh:cyberuni/cynapse#12 as links with the cynapse/refs export."
 ---
 
 cynapse does not call GitHub, Asana or npm. When an entry or channel points at something in another
-system it stores a short, stable string — a *reference shorthand* such as `gh:cyberuni/cynapse#12` — and
+system it stores a short, stable string, a *reference shorthand* such as `gh:cyberuni/cynapse#12`. It
 turns it into a link only when something renders it. `renderRef` is that renderer.
 
 ```ts
@@ -31,12 +31,12 @@ A reference that does not parse, or has an unknown scheme, is never an error: it
 | Shorthand | `url` |
 | --- | --- |
 | `gh:owner/repo#12` | `https://github.com/owner/repo/issues/12` |
-| `gh:owner/repo@0c173b2` | `https://github.com/owner/repo/commit/0c173b2` (7 to 40 hex digits) |
+| `gh:owner/repo@0c173b2` | `https://github.com/owner/repo/commit/0c173b2` (7 to 40 lowercase hex digits) |
 | `gh:owner/repo:feat/x` | `https://github.com/owner/repo/tree/feat/x` |
 | `gh:owner/repo` | `https://github.com/owner/repo` |
 | `npm:cynapse` | `https://www.npmjs.com/package/cynapse` |
-| `asana:1234567890` | `https://app.asana.com/0/0/1234567890` (digits only) |
-| `https://example.com/a` | itself; `markdown` is `<https://example.com/a>` |
+| `asana:1234567890` | `https://app.asana.com/0/0/1234567890` (digits only; `markdown` text is `asana:1234567890`) |
+| `https://example.com/a` (or `http://`) | itself; `markdown` is `<https://example.com/a>` |
 | `truss-auth#4` (an internal `handle#seq`) | none |
 | `jira:ABC-1` (unknown scheme) | none |
 

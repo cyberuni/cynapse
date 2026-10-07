@@ -1,6 +1,6 @@
 ---
 title: Library API
-description: Use cynapse as a library — open a store, create channels, append and read entries from TypeScript.
+description: "Use cynapse as a library: open a store, create channels, append and read entries from TypeScript."
 ---
 
 Everything the [CLI](/cynapse/cli/) does is a thin shell over a `Store`. The package exports that
@@ -13,21 +13,26 @@ out to the `cynapse` binary and parsing its output.
 npm install cynapse
 ```
 
-:::caution[Prototype]
-npm has only a `0.0.0` placeholder so far, and the `Store` interface isn't a stable
-contract until the first real release. Until then, depend on a clone of the repository.
+:::note[Release]
+The latest release on npm is `0.1.0`. From it on, the `Store` interface and the other
+parts listed on [Public contract](/cynapse/public-contract/) change only with a release
+that says so. This site documents `main`, so a feature marked "added after 0.1.0" needs
+the next release.
 :::
 
 `cynapse` is ESM-only and ships its own types. The store uses Node's built-in
-[`node:sqlite`](https://nodejs.org/api/sqlite.html), so there is no native module to build; it needs a
-Node.js release that includes it (the package builds for Node 22).
+[`node:sqlite`](https://nodejs.org/api/sqlite.html), so there is no native module to build. It needs
+Node.js 22.13 or later.
+
+Every `Store` method is synchronous: it returns a value, never a Promise.
 
 ## Entry points
 
 | Import | What it is | Page |
 | --- | --- | --- |
 | `cynapse` | `openStore`, `SqliteStore`, every store type, ids, errors, output helpers, `createProgram`, `seed`. | [Store](/cynapse/api/store/) |
-| `cynapse/refs` | `renderRef` alone, importing nothing — safe to bundle for a browser. | [Refs](/cynapse/api/refs/) |
+| `cynapse/refs` | `renderRef` alone, importing nothing (safe to bundle for a browser). | [Refs](/cynapse/api/refs/) |
+| `cynapse/sqlite-warning` | `silenceSqliteWarning()`, which drops the `node:sqlite` experimental warning that Node 22 prints. The CLI calls it. The `cynapse` entry does not. | |
 
 ## Exports of `cynapse`
 
@@ -37,14 +42,18 @@ Node.js release that includes it (the package builds for Node 22).
 | `SqliteStore`, `SqliteStoreOptions` | class, type | [Store](/cynapse/api/store/#opening-a-store) |
 | `Store` and its input and result types: `Channel`, `Entry`, `Member`, `Participant`, `StateRecord`, `View`, `Briefing`, … | types | [Store](/cynapse/api/store/), [Types](/cynapse/api/types/) |
 | `renderRef`, `RenderedRef` | function, type | [Refs](/cynapse/api/refs/) |
+| `HANDLED_TAG` | constant | [Public contract](/cynapse/public-contract/#reserved-tags) |
+| `channelKey`, `channelIdOf`, `SubjectId` | functions, type | [Ids and errors](/cynapse/api/ids/#subjects) |
 | `uuidv7`, `uuidv5`, `timestampOf`, `isUuid`, `CYNAPSE_NAMESPACE` | functions, constant | [Ids and errors](/cynapse/api/ids/) |
-| `CynapseError`, `EXIT_OK`, `EXIT_FAILURE`, `EXIT_USAGE`, `EXIT_TIMEOUT`, `errorCodeFor`, `exitCodeFor`, `helpFor`, `renderCliError` | class, constants, functions | [Ids and errors](/cynapse/api/ids/#errors) |
+| `CynapseError`, `EXIT_OK`, `EXIT_FAILURE`, `EXIT_USAGE`, `EXIT_TIMEOUT`, `EXIT_AMBIGUOUS_ADDRESS`, `EXIT_UNKNOWN_ADDRESS`, `errorCodeFor`, `exitCodeFor`, `helpFor`, `renderCliError` | class, constants, functions | [Ids and errors](/cynapse/api/ids/#errors) |
 | `output`, `printEmpty`, `setOutputFormat`, `getOutputFormat`, `OutputFormat` | CLI output helpers | [Agent-friendly output](/cynapse/concepts/agent-friendly-output/) |
 | `createProgram(version?)` | function | builds the Commander command tree without touching `process.argv`; used by the CLI and its tests |
 | `readPackageVersion()` | function | the package's version, read from `package.json` at runtime |
 | `seed`, `SeedClock`, `SEED_START`, `SeedSummary` | function, class, constant, type | the example world behind [`dev seed`](/cynapse/cli/dev/) |
 
 The `Store` types are re-exported with `export type *`, so they are available as type-only imports.
+`waitForReply`, the poll loop behind `cynapse entry wait`, is not exported. To wait in code, poll
+`entries(channel, { root, afterSeq, excludeAuthors: [me], limit: 1 })`.
 The CLI entry itself (`cynapse` the binary) is not importable.
 
 ## Example
@@ -100,8 +109,8 @@ you in a `finally`.
 ## Failures
 
 Operations that cannot proceed throw a [`CynapseError`](/cynapse/api/ids/#errors) with a message that
-names what failed (`no channel found for "nope"`) and, for conflicts, a stable `code` such as
-`id_conflict`. The library never calls `process.exit` and never writes to stdout; only the CLI does.
+names what failed (`no channel found for "nope"`) and, for some failures, a stable `code` such as
+`not_found` or `id_conflict`. The library never calls `process.exit` and never writes to stdout; only the CLI does.
 
 :::note
 There is no sync or hub in the library yet. They are designed but not built.
@@ -109,7 +118,7 @@ There is no sync or hub in the library yet. They are designed but not built.
 
 ## Pages
 
-- [Store](/cynapse/api/store/) — the `Store` interface, method by method.
-- [Types](/cynapse/api/types/) — `Channel`, `Entry`, `Member`, `ChannelTraits`, `Anchor`, and the rest.
-- [Refs](/cynapse/api/refs/) — rendering reference shorthands such as `gh:cyberuni/cynapse#12`.
-- [Ids and errors](/cynapse/api/ids/) — UUIDs, `CynapseError` and the exit-code constants.
+- [Store](/cynapse/api/store/): the `Store` interface, method by method.
+- [Types](/cynapse/api/types/): `Channel`, `Entry`, `Member`, `ChannelTraits`, `Anchor`, and the rest.
+- [Refs](/cynapse/api/refs/): rendering reference shorthands such as `gh:cyberuni/cynapse#12`.
+- [Ids and errors](/cynapse/api/ids/): UUIDs, subject keys, `CynapseError` and the exit-code constants.

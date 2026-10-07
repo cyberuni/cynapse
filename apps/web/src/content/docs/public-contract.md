@@ -1,6 +1,6 @@
 ---
 title: Public contract
-description: What a runtime may depend on from the first 0.x release — the Store interface, the exports, the --json shapes, the cynapse.* entry types and tags, the error and exit codes, and $CYNAPSE_HOME — and what counts as a breaking change.
+description: "What a runtime may depend on from the first 0.x release (the Store interface, the exports, the --json shapes, the cynapse.* entry types and tags, the error and exit codes, and $CYNAPSE_HOME) and what counts as a breaking change."
 ---
 
 A runtime such as cyberlegion depends on cynapse from its first release that is not
@@ -36,7 +36,10 @@ fails with `schema_too_new` and is never written to.
 
 The runtime exports of `cynapse` (`src/index.ts`). Every exported type is in the contract
 too, as it is re-exported from `src/store/types.ts`, `src/channel-key.ts`, `src/output.ts`,
-`src/refs.ts`, `src/store/open.ts` and `src/dev/seed.ts`.
+`src/refs.ts`, `src/store/open.ts`, `src/store/sqlite.ts` and `src/dev/seed.ts`.
+
+The package also has two entry points of its own, `cynapse/refs` (`renderRef` and `RenderedRef`) and
+`cynapse/sqlite-warning` (`silenceSqliteWarning`).
 
 | Export | What it is |
 | --- | --- |
@@ -151,8 +154,8 @@ their `data`.
 
 A deleted entry keeps its place as a tombstone: its `id`, `seq`, author, type, `parent`
 and `root` stay, its body, data, refs and tags are erased, and it carries
-`deleted: { at, by }`. Listings hide tombstones unless `includeDeleted` is set, and
-`cynapse.*` entries cannot be deleted. A deleted channel has every other entry erased and
+`deleted: { at, by }`. `entries` hides tombstones unless `includeDeleted` is set, `search`
+never returns them, and `cynapse.*` entries cannot be deleted. A deleted channel has every other entry erased and
 the lifecycle state `deleted`, which `listChannels` hides unless `includeDeleted` is set
 or `state: 'deleted'` is asked for. Anyone may delete, since no caller can be verified
 (ADR-0014).
