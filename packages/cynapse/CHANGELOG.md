@@ -1,5 +1,48 @@
 # cynapse
 
+## 0.2.0
+
+### Minor Changes
+
+- 6f0fcec: Delete an entry or a channel (ADR-0014). `Store.deleteEntry` and `cynapse entry delete`
+  erase one entry's content and leave a tombstone that keeps its `seq`, `parent` and `root`
+  resolving, logged as `cynapse.entry.deleted`. `Store.deleteChannel` and
+  `cynapse channel delete` do the same for every entry in a channel outside `cynapse.*` and move
+  it to the reserved lifecycle state `deleted`, logged as `cynapse.channel.deleted`; any other
+  lifecycle restores it. Anyone may delete, since no caller can be verified; the log records who
+  did. `Entry` gains `deleted`, and `entries` and `listChannels` hide what was deleted unless
+  `includeDeleted` (`--include-deleted`) is set.
+- 6ac15b1: Every CLI error now suggests a next step: a `help:` line under the `error:` line in text, and a
+  `help` field under `--json`. `CynapseError` takes a `help` option, and `helpFor` gives the next step
+  for any thrown value. An unknown flag lists the flags the command accepts (`options` under `--json`),
+  and a command group run without a subcommand, or with an unknown one, lists its subcommands
+  (`subcommands`) on stdout instead of printing its usage to stderr.
+
+### Patch Changes
+
+- bb68d01: `channel create --member … --context …` now adds its members and context in the same transaction
+  that creates the channel, so a failed create leaves nothing behind and can be retried.
+  `CreateChannelInput` takes `members` and `context` to do the same from the library.
+  
+  `addParticipant` is deprecated in favour of `registerParticipant`. Until it goes, each change it
+  makes is logged as `cynapse.participant.added` or `cynapse.participant.updated` in a new
+  `cynapse.participants` channel. Callers will notice that channel in `channel list`, including in
+  the seeded example world.
+- 1c7a347: Deleting an entry or a channel now removes the erased content from disk, not only from reads. Every connection sets `PRAGMA secure_delete = ON`, so SQLite zeroes freed space instead of leaving old content in free pages, and `deleteEntry` and `deleteChannel` checkpoint and truncate the write-ahead log after they commit. The checkpoint is a best effort: it doesn't wait for a reader holding an older snapshot, and the delete succeeds either way. Content in `cynapse.*` entries, such as state values, titles and purposes, still can't be deleted.
+- ace6650: Match a type prefix filter such as `sdd.*` literally and case-sensitively, like an exact
+  type. It used SQL `LIKE`, so it ignored case and treated `_` and `%` as wildcards:
+  `--type 'X.*'` listed `x.note`. The fix covers `entries`, `search`, views and
+  `appendUnless`. A caller that relied on a case-insensitive prefix will now see fewer matches.
+- 518cbf1: Opening a store no longer takes the write lock when its schema is current, so a read no longer waits behind a writer or fails with `database is locked`. Only an open that has migrations to run takes the lock.
+- 4589877: A participant's own address channel now shows in its `cynapse unread`. The owner of an address channel is a member of it, with role `owner`: creating an address channel or registering a participant adds the owner, and `cynapse channel owner` makes the new owner a member with role `owner` and changes the old owner's role to `member`, each logged as `cynapse.member.joined`. A schema migration adds the owner as a member of every existing address channel, with its entry.
+  
+  Callers will notice: `unread` gains the owner's address channels, a channel's `members` lists its owner, and an address channel has one more entry after it is created.
+- 080a78b: A database locked by another process past the busy timeout now fails with the error code `busy`
+  ("retry"), and a full disk, an I/O error, or a damaged or non-database file fails with `storage`,
+  whose help names the file and the integrity check to run. Both were reported as `failure` with
+  help calling them a cynapse bug. The exit code stays `1`; callers that branched on `failure` for
+  these now see the new codes.
+
 ## 0.1.0
 
 ### Minor Changes
