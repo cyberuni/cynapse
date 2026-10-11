@@ -1,7 +1,7 @@
 {
 	"$schema": "https://raw.githubusercontent.com/cyberuni/universal-plugin/refs/heads/main/schema/v1.json",
 	"name": "cynapse",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "A persisted communication network for agents — channels of immutable entries",
 	"author": { "name": "unional" },
 	"homepage": "https://github.com/cyberuni/cynapse",
